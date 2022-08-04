@@ -23,8 +23,8 @@ stocklist["流動比率"] = stocklist["流動比率"].astype(float)
 stocklist = stocklist.loc[stocklist["流動比率"] >= 1.00]
 
 #速動比率 = 速動資產(變現性較好的資產) / 流動負債 (>=1)
-#stocklist["速動比率"] = stocklist["速動比率"].astype(float)
-#stocklist = stocklist.loc[stocklist["速動比率"] >= 1.00]
+stocklist["速動比率"] = stocklist["速動比率"].astype(float)
+stocklist = stocklist.loc[stocklist["速動比率"] >= 1.00]
 
 #股本回報率（ROE） ＝ 稅後淨利 ÷ 股東權益
 #ROE 越高代表公司經營效率、獲利能力越好
