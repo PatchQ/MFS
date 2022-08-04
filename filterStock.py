@@ -36,6 +36,14 @@ stocklist = stocklist.loc[stocklist["股本回報率"] >= 0.00]
 stocklist["資產回報率"] = stocklist["資產回報率"].apply(lambda s: s.replace("%","")).astype(float)
 stocklist = stocklist.loc[stocklist["資產回報率"] >= 0.00]
 
+#毛利率 ＝（營業收入 - 營業成本）/ 營業收入 x 100%
+#毛利率低不一定不好，但太低一定不好 (例如低於5%)
+stocklist["毛利率"] = stocklist["毛利率"].apply(lambda s: s.replace("%","")).astype(float)
+stocklist = stocklist.loc[stocklist["毛利率"] >= 5.00]
+
+#邊際利潤（Profit Margin）是衡量一家公司賺錢能力的比率，數字愈高，代表其控制成本的能力愈佳
+#邊際利潤率 = (銷售收入 - 變動成本) / 銷售收入 x 100%
+
 
 stocklist = stocklist.sort_values(by="股票編號")
 
