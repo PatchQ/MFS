@@ -43,6 +43,8 @@ stocklist = stocklist.loc[stocklist["毛利率"] >= 5.00]
 
 #邊際利潤（Profit Margin）是衡量一家公司賺錢能力的比率，數字愈高，代表其控制成本的能力愈佳
 #邊際利潤率 = (銷售收入 - 變動成本) / 銷售收入 x 100%
+stocklist["邊際利潤率"] = stocklist["邊際利潤率"].apply(lambda s: s.replace("%","").replace(",","")).astype(float)
+stocklist = stocklist.loc[stocklist["邊際利潤率"] >= 0]
 
 
 stocklist = stocklist.sort_values(by="股票編號")
