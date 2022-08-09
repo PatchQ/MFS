@@ -42,13 +42,13 @@ def getStockNo(tab,indno):
             res_td.append(row_td)
 
     df_td = pd.DataFrame(res_td, columns=headerlist)
-
-    nolist =  [val.split("   ")[1].split(" ")[0].strip() for val in df_td["名稱/  \r代號"] if val.strip()]
+   
+    nolist =  [("|".join(val.split("   "))).split("|")[1].split()[0] for val in df_td["名稱/  \r代號"] if val.strip()]
     df_td.insert(0,"股票編號",nolist)
 
 
     if (tab==1):
-        namelist = [val.split("   ")[0].split(" ")[0].strip() for val in df_td["名稱/  \r代號"] if val.strip()]
+        namelist = [("|".join(val.split("   "))).split("|")[0].split()[0] for val in df_td["名稱/  \r代號"] if val.strip()]
         indnolist = [indno for val in df_td["名稱/  \r代號"]]
         df_td.insert(1,"股票名稱",namelist)
         df_td.insert(2,"行業編號",indnolist)
