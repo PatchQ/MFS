@@ -18,6 +18,7 @@ class Stocker:
 
     # Initialization requires a ticker symbol
     def __init__(self, ticker, exchange="WIKI"):
+        
 
         # Enforce capitalization
         ticker = ticker.upper()
