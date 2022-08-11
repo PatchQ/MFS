@@ -1,50 +1,75 @@
-from typing import Sequence
+
 import pandas as pd
 import numpy as np
 import requests
 import openpyxl
 from bs4 import BeautifulSoup
+from datetime import date, timedelta
+
+def getCCASSData(sno,date):
+
+    url = "https://www3.hkexnews.hk/sdw/search/searchsdw_c.aspx"
+
+    headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36",
+            "Referer": "https://www3.hkexnews.hk"
+        }
+
+    sess = requests.session()
+    req = sess.get(url, headers=headers)
+    soup = BeautifulSoup(req.text,features="html.parser")
+
+    payload = {item['name']:item.get('value','') for item in soup.select("input[name]")}
+    payload['__EVENTTARGET'] = 'btnSearch'
+    payload['txtStockCode'] = str(sno).replace(".HK","")
+    payload['txtShareholdingDate'] = date
+
+    req = sess.post(url,data=payload,headers=headers)
+    soup_obj = BeautifulSoup(req.text,"html.parser")
+
+    table =  soup_obj.find('table',attrs={'class':'table table-scroll table-sort table-mobile-list'})
+
+    if table:
+        table_rows = table.find_all('tr')
+
+        th = table_rows[0].find_all('th')
+        headerlist = [val.text.strip() for val in th if val.text.strip()]
+
+        res_td = []
+
+        for tr in table_rows:
+            td = tr.find_all('td')
+            row_td = [val.text.strip().split(":")[1].strip("\n") for val in td if val.text.strip()]
+
+            if row_td:
+                res_td.append(row_td)
+
+        df_td = pd.DataFrame(res_td, columns=headerlist)
+        df_td["sno"]=sno
+        df_td["date"]=date
+
+        df_td.drop(["地址","佔已發行股份/權證/單位百分比"],axis=1,inplace=True)
+
+        df_td = df_td.loc[df_td["參與者編號"].isin(bblist)]
+        df_td.sort_index(axis=1, inplace=True)
+
+        return df_td
 
 
 
-url = "http://www.aastocks.com/tc/stocks/market/industry/industry-performance.aspx?&s=1&o=1"
+bigbrokerlist = pd.read_excel("bigbrokerlist.xlsx",dtype=str)
+bblist = bigbrokerlist["No"]
 
-sess = requests.session()
+df = pd.DataFrame()
+sno = "02382.HK"
+start_date = "20210812"
+end_date = "20220812"
 
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36",
-    "Referer": "http://www.aastocks.com/tc/stocks/market/industry/industry-performance.aspx"
-}
+daterange = pd.date_range(start_date, end_date)
+for single_date in daterange:
+    print(single_date)
+    temp = getCCASSData(sno,single_date.strftime("%Y%m%d"))
+    df = pd.concat([df, temp], ignore_index=True)
 
-req = sess.get(url, headers=headers)
-soup = BeautifulSoup(req.text, features="html.parser")
-table =  soup.find('table',attrs={'class':'indview_tbl'})
-table_rows = table.find_all('tr')
-
-res = []
-indno = []
-
-for tr in table_rows:
-    alist = tr.select('.colFirst a.a15.cls')
-    href = [val.get("href").split("?industrysymbol=")[1].strip() for val in alist if val.text.strip()]
-
-    td = tr.find_all('td')
-    row = [tr.text.strip() for tr in td if tr.text.strip()]
-
-    if row:
-        if row[4]!="0.00" and row[5]!="0.00":
-            res.append(list(map(lambda x: x.replace('▼', '').replace('▲',''), row)))
-            
-            if href:
-                indno.append(href)
-
-
-df1 = pd.DataFrame(indno,columns=["行業編號"])
-
-df = pd.DataFrame(res[1:],columns=res[0][:6])
-
-df.insert(0,"行業編號",df1["行業編號"])
-
-print(df)
-df.to_excel("indlist.xlsx",index=False)
+df.to_excel("hkex.xlsx",index=False)
 
