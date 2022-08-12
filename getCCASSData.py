@@ -51,6 +51,8 @@ def getCCASSData(sno,date):
         df_td.drop(["地址","佔已發行股份/權證/單位百分比"],axis=1,inplace=True)
 
         df_td = df_td.loc[df_td["參與者編號"].isin(bblist)]
+        df_td["持股量"] = df_td["持股量"].apply(lambda s: s.replace(",","").replace(".","")).astype(float)
+
         df_td.sort_index(axis=1, inplace=True)
 
         return df_td
@@ -60,16 +62,21 @@ def getCCASSData(sno,date):
 bigbrokerlist = pd.read_excel("bigbrokerlist.xlsx",dtype=str)
 bblist = bigbrokerlist["No"]
 
-df = pd.DataFrame()
-sno = "02382.HK"
+
 start_date = "20210812"
 end_date = "20220812"
-
 daterange = pd.date_range(start_date, end_date)
-for single_date in daterange:
-    print(single_date)
-    temp = getCCASSData(sno,single_date.strftime("%Y%m%d"))
-    df = pd.concat([df, temp], ignore_index=True)
 
-df.to_excel("hkex.xlsx",index=False)
+stocklist = pd.read_excel("outputlist.xlsx")
+
+for sno in stocklist["股票編號"]:
+
+    print(sno)
+    df = pd.DataFrame()
+
+    for single_date in daterange:
+        temp = getCCASSData(sno,single_date.strftime("%Y%m%d"))
+        df = pd.concat([df, temp], ignore_index=True)
+    
+    df.to_excel("CCASS/"+sno+".xlsx",index=False)
 
