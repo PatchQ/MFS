@@ -71,7 +71,7 @@ stocklist = pd.read_excel("outputlist.xlsx")
 snolist = stocklist["股票編號"]
 
 #get stock excel file from path
-dir_path = os.path.dirname(os.path.realpath(__file__))+"\CCASS"
+dir_path = "D:\GitHub\CCASS"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 #diff two list by set 
 difflist = list(set(snolist) - set(slist))
@@ -86,5 +86,5 @@ for sno in difflist:
         temp = getCCASSData(sno,single_date.strftime("%Y%m%d"))
         df = pd.concat([df, temp], ignore_index=True)
     
-    df.to_excel("CCASS/"+sno+".xlsx",index=False)
+    df.to_excel("../CCASS/"+sno+".xlsx",index=False)
 
