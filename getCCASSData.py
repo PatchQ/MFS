@@ -3,8 +3,10 @@ import pandas as pd
 import numpy as np
 import requests
 import openpyxl
+import os
 from bs4 import BeautifulSoup
 from datetime import date, timedelta
+
 
 def getCCASSData(sno,date):
 
@@ -48,7 +50,7 @@ def getCCASSData(sno,date):
         df_td["sno"]=sno
         df_td["date"]=date
 
-        df_td.drop(["地址","佔已發行股份/權證/單位百分比"],axis=1,inplace=True)
+        df_td.drop(["地址"],axis=1,inplace=True)
 
         df_td = df_td.loc[df_td["參與者編號"].isin(bblist)]
         df_td["持股量"] = df_td["持股量"].apply(lambda s: s.replace(",","").replace(".","")).astype(float)
@@ -58,18 +60,24 @@ def getCCASSData(sno,date):
         return df_td
 
 
-
-bigbrokerlist = pd.read_excel("bigbrokerlist.xlsx",dtype=str)
-bblist = bigbrokerlist["No"]
-
-
 start_date = "20210812"
 end_date = "20220812"
 daterange = pd.date_range(start_date, end_date)
 
-stocklist = pd.read_excel("outputlist.xlsx")
+bigbrokerlist = pd.read_excel("bigbrokerlist.xlsx",dtype=str)
+bblist = bigbrokerlist["No"]
 
-for sno in stocklist["股票編號"]:
+stocklist = pd.read_excel("outputlist.xlsx")
+snolist = stocklist["股票編號"]
+
+#get stock excel file from path
+dir_path = os.path.dirname(os.path.realpath(__file__))+"\CCASS"
+slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
+#diff two list by set 
+difflist = list(set(snolist) - set(slist))
+difflist.sort(reverse=False)
+
+for sno in difflist:
 
     print(sno)
     df = pd.DataFrame()
