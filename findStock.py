@@ -4,6 +4,7 @@ import openpyxl
 
 stocklist = pd.read_excel("outputlist.xlsx")
 
+stocklist = stocklist.loc[stocklist["Close"] > stocklist["10SMA"]]
 #stocklist = stocklist.loc[stocklist["Close"] > stocklist["250SMA"]]
 #stocklist = stocklist.loc[stocklist["Close"] > stocklist["100SMA"]]
 #stocklist = stocklist.loc[stocklist["Close"] > stocklist["50SMA"]]
