@@ -7,7 +7,6 @@ import os
 from bs4 import BeautifulSoup
 from datetime import date, timedelta
 
-
 def getCCASSData(sno,date):
 
     url = "https://www3.hkexnews.hk/sdw/search/searchsdw_c.aspx"
@@ -60,8 +59,9 @@ def getCCASSData(sno,date):
         return df_td
 
 
-start_date = "20210812"
-end_date = "20220812"
+today = date.today().strftime("%Y%m%d")
+end_date = today
+start_date = date.today() - timedelta(days=365)
 daterange = pd.date_range(start_date, end_date)
 
 bigbrokerlist = pd.read_excel("bigbrokerlist.xlsx",dtype=str)

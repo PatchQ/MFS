@@ -59,9 +59,10 @@ def getCCASSData(sno,date):
 
         return df_td
 
+
 today = date.today().strftime("%Y%m%d")
-start_date = "20220815"
 end_date = today
+start_date = date.today() - timedelta(days=1)
 daterange = pd.date_range(start_date, end_date)
 
 bigbrokerlist = pd.read_excel("bigbrokerlist.xlsx",dtype=str)
