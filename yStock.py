@@ -47,3 +47,4 @@ for sno in stocklist["股票編號"][:]:
 
 
 outputlist.to_excel("outputlist.xlsx",index=False)
+print("test")
