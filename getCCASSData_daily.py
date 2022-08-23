@@ -62,7 +62,7 @@ def getCCASSData(sno,date):
 
 today = date.today().strftime("%Y%m%d")
 end_date = today
-start_date = date.today() - timedelta(days=1)
+start_date = date.today() - timedelta(days=2)
 daterange = pd.date_range(start_date, end_date)
 
 bigbrokerlist = pd.read_excel("bigbrokerlist.xlsx",dtype=str)
@@ -79,7 +79,9 @@ for sno in slist:
 
     for single_date in daterange:
         temp = getCCASSData(sno,single_date.strftime("%Y%m%d"))
-        df = pd.concat([df, temp], ignore_index=True)
+        tempdf = df.query("date=="+single_date.strftime('%Y%m%d')+"")
+        if(tempdf.size==0):
+            df = pd.concat([df, temp], ignore_index=True)
     
     df.to_excel("../CCASS/"+sno+".xlsx",index=False)
 
