@@ -48,5 +48,7 @@ def findLStock():
 
 
 
-findHStock()
-findLStock()
+#findHStock()
+#findLStock()
+
+print("test")
