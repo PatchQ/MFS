@@ -71,7 +71,7 @@ stocklist = pd.read_excel("outputlist.xlsx")
 snolist = stocklist["股票編號"]
 
 #get stock excel file from path
-dir_path = "D:\GitHub\CCASS"
+dir_path = "../CCASS/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 #diff two list by set 
 difflist = list(set(snolist) - set(slist))

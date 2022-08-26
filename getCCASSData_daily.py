@@ -69,7 +69,7 @@ bigbrokerlist = pd.read_excel("bigbrokerlist.xlsx",dtype=str)
 bblist = bigbrokerlist["No"]
 
 #get stock excel file from path
-dir_path = "D:\GitHub\CCASS"
+dir_path = "../CCASS/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 
 for sno in slist:
