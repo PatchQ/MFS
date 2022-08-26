@@ -48,7 +48,5 @@ def findLStock():
 
 
 
-#findHStock()
-#findLStock()
-
-print("PAT")
+findHStock()
+findLStock()
