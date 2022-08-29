@@ -1,4 +1,3 @@
-
 import pandas as pd
 import numpy as np
 import requests
@@ -24,19 +23,43 @@ def getBData(sno):
     table =  soup.find('table',attrs={'id':'cnhk-list'})
     table_rows = table.find_all('tr')
 
+    td = table_rows[0].find_all('td')
+    headerlist = [val.text.strip() for val in td if val.text.strip()]
 
     if table:
         table_rows = table.find_all('tr')
 
         res_td = []
 
-        for tr in table_rows:
+        for tr in table_rows[1:]:
             td = tr.find_all('td')
             row_td = [val.text.strip() for val in td if val.text.strip()]
 
             if row_td:
                 res_td.append(row_td)
 
-        print(res_td)
+        
+        df_td = pd.DataFrame(res_td, columns=headerlist[:-1])
+        df_td = df_td.loc[:,~df_td.T.duplicated(keep='first')]
 
-getBData("02382")
+        df_td["sno"]=sno
+        df_td.drop(9,inplace=True)
+        df_td.insert(0,"sno",df_td.pop("sno"))
+
+    return df_td
+
+
+stocklist = pd.read_excel("outputlist.xlsx")
+snolist = stocklist["股票編號"]
+
+resultlist = pd.DataFrame()
+
+#tempdf = getBData("00462")
+#print(tempdf)
+
+for sno in snolist:
+    print(sno.replace(".HK",""))
+    tempdf = getBData(sno.replace(".HK",""))
+    resultlist = pd.concat([resultlist, tempdf], ignore_index=True)
+
+resultlist.to_excel("BDlist.xlsx", index=False)
