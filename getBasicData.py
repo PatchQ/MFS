@@ -64,4 +64,3 @@ for sno in snolist:
 
 resultlist.to_excel("BDlist.xlsx", index=False)
 
-print("test")
