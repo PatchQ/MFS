@@ -63,3 +63,5 @@ for sno in snolist:
     resultlist = pd.concat([resultlist, tempdf], ignore_index=True)
 
 resultlist.to_excel("BDlist.xlsx", index=False)
+
+print("test")
