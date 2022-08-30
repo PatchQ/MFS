@@ -54,12 +54,12 @@ snolist = stocklist["股票編號"]
 
 resultlist = pd.DataFrame()
 
-#for sno in snolist:
-#    print(sno.replace(".HK",""))
-#    tempdf = getBData(sno.replace(".HK",""))
-#    resultlist = pd.concat([resultlist, tempdf], ignore_index=True)
+for sno in snolist:
+    print(sno.replace(".HK",""))
+    tempdf = getBData(sno.replace(".HK",""))
+    resultlist = pd.concat([resultlist, tempdf], ignore_index=True)
 
-#resultlist.to_excel("Data/BDlist.xlsx", index=False)
+resultlist.to_excel("Data/BDlist.xlsx", index=False)
 
 
 bdlist = pd.read_excel("Data/BDlist.xlsx",dtype=str)

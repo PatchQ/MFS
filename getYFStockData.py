@@ -14,12 +14,14 @@ for sno in stocklist["股票編號"][:]:
 
     print(sno)
 
-    msft = yf.Ticker(tempsno)
-    outputlist = msft.history(period="max")
+    outputlist = yf.download(tempsno, interval='1d', prepost=False)
     outputlist = outputlist.reset_index()
-    outputlist["Date"] = outputlist["Date"].dt.strftime("%Y-%m-%d")
+    outputlist.insert(0,"sno", sno)
+    outputlist.insert(1,"SDate", outputlist["Date"].dt.strftime("%Y%m%d"))
 
-    outputlist.to_excel("../StockData/"+sno+".xlsx",index=False)
+    outputlist.drop(columns=["Date"], inplace=True)
+
+    outputlist.to_excel("../YFData/"+sno+".xlsx",index=False)
 
 
 

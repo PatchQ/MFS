@@ -12,7 +12,7 @@ for sno in stocklist["股票編號"][:]:
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
 
-    print(sno)
+    print(tempsno)
 
     end_date = datetime.now()
     start_date = end_date - timedelta(days=500)
