@@ -33,7 +33,7 @@ def getBData(sno):
 
         for tr in table_rows[1:]:
             td = tr.find_all('td')
-            row_td = [val.text.strip() for val in td if val.text.strip()]
+            row_td = [val.text.strip().replace("K","0") for val in td if val.text.strip()]
 
             if row_td:
                 res_td.append(row_td)
@@ -54,27 +54,34 @@ snolist = stocklist["股票編號"]
 
 resultlist = pd.DataFrame()
 
-#tempdf = getBData("00462")
-#print(tempdf)
+#for sno in snolist:
+#    print(sno.replace(".HK",""))
+#    tempdf = getBData(sno.replace(".HK",""))
+#    resultlist = pd.concat([resultlist, tempdf], ignore_index=True)
 
-# for sno in snolist:
-#     print(sno.replace(".HK",""))
-#     tempdf = getBData(sno.replace(".HK",""))
-#     resultlist = pd.concat([resultlist, tempdf], ignore_index=True)
-
-# resultlist.to_excel("BDlist.xlsx", index=False)
+#resultlist.to_excel("Data/BDlist.xlsx", index=False)
 
 
 bdlist = pd.read_excel("Data/BDlist.xlsx",dtype=str)
-
-snolist = bdlist.loc[bdlist["sno"]=="00001"]
-
-snolist = snolist.dropna(axis=1)
-
-templist = snolist.iloc[1].tail(3)
+resultlist = []
 
 
+for sno in snolist:
 
-print(templist)
+    templist = bdlist.loc[bdlist["sno"]==sno.replace(".HK","")]
+    templist = templist.dropna(axis=1)
+
+    templist = (templist.iloc[1].tail(3).replace("-","0")).astype(float)
+   
+    filterlist = list(filter(lambda val: val > 0, templist))
+
+    if (len(filterlist)>=3):
+        filterlist.insert(0,sno)
+        resultlist.append(filterlist)
+
+
+eBDlist = pd.DataFrame(resultlist,columns=["sno","Y1","Y2","Y3"])
+
+eBDlist.to_excel("Data/eBDlist.xlsx", index=False)
 
 
