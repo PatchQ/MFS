@@ -60,9 +60,8 @@ def getCCASSData(sno,date):
         return df_td
 
 
-today = date.today().strftime("%Y%m%d")
-end_date = today
-start_date = date.today() - timedelta(days=3)
+end_date = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
+start_date = (date.today() - timedelta(days=7)).strftime("%Y%m%d")
 daterange = pd.date_range(start_date, end_date)
 
 bigbrokerlist = pd.read_excel("bigbrokerlist.xlsx",dtype=str)
@@ -74,14 +73,18 @@ slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 
 for sno in slist:
 
-    print(sno)
-    df = pd.read_excel(dir_path+"/"+sno+".xlsx")
+    #get file modified date
+    filemdate = date.fromtimestamp(os.path.getmtime(dir_path+"/"+sno+".xlsx"))
 
-    for single_date in daterange:
-        temp = getCCASSData(sno,single_date.strftime("%Y%m%d"))
-        tempdf = df.query("date=="+single_date.strftime('%Y%m%d')+"")
-        if(tempdf.size==0):
-            df = pd.concat([df, temp], ignore_index=True)
+    if(filemdate.strftime("%Y%m%d")!=date.today().strftime("%Y%m%d")):
+        print(sno)
+        df = pd.read_excel(dir_path+"/"+sno+".xlsx")
+
+        for single_date in daterange:
+            tempdf = df.query("date=="+single_date.strftime('%Y%m%d')+"")
+            if(tempdf.size==0):
+                temp = getCCASSData(sno,single_date.strftime("%Y%m%d"))
+                df = pd.concat([df, temp], ignore_index=True)
     
-    df.to_excel("../CCASS/"+sno+".xlsx",index=False)
+        df.to_excel("../CCASS/"+sno+".xlsx",index=False)
 

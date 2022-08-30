@@ -57,10 +57,24 @@ resultlist = pd.DataFrame()
 #tempdf = getBData("00462")
 #print(tempdf)
 
-for sno in snolist:
-    print(sno.replace(".HK",""))
-    tempdf = getBData(sno.replace(".HK",""))
-    resultlist = pd.concat([resultlist, tempdf], ignore_index=True)
+# for sno in snolist:
+#     print(sno.replace(".HK",""))
+#     tempdf = getBData(sno.replace(".HK",""))
+#     resultlist = pd.concat([resultlist, tempdf], ignore_index=True)
 
-resultlist.to_excel("BDlist.xlsx", index=False)
+# resultlist.to_excel("BDlist.xlsx", index=False)
+
+
+bdlist = pd.read_excel("BDlist.xlsx",dtype=str)
+
+snolist = bdlist.loc[bdlist["sno"]=="00001"]
+
+snolist = snolist.dropna(axis=1)
+
+templist = snolist.iloc[1].tail(3)
+
+
+
+print(templist)
+
 
