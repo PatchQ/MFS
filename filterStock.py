@@ -3,7 +3,7 @@ import numpy as np
 import openpyxl
 
 
-stocklist = pd.read_excel("stocklist.xlsx",dtype=str)
+stocklist = pd.read_excel("Data/stocklist.xlsx",dtype=str)
 stocklist1 = pd.DataFrame()
 
 stocklist["資格"] = stocklist["市值"].str.find("億")
@@ -25,7 +25,7 @@ stocklist = stocklist.sort_values(by="股票編號")
 stocklist1 = stocklist.loc[:,["股票編號","股票名稱","行業編號","市值","數字市值","市盈率",
                          "市賬率","收益率","毛利率","派息比率","收入","年度收入增長","經營溢利"]]
 
-stocklist1.to_excel("filterstock1.xlsx",index=False)
+stocklist1.to_excel("Data/filterstock1.xlsx",index=False)
 
 
 #流動比率 = 流動資產 / 流動負債 (>=1)
@@ -59,7 +59,7 @@ stocklist = stocklist.loc[stocklist["邊際利潤率"] >= 0]
 
 stocklist = stocklist.sort_values(by="股票編號")
 
-stocklist.to_excel("filterstock.xlsx",index=False)
+stocklist.to_excel("Data/filterstock.xlsx",index=False)
 
 
 

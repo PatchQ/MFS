@@ -4,7 +4,7 @@ import openpyxl
 
 def findHStock():
 
-    stocklist = pd.read_excel("outputlist.xlsx")
+    stocklist = pd.read_excel("Data/outputlist.xlsx")
 
     stocklist = stocklist.loc[stocklist["Close"] > stocklist["10SMA"]]
     #stocklist = stocklist.loc[stocklist["Close"] > stocklist["250SMA"]]
@@ -20,13 +20,13 @@ def findHStock():
     #stocklist = stocklist.loc[stocklist["Volume"] > stocklist["V20"]]
     #stocklist = stocklist.loc[stocklist["Volume"] > stocklist["V50"]]
 
-    stocklist.to_excel("findHStock.xlsx",index=False)
+    stocklist.to_excel("Data/findHStock.xlsx",index=False)
 
 
 
 def findLStock():
 
-    stocklist = pd.read_excel("outputlist.xlsx")
+    stocklist = pd.read_excel("Data/outputlist.xlsx")
 
     #stocklist = stocklist.loc[stocklist["Close"] < stocklist["10SMA"]]
 
@@ -44,7 +44,7 @@ def findLStock():
     stocklist = stocklist.loc[stocklist["V50"] > stocklist["V100"]]
     stocklist = stocklist.loc[stocklist["V100"] > stocklist["V250"]]
 
-    stocklist.to_excel("findLStock.xlsx",index=False)
+    stocklist.to_excel("Data/findLStock.xlsx",index=False)
 
 
 

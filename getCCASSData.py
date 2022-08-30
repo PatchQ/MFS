@@ -64,10 +64,10 @@ end_date = today
 start_date = date.today() - timedelta(days=365)
 daterange = pd.date_range(start_date, end_date)
 
-bigbrokerlist = pd.read_excel("bigbrokerlist.xlsx",dtype=str)
+bigbrokerlist = pd.read_excel("Data/bigbrokerlist.xlsx",dtype=str)
 bblist = bigbrokerlist["No"]
 
-stocklist = pd.read_excel("outputlist.xlsx")
+stocklist = pd.read_excel("Data/outputlist.xlsx")
 snolist = stocklist["股票編號"]
 
 #get stock excel file from path

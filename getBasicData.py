@@ -49,7 +49,7 @@ def getBData(sno):
     return df_td
 
 
-stocklist = pd.read_excel("outputlist.xlsx")
+stocklist = pd.read_excel("Data/outputlist.xlsx")
 snolist = stocklist["股票編號"]
 
 resultlist = pd.DataFrame()
@@ -65,7 +65,7 @@ resultlist = pd.DataFrame()
 # resultlist.to_excel("BDlist.xlsx", index=False)
 
 
-bdlist = pd.read_excel("BDlist.xlsx",dtype=str)
+bdlist = pd.read_excel("Data/BDlist.xlsx",dtype=str)
 
 snolist = bdlist.loc[bdlist["sno"]=="00001"]
 

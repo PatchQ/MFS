@@ -46,5 +46,5 @@ df = pd.DataFrame(res[1:],columns=res[0][:6])
 df.insert(0,"行業編號",df1["行業編號"])
 
 print(df)
-df.to_excel("indlist.xlsx",index=False)
+df.to_excel("Data/indlist.xlsx",index=False)
 

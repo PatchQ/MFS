@@ -5,7 +5,7 @@ import openpyxl
 from datetime import datetime, timedelta
 import yfinance as yf
 
-stocklist = pd.read_excel("outputlist.xlsx",dtype=str)
+stocklist = pd.read_excel("Data/outputlist.xlsx",dtype=str)
 outputlist = pd.DataFrame()
 
 for sno in stocklist["股票編號"][:]:

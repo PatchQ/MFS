@@ -61,7 +61,7 @@ def getStockNo(tab,indno):
     return df_td
 
 
-indlist = pd.read_excel("indlist.xlsx",dtype=str)
+indlist = pd.read_excel("Data/indlist.xlsx",dtype=str)
 indnolist = indlist["行業編號"]
 
 stocklist = pd.DataFrame()
@@ -79,7 +79,7 @@ for val in indnolist:
     stocklist = pd.concat([stocklist, df], ignore_index=True)
 
 
-stocklist.to_excel("stocklist.xlsx",index=False)
+stocklist.to_excel("Data/stocklist.xlsx",index=False)
 
 
 

@@ -5,7 +5,7 @@ import openpyxl
 from datetime import datetime, timedelta
 import yfinance as yf
 
-stocklist = pd.read_excel("filterstock1.xlsx",dtype=str)
+stocklist = pd.read_excel("Data/filterstock1.xlsx",dtype=str)
 outputlist = pd.DataFrame()
 
 for sno in stocklist["股票編號"][:]:
@@ -46,4 +46,4 @@ for sno in stocklist["股票編號"][:]:
     outputlist = pd.concat([outputlist,tmpstocklist.merge(tmphistory,on="股票編號")])
 
 
-outputlist.to_excel("outputlist.xlsx",index=False)
+outputlist.to_excel("Data/outputlist.xlsx",index=False)
