@@ -7,16 +7,24 @@ import openpyxl
 import datetime
 from datetime import date, timedelta
 import yfinance as yf
+from tqdm import tqdm
+from scipy.stats import linregress
+
+
+def cal_slope(arr):
+    y = np.array(arr)
+    x = np.arange(len(y))
+    slope, intercept, r_value, p_value, std_err = linregress(x,y)
+    return slope
 
 
 end_date = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
-
 
 #get stock excel file from path
 dir_path = "../YFData/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 
-for sno in slist[:1]:
+for sno in tqdm(slist):
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
 
@@ -24,7 +32,6 @@ for sno in slist[:1]:
     filemdate = date.fromtimestamp(os.path.getmtime(dir_path+"/"+sno+".xlsx"))
 
     #if(filemdate.strftime("%Y%m%d")!=date.today().strftime("%Y%m%d")):
-    print(sno)
     df = pd.read_excel(dir_path+"/"+sno+".xlsx")
     start_date = str(max(df["SDate"]))
     df.drop(df.shape[0]-1,inplace=True)
@@ -42,11 +49,15 @@ for sno in slist[:1]:
 
     df["10SMA"] = round(df["Adj Close"].rolling(10).mean(),2)
     df["20SMA"] = round(df["Adj Close"].rolling(20).mean(),2)
+    df["30SMA"] = round(df["Adj Close"].rolling(30).mean(),2)
     df["50SMA"] = round(df["Adj Close"].rolling(50).mean(),2)
     df["100SMA"] = round(df["Adj Close"].rolling(100).mean(),2)
     df["150SMA"] = round(df["Adj Close"].rolling(150).mean(),2)
     df["200SMA"] = round(df["Adj Close"].rolling(200).mean(),2)
     df["250SMA"] = round(df["Adj Close"].rolling(250).mean(),2)
+
+    df["30SMA_Slope"] = df["30SMA"].rolling(20).apply(cal_slope)
+    df["200SMA_Slope"] = df["200SMA"].rolling(20).apply(cal_slope)
     
     df["V10"] = df["Volume"].rolling(10).mean()
     df["V20"] = df["Volume"].rolling(20).mean()
@@ -54,9 +65,14 @@ for sno in slist[:1]:
     df["V100"] = df["Volume"].rolling(100).mean()
     df["V250"] = df["Volume"].rolling(250).mean()  
 
-    df["L52Week"] = round(df["Adj Close"].rolling(250).min(),2)
-    df["H52Week"] = round(df["Adj Close"].rolling(250).max(),2)
+    df["L52Week"] = round(df["Adj Close"].rolling(52*5).min(),2)
+    df["H52Week"] = round(df["Adj Close"].rolling(52*5).max(),2)
 
     df["Change"] = round((df["Adj Close"] - df.loc[:,"Adj Close"].shift(1))/df.loc[:,"Adj Close"].shift(1)*100,2)
+    df["RS"] = (df["Adj Close"] - df["Adj Close"].shift(250)/df["Adj Close"].shift(250))
+
+    df["5BreaK"] = round((df["Adj Close"].rolling(5).mean() + df["Adj Close"].rolling(5).max() + df["Adj Close"].rolling(5).min())/3,2)
+
+    df["10Contraction"] = round((df["Adj Close"].rolling(10).max() - df["Adj Close"].rolling(10).min())/df["Adj Close"].rolling(10).min(),2)
 
     df.to_excel(dir_path+"/"+sno+".xlsx",index=False)    
