@@ -8,7 +8,7 @@ import yfinance as yf
 stocklist = pd.read_excel("Data/outputlist.xlsx",dtype=str)
 outputlist = pd.DataFrame()
 
-for sno in stocklist["股票編號"][:]:
+for sno in stocklist["股票編號"][:1]:
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
 
