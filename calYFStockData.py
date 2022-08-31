@@ -76,3 +76,5 @@ for sno in tqdm(slist):
     df["10Contraction"] = round((df["Adj Close"].rolling(10).max() - df["Adj Close"].rolling(10).min())/df["Adj Close"].rolling(10).min(),2)
 
     df.to_excel(dir_path+"/"+sno+".xlsx",index=False)    
+
+    print("Finish")
