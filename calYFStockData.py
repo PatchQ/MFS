@@ -24,7 +24,7 @@ end_date = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
 dir_path = "../YFData/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 
-for sno in tqdm(slist):
+for sno in tqdm(slist[:1]):
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
 
@@ -68,10 +68,14 @@ for sno in tqdm(slist):
     df["L52Week"] = round(df["Adj Close"].rolling(52*5).min(),2)
     df["H52Week"] = round(df["Adj Close"].rolling(52*5).max(),2)
 
-    df["Change"] = round((df["Adj Close"] - df.loc[:,"Adj Close"].shift(1))/df.loc[:,"Adj Close"].shift(1)*100,2)
-    df["RS"] = (df["Adj Close"] - df["Adj Close"].shift(250)/df["Adj Close"].shift(250))
+    #df["Change"] = round((df["Adj Close"] - df.loc[:,"Adj Close"].shift(1))/df.loc[:,"Adj Close"].shift(1)*100,2)
+    df["Change%"] = round(df["Adj Close"].pct_change(periods=1)*100,2)
 
-    df["5BreaK"] = round((df["Adj Close"].rolling(5).mean() + df["Adj Close"].rolling(5).max() + df["Adj Close"].rolling(5).min())/3,2)
+    #df["RS"] = ((df["Adj Close"] - df["Adj Close"].shift(250))/df["Adj Close"].shift(250))
+    #((((C - C63) / C63) * .4) + (((C - C126) / C126) * .2) + (((C - C189) / C189) * .2) + (((C - C252) / C252) * .2)) * 100
+    df["RS"] = df["Adj Close"].pct_change(periods=250)
+
+    df["5Break"] = round((df["Adj Close"].rolling(5).mean() + df["Adj Close"].rolling(5).max() + df["Adj Close"].rolling(5).min())/3,2)
 
     df["10Contraction"] = round((df["Adj Close"].rolling(10).max() - df["Adj Close"].rolling(10).min())/df["Adj Close"].rolling(10).min(),2)
 
