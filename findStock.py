@@ -9,14 +9,22 @@ def vcpStock():
     dir_path = "../YFData/"
     slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 
+    allvcp = pd.DataFrame()
+
     for sno in tqdm(slist[:]):
         tempsno = str(sno).lstrip("0")
         tempsno = tempsno.zfill(7)
 
         df = pd.read_excel(dir_path+"/"+sno+".xlsx")
+        df = df.loc[df["VCP"]]
+        allvcp = pd.concat([df, allvcp], ignore_index=True)
 
-        if (df.iloc[df.shape[0]-1]["VCP"]):            
-            print(sno)
+        
+    allvcp.to_excel("Data/allvcp.xlsx",index=False)
+    print("Finish")
+
+        #if (df.iloc[df.shape[0]-1]["VCP"]):
+        #    print(sno)
 
 
 

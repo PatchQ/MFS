@@ -19,34 +19,15 @@ def cal_slope(arr):
     return slope
 
 
-end_date = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
-
 #get stock excel file from path
 dir_path = "../YFData/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 
-for sno in tqdm(slist[343:344]):
+for sno in tqdm(slist[:]):
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
 
-    #get file modified date
-    filemdate = date.fromtimestamp(os.path.getmtime(dir_path+"/"+sno+".xlsx"))
-
-    #if(filemdate.strftime("%Y%m%d")!=date.today().strftime("%Y%m%d")):
     df = pd.read_excel(dir_path+"/"+sno+".xlsx")
-    start_date = str(max(df["SDate"]))
-    df.drop(df.shape[0]-1,inplace=True)
-
-    start_date = datetime.datetime.strptime(start_date, "%Y%m%d").date()
-    start_date = start_date.strftime("%Y-%m-%d")
-
-    outputlist = yf.download(tempsno, start=start_date, end=end_date, interval='1d', prepost=False)
-    outputlist = outputlist.reset_index()
-    outputlist.insert(0,"sno", sno)
-    outputlist.insert(1,"SDate", outputlist["Date"].dt.strftime("%Y%m%d"))
-    outputlist.drop(columns=["Date"], inplace=True)
-
-    df = pd.concat([df, outputlist], ignore_index=True)
 
     df["10SMA"] = round(df["Adj Close"].rolling(10).mean(),2)
     df["20SMA"] = round(df["Adj Close"].rolling(20).mean(),2)
@@ -79,7 +60,7 @@ for sno in tqdm(slist[343:344]):
 
     #df["10Contraction"] = round((df["Adj Close"].rolling(10).max() - df["Adj Close"].rolling(10).min())/df["Adj Close"].rolling(10).min(),2)
 
-    df["5Result"] = round(df["Adj Close"].pct_change(periods=1).shift(periods=-5)*100,2)
+    df["5DayResult"] = round(df["Adj Close"].pct_change(periods=5).shift(periods=-5)*100,2)
     
     
     #VCP
@@ -112,7 +93,10 @@ for sno in tqdm(slist[343:344]):
     # Condition 9: true range in the last 10 days is less than 8% of current price (consolidation)
     df["cond9"] = (df["Adj Close"].rolling(10).max() - df["Adj Close"].rolling(10).min())/df["Adj Close"].rolling(10).min() < 0.1
 
-    df["VCP"] = (df["cond1"] & df["cond2"] & df["cond3"] & df["cond4"] & df["cond5"] & df["cond6"] & df["cond7"] & df["cond8"] & df["cond9"])
+    # Condition 10: 30 SMA must be trending up
+    df["cond10"] = df["30SMA_Slope"] > 0.0
+    
+    df["VCP"] = (df["cond1"] & df["cond2"] & df["cond3"] & df["cond4"] & df["cond5"] & df["cond6"] & df["cond7"] & df["cond8"] & df["cond9"] & df["cond10"])
    
     df.to_excel(dir_path+"/"+sno+".xlsx",index=False)
 
