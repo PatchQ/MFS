@@ -60,7 +60,7 @@ for sno in tqdm(slist[:]):
 
     #df["10Contraction"] = round((df["Adj Close"].rolling(10).max() - df["Adj Close"].rolling(10).min())/df["Adj Close"].rolling(10).min(),2)
 
-    df["5DayResult"] = round(df["Adj Close"].pct_change(periods=5).shift(periods=-5)*100,2)
+    df["5DayResult"] = df["Adj Close"].pct_change(periods=5).shift(periods=-5)
     
     
     #VCP
