@@ -12,7 +12,7 @@ from sklearn.tree import DecisionTreeClassifier
 dir_path = "../YFData/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 
-for sno in tqdm(slist[37:38]):
+for sno in tqdm(slist[239:240]):
     print(sno)
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
