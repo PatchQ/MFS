@@ -9,7 +9,7 @@ from datetime import date, timedelta
 import yfinance as yf
 from tqdm import tqdm
 from scipy.stats import linregress
-
+from concurrent.futures import ProcessPoolExecutor
 
 def cal_slope(arr):
     #return (arr[-1]-arr[0])/len(arr)
@@ -23,7 +23,8 @@ def cal_slope(arr):
 dir_path = "../YFData/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 
-for sno in tqdm(slist[:]):
+def CalData(sno):
+
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
 
@@ -100,4 +101,13 @@ for sno in tqdm(slist[:]):
    
     df.to_excel(dir_path+"/"+sno+".xlsx",index=False)
 
-    print("Finish")
+
+#for sno in tqdm(slist[:]):
+    #CalData(sno)
+
+def main():
+    with ProcessPoolExecutor(max_workers=12) as executor:
+        tqdm(executor.map(CalData,slist),total=len(slist))
+
+if __name__ == '__main__':
+    main()
