@@ -102,12 +102,9 @@ def CalData(sno):
     df.to_excel(dir_path+"/"+sno+".xlsx",index=False)
 
 
-#for sno in tqdm(slist[:]):
-    #CalData(sno)
-
 def main():
-    with ProcessPoolExecutor(max_workers=12) as executor:
-        tqdm(executor.map(CalData,slist),total=len(slist))
+    with ProcessPoolExecutor(max_workers=17) as executor:
+        list(tqdm(executor.map(CalData,slist,chunksize=2),total=len(slist)))
 
 if __name__ == '__main__':
     main()

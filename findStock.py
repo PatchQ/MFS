@@ -94,4 +94,5 @@ def findLStock():
 #findLStock()
 
 #allvcpStock()
-vcpStock()
+#vcpStock()
+print(os.cpu_count())

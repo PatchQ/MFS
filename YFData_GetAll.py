@@ -5,11 +5,13 @@ import openpyxl
 from datetime import datetime, timedelta
 import yfinance as yf
 from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor
 
 stocklist = pd.read_excel("Data/outputlist.xlsx",dtype=str)
 outputlist = pd.DataFrame()
+slist = stocklist["股票編號"][:]
 
-for sno in tqdm(stocklist["股票編號"][:]):
+def getData(sno):
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
 
@@ -18,6 +20,13 @@ for sno in tqdm(stocklist["股票編號"][:]):
 
     outputlist.to_excel("../YFData/"+sno+".xlsx")
 
+
+def main():
+    with ProcessPoolExecutor(max_workers=17) as executor:
+        list(tqdm(executor.map(getData,slist,chunksize=2),total=len(slist)))
+
+if __name__ == '__main__':
+    main()
 
 
 

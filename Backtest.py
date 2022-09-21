@@ -12,7 +12,7 @@ from sklearn.tree import DecisionTreeClassifier
 dir_path = "../YFData/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 
-for sno in tqdm(slist[239:240]):
+for sno in tqdm(slist[343:344]):
     print(sno)
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
@@ -29,7 +29,7 @@ for sno in tqdm(slist[239:240]):
 
     clf = DecisionTreeClassifier(max_depth=10).fit(train_data,train_data_y)
 
-    pp = df.loc[df.index>"2020-12-31"]
+    pp = df.loc[df.index>"2021-12-31"]
     pp.drop(columns=["5DayResult","VCP"], inplace=True)
 
     pp["Prediction"] = [ float(i[1]) for i in clf.predict_proba(pp)]

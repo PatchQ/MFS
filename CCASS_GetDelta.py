@@ -6,6 +6,8 @@ import openpyxl
 import os
 from bs4 import BeautifulSoup
 from datetime import date, timedelta
+from concurrent.futures import ProcessPoolExecutor
+from tqdm import tqdm
 
 
 def getCCASSData(sno,date):
@@ -61,7 +63,7 @@ def getCCASSData(sno,date):
 
 
 end_date = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
-start_date = (date.today() - timedelta(days=7)).strftime("%Y%m%d")
+start_date = (date.today() - timedelta(days=25)).strftime("%Y%m%d")
 daterange = pd.date_range(start_date, end_date)
 
 bigbrokerlist = pd.read_excel("Data/bigbrokerlist.xlsx",dtype=str)
@@ -71,20 +73,28 @@ bblist = bigbrokerlist["No"]
 dir_path = "../CCASS/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 
-for sno in slist:
+def GetDelta(sno):
 
     #get file modified date
-    filemdate = date.fromtimestamp(os.path.getmtime(dir_path+"/"+sno+".xlsx"))
+    #filemdate = date.fromtimestamp(os.path.getmtime(dir_path+"/"+sno+".xlsx"))
 
-    if(filemdate.strftime("%Y%m%d")!=date.today().strftime("%Y%m%d")):
-        print(sno)
-        df = pd.read_excel(dir_path+"/"+sno+".xlsx")
+    #if(filemdate.strftime("%Y%m%d")!=date.today().strftime("%Y%m%d")):
+    df = pd.read_excel(dir_path+"/"+sno+".xlsx")
 
-        for single_date in daterange:
-            tempdf = df.query("date=="+single_date.strftime('%Y%m%d')+"")
-            if(tempdf.size==0):
-                temp = getCCASSData(sno,single_date.strftime("%Y%m%d"))
-                df = pd.concat([df, temp], ignore_index=True)
-    
-        df.to_excel("../CCASS/"+sno+".xlsx",index=False)
+    for single_date in daterange:
+        tempdf = df.query("date=="+single_date.strftime('%Y%m%d')+"")
+        if(tempdf.size==0):
+            temp = getCCASSData(sno,single_date.strftime("%Y%m%d"))
+            df = pd.concat([df, temp], ignore_index=True)
 
+    df.to_excel("../CCASS/"+sno+".xlsx",index=False)
+
+
+
+def main():
+    with ProcessPoolExecutor(max_workers=10) as executor:
+        zip(executor.map(GetDelta,slist,chunksize=5))
+        #list(tqdm(executor.map(GetDelta,slist,chunksize=5),total=len(slist)))
+
+if __name__ == '__main__':
+    main()
