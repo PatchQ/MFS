@@ -31,8 +31,6 @@ def vcpStock():
     dir_path = "../YFData/"
     slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 
-    allvcp = pd.DataFrame()
-
     for sno in tqdm(slist[:]):
         tempsno = str(sno).lstrip("0")
         tempsno = tempsno.zfill(7)

@@ -5,7 +5,12 @@ import os
 import datetime
 from tqdm import tqdm
 from backtesting import Backtest, Strategy
+from sklearn import tree
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
 
 
 #get stock excel file from path
@@ -24,18 +29,33 @@ for sno in tqdm(slist[343:344]):
     
     train_data = train_data.loc[train_data.index<="2020-12-31"]
     train_data["Y"] = train_data["5DayResult"] > 0.05
+
     train_data_y = train_data.pop("Y")
     train_data.drop(columns=["5DayResult","VCP"], inplace=True)
 
-    clf = DecisionTreeClassifier(max_depth=10).fit(train_data,train_data_y)
+    train_data.to_excel("Data/"+sno+"_tree.xlsx")
 
+    xtrain, xtest, ytrain, ytest = train_test_split(train_data, train_data_y, test_size=0.2, random_state=1)
+    model = DecisionTreeClassifier(max_depth=14).fit(xtrain,ytrain)
+    pred = model.predict(xtest)
+    accuracy = accuracy_score(ytest, pred)
+
+    clf_report = metrics.classification_report(ytest, pred)
+    conf_mat = confusion_matrix(ytest, pred)
+
+    print("accuracy:" +str(accuracy))
+    print(clf_report)
+    
     pp = df.loc[df.index>"2021-12-31"]
     pp.drop(columns=["5DayResult","VCP"], inplace=True)
 
-    pp["Prediction"] = [ float(i[1]) for i in clf.predict_proba(pp)]
+    print(model.predict_proba(pp))
 
-    pp.to_excel("Data/"+sno+"_tree.xlsx")
+    pp["Prediction"] = [ float(i[1]) for i in model.predict_proba(pp)]
 
+    #pp.to_excel("Data/"+sno+"_tree.xlsx")
+
+    print(pp)
 
 
 

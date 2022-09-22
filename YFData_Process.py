@@ -30,14 +30,14 @@ def CalData(sno):
 
     df = pd.read_excel(dir_path+"/"+sno+".xlsx")
 
-    df["10SMA"] = round(df["Adj Close"].rolling(10).mean(),2)
-    df["20SMA"] = round(df["Adj Close"].rolling(20).mean(),2)
-    df["30SMA"] = round(df["Adj Close"].rolling(30).mean(),2)
-    df["50SMA"] = round(df["Adj Close"].rolling(50).mean(),2)
-    df["100SMA"] = round(df["Adj Close"].rolling(100).mean(),2)
-    df["150SMA"] = round(df["Adj Close"].rolling(150).mean(),2)
-    df["200SMA"] = round(df["Adj Close"].rolling(200).mean(),2)
-    df["250SMA"] = round(df["Adj Close"].rolling(250).mean(),2)
+    df["10SMA"] = round(df["Close"].rolling(10).mean(),2)
+    df["20SMA"] = round(df["Close"].rolling(20).mean(),2)
+    df["30SMA"] = round(df["Close"].rolling(30).mean(),2)
+    df["50SMA"] = round(df["Close"].rolling(50).mean(),2)
+    df["100SMA"] = round(df["Close"].rolling(100).mean(),2)
+    df["150SMA"] = round(df["Close"].rolling(150).mean(),2)
+    df["200SMA"] = round(df["Close"].rolling(200).mean(),2)
+    df["250SMA"] = round(df["Close"].rolling(250).mean(),2)
 
     df["30SMA_Slope"] = df["30SMA"].rolling(20).apply(cal_slope)
     df["200SMA_Slope"] = df["200SMA"].rolling(20).apply(cal_slope)
@@ -48,27 +48,28 @@ def CalData(sno):
     df["V100"] = df["Volume"].rolling(100).mean()
     df["V250"] = df["Volume"].rolling(250).mean()  
 
-    df["L52Week"] = round(df["Close"].rolling(52*5).min(),2)
-    df["H52Week"] = round(df["Close"].rolling(52*5).max(),2)
+    df["L52Week"] = round(df["Low"].rolling(52*5).min(),2)
+    df["H52Week"] = round(df["High"].rolling(52*5).max(),2)
 
-    #df["Change"] = round((df["Adj Close"] - df.loc[:,"Adj Close"].shift(1))/df.loc[:,"Adj Close"].shift(1)*100,2)
-    #df["Change%"] = round(df["Adj Close"].pct_change(periods=1)*100,2)
+    #df["Change"] = round((df["Close"] - df.loc[:,"Close"].shift(1))/df.loc[:,"Close"].shift(1)*100,2)
+    #df["Change%"] = round(df["Close"].pct_change(periods=1)*100,2)
 
     #((((C - C63) / C63) * .4) + (((C - C126) / C126) * .2) + (((C - C189) / C189) * .2) + (((C - C252) / C252) * .2)) * 100
-    #df["RS"] = df["Adj Close"].pct_change(periods=250)
+    #df["RS"] = df["Close"].pct_change(periods=250)
 
-    #df["5Break"] = round((df["Adj Close"].rolling(5).mean() + df["Adj Close"].rolling(5).max() + df["Adj Close"].rolling(5).min())/3,2)
+    #df["5Break"] = round((df["Close"].rolling(5).mean() + df["Close"].rolling(5).max() + df["Close"].rolling(5).min())/3,2)
 
-    #df["10Contraction"] = round((df["Adj Close"].rolling(10).max() - df["Adj Close"].rolling(10).min())/df["Adj Close"].rolling(10).min(),2)
+    #df["10Contraction"] = round((df["Close"].rolling(10).max() - df["Close"].rolling(10).min())/df["Close"].rolling(10).min(),2)
 
-    df["5DayResult"] = df["Adj Close"].pct_change(periods=5).shift(periods=-5)
+    df["10DayChange"] = (df["High"].shift(periods=-10).rolling(10).max() - df["Close"])/df["Close"]
+    df["5DayResult"] = df["Close"].pct_change(periods=5).shift(periods=-5)
     
     
     #VCP
     df = df.fillna(0)
 
     # Condition 1: Current Price > 150 SMA and Current Price > 200 SMA
-    df["cond1"] = ((df["Adj Close"] > df["150SMA"]) & (df["Adj Close"] > df["200SMA"]))
+    df["cond1"] = ((df["Close"] > df["150SMA"]) & (df["Close"] > df["200SMA"]))
 
     # Condition 2: 150 SMA > 200 SMA
     df["cond2"] = (df["150SMA"] > df["200SMA"])
@@ -80,19 +81,19 @@ def CalData(sno):
     df["cond4"] = ((df["50SMA"] > df["150SMA"]) & (df["150SMA"]> df["200SMA"]))
 
     # Condition 5: Current Price > 50 SMA
-    df["cond5"] = (df["Adj Close"] > df["50SMA"])
+    df["cond5"] = (df["Close"] > df["50SMA"])
 
     # Condition 6: Current Price is at least 30%-40% above 52 week low (Many of the best are up 100-300% before coming out of consolidation)
-    df["cond6"] = (df["Adj Close"] - df["L52Week"]) / df["L52Week"] > 0.3
+    df["cond6"] = (df["Close"] - df["L52Week"]) / df["L52Week"] > 0.3
 
     # Condition 7: Current Price is within 15%-25% of 52 week high
-    df["cond7"] = ((df["Adj Close"] - df["H52Week"]) / df["H52Week"] < 0.15) & ((df["Adj Close"] - df["H52Week"]) / df["H52Week"] > -0.15) 
+    df["cond7"] = ((df["Close"] - df["H52Week"]) / df["H52Week"] < 0.15) & ((df["Close"] - df["H52Week"]) / df["H52Week"] > -0.15) 
 
     # Condition 8: Pivot(5 day) Breakout
-    df["cond8"] = df["Adj Close"] > round((df["Adj Close"].rolling(5).mean() + df["Adj Close"].rolling(5).max() + df["Adj Close"].rolling(5).min())/3,2)
+    df["cond8"] = df["Close"] > round((df["Close"].rolling(5).mean() + df["Close"].rolling(5).max() + df["Close"].rolling(5).min())/3,2)
 
     # Condition 9: true range in the last 10 days is less than 8% of current price (consolidation)
-    df["cond9"] = (df["Adj Close"].rolling(10).max() - df["Adj Close"].rolling(10).min())/df["Adj Close"].rolling(10).min() < 0.1
+    df["cond9"] = (df["Close"].rolling(10).max() - df["Close"].rolling(10).min())/df["Close"].rolling(10).min() < 0.1
 
     # Condition 10: 30 SMA must be trending up
     df["cond10"] = df["30SMA_Slope"] > 0.0
@@ -104,7 +105,7 @@ def CalData(sno):
 
 def main():
     with ProcessPoolExecutor(max_workers=17) as executor:
-        list(tqdm(executor.map(CalData,slist,chunksize=2),total=len(slist)))
+        list(tqdm(executor.map(CalData,slist[:1],chunksize=2),total=len(slist[:1])))
 
 if __name__ == '__main__':
     main()
