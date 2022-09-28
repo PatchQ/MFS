@@ -3,42 +3,28 @@ import numpy as np
 import openpyxl
 import os
 from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor
 
-def allvcpStock():
-    #get stock excel file from path
-    dir_path = "../YFData/"
-    slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
+def allvcpStock(sno):
 
-    allvcp = pd.DataFrame()
+    tempsno = str(sno).lstrip("0")
+    tempsno = tempsno.zfill(7)
 
-    for sno in tqdm(slist[:]):
-        tempsno = str(sno).lstrip("0")
-        tempsno = tempsno.zfill(7)
+    df = pd.read_excel(dir_path+"/"+sno+".xlsx")
+    df = df.loc[df["VCP"]]
 
-        df = pd.read_excel(dir_path+"/"+sno+".xlsx")
-        df = df.loc[df["VCP"]]
-        allvcp = pd.concat([df, allvcp], ignore_index=True)
+    return df
 
-        
-    allvcp.to_excel("Data/allvcp.xlsx",index=False)
-    print("Finish")
 
-        #if (df.iloc[df.shape[0]-1]["VCP"]):
-        #    print(sno)
+def vcpStock(sno):
 
-def vcpStock():
-    #get stock excel file from path
-    dir_path = "../YFData/"
-    slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
+    tempsno = str(sno).lstrip("0")
+    tempsno = tempsno.zfill(7)
 
-    for sno in tqdm(slist[:]):
-        tempsno = str(sno).lstrip("0")
-        tempsno = tempsno.zfill(7)
+    df = pd.read_excel(dir_path+"/"+sno+".xlsx")
 
-        df = pd.read_excel(dir_path+"/"+sno+".xlsx")
-
-        if (df.iloc[df.shape[0]-1]["VCP"]):
-            print(sno)
+    if (df.iloc[df.shape[0]-1]["VCP"]):
+        print(sno)
 
 
 
@@ -87,10 +73,31 @@ def findLStock():
     stocklist.to_excel("Data/findLStock.xlsx",index=False)
 
 
+#get stock excel file from path
+dir_path = "../YFData/"
+slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
+slist = slist[:]
 
-#findHStock()
-#findLStock()
+def main1():
+    with ProcessPoolExecutor(max_workers=17) as executor:
+        list(tqdm(executor.map(vcpStock,slist,chunksize=2),total=len(slist)))
+        #list(tqdm(executor.map(allvcpStock,slist,chunksize=2),total=len(slist)))
+        #list(tqdm(executor.map(findHStock,slist,chunksize=2),total=len(slist)))
+        #list(tqdm(executor.map(findLStock,slist,chunksize=2),total=len(slist)))
 
-#allvcpStock()
-#vcpStock()
-print(os.cpu_count())
+def main2():
+    allvcp = pd.DataFrame()
+
+    with ProcessPoolExecutor(max_workers=17) as executor:
+        for tempdf in list(tqdm(executor.map(vcpStock,slist,chunksize=2),total=len(slist))):
+            allvcp = pd.concat([tempdf, allvcp], ignore_index=True)
+
+        allvcp.to_excel("Data/allvcp.xlsx",index=False)
+        print("Finish")
+
+
+
+if __name__ == '__main__':
+    #main1()
+    main2()
+

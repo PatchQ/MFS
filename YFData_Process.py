@@ -22,6 +22,7 @@ def cal_slope(arr):
 #get stock excel file from path
 dir_path = "../YFData/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
+slist = slist[:]
 
 def CalData(sno):
 
@@ -105,7 +106,7 @@ def CalData(sno):
 
 def main():
     with ProcessPoolExecutor(max_workers=17) as executor:
-        list(tqdm(executor.map(CalData,slist[:1],chunksize=2),total=len(slist[:1])))
+        list(tqdm(executor.map(CalData,slist,chunksize=2),total=len(slist)))
 
 if __name__ == '__main__':
     main()
