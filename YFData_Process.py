@@ -49,8 +49,8 @@ def CalData(sno):
     df["V100"] = df["Volume"].rolling(100).mean()
     df["V250"] = df["Volume"].rolling(250).mean()  
 
-    df["L52Week"] = round(df["Low"].rolling(52*5).min(),2)
-    df["H52Week"] = round(df["High"].rolling(52*5).max(),2)
+    df["L52Week"] = round(df["Close"].rolling(52*5).min(),2)
+    df["H52Week"] = round(df["Close"].rolling(52*5).max(),2)
 
     #df["Change"] = round((df["Close"] - df.loc[:,"Close"].shift(1))/df.loc[:,"Close"].shift(1)*100,2)
     #df["Change%"] = round(df["Close"].pct_change(periods=1)*100,2)
@@ -62,7 +62,7 @@ def CalData(sno):
 
     #df["10Contraction"] = round((df["Close"].rolling(10).max() - df["Close"].rolling(10).min())/df["Close"].rolling(10).min(),2)
 
-    df["10DayChange"] = (df["High"].shift(periods=-10).rolling(10).max() - df["Close"])/df["Close"]
+    df["10DayChange"] = (df["Close"].shift(periods=-10).rolling(10).max() - df["Close"])/df["Close"]
     df["5DayResult"] = df["Close"].pct_change(periods=5).shift(periods=-5)
     
     
@@ -85,9 +85,11 @@ def CalData(sno):
     df["cond5"] = (df["Close"] > df["50SMA"])
 
     # Condition 6: Current Price is at least 30%-40% above 52 week low (Many of the best are up 100-300% before coming out of consolidation)
+    #df["cond6_2"] = df["Close"] >= (1.3*df["L52Week"])
     df["cond6"] = (df["Close"] - df["L52Week"]) / df["L52Week"] > 0.3
 
     # Condition 7: Current Price is within 15%-25% of 52 week high
+    #df["cond7_2"] = df["Close"] >= (0.85*df["H52Week"])
     df["cond7"] = ((df["Close"] - df["H52Week"]) / df["H52Week"] < 0.15) & ((df["Close"] - df["H52Week"]) / df["H52Week"] > -0.15) 
 
     # Condition 8: Pivot(5 day) Breakout
@@ -96,10 +98,13 @@ def CalData(sno):
     # Condition 9: true range in the last 10 days is less than 8% of current price (consolidation)
     df["cond9"] = (df["Close"].rolling(10).max() - df["Close"].rolling(10).min())/df["Close"].rolling(10).min() < 0.1
 
+    # Condition 8: Turnover is larger than 2 million
+    df["cond10"]  = df["Volume"]*df["Close"] >= 2000000
+
     # Condition 10: 30 SMA must be trending up
-    df["cond10"] = df["30SMA_Slope"] > 0.0
+    df["cond11"] = df["30SMA_Slope"] > 0.0                
     
-    df["VCP"] = (df["cond1"] & df["cond2"] & df["cond3"] & df["cond4"] & df["cond5"] & df["cond6"] & df["cond7"] & df["cond8"] & df["cond9"] & df["cond10"])
+    df["VCP"] = (df["cond1"] & df["cond2"] & df["cond3"] & df["cond4"] & df["cond5"] & df["cond6"] & df["cond7"] & df["cond8"] & df["cond9"] & df["cond10"] & df["cond11"] )
    
     df.to_excel(dir_path+"/"+sno+".xlsx",index=False)
 

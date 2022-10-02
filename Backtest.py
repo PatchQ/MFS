@@ -16,8 +16,10 @@ from sklearn.metrics import confusion_matrix
 #get stock excel file from path
 dir_path = "../YFData/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
+slist = slist[343:344]
+slist = ["01910.HK"]
 
-for sno in tqdm(slist[343:344]):
+for sno in tqdm(slist):
     print(sno)
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
@@ -31,7 +33,7 @@ for sno in tqdm(slist[343:344]):
     train_data["Y"] = train_data["5DayResult"] > 0.05
 
     train_data_y = train_data.pop("Y")
-    train_data.drop(columns=["5DayResult","VCP"], inplace=True)
+    train_data.drop(columns=["10DayChange","5DayResult","VCP"], inplace=True)
 
     train_data.to_excel("Data/"+sno+"_tree.xlsx")
 
@@ -46,32 +48,33 @@ for sno in tqdm(slist[343:344]):
     print("accuracy:" +str(accuracy))
     print(clf_report)
     
-    pp = df.loc[df.index>"2021-12-31"]
-    pp.drop(columns=["5DayResult","VCP"], inplace=True)
+    pp = df.loc[df.index>"2020-12-31"]
+    pp.drop(columns=["10DayChange","5DayResult","VCP"], inplace=True)
 
     print(model.predict_proba(pp))
 
     pp["Prediction"] = [ float(i[1]) for i in model.predict_proba(pp)]
 
-    #pp.to_excel("Data/"+sno+"_tree.xlsx")
+    pp.to_excel("Data/"+sno+"_tree.xlsx")
 
     print(pp)
 
 
 
 class AI_test(Strategy):
+    sl_ratio = 99     # stop loss ratio, 99 means 1% loss
 
     def init(self):
         return
 
     def next(self):
         if self.data.Prediction > 0.7:
-            self.buy()
+            self.buy(size=.99,sl=self.data.Close[-1]*self.sl_ratio/100)
         if self.data.Prediction < 0.5 and self.position.is_long:
             self.position.close()
 
 bt = Backtest(pp, AI_test,
-              cash=1000000, commission=.001,
+              cash=1000000, commission=.002,
               exclusive_orders=True)
 
 output = bt.run()

@@ -4,14 +4,18 @@ import openpyxl
 import os
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 def allvcpStock(sno):
+    endate = "2022-09-01"
 
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
 
-    df = pd.read_excel(dir_path+"/"+sno+".xlsx")
+    df = pd.read_excel(dir_path+"/"+sno+".xlsx",index_col=0)
+    df = df.loc[df.index>=endate]
     df = df.loc[df["VCP"]]
+    df = df.reset_index()
 
     return df
 
@@ -88,8 +92,8 @@ def main1():
 def main2():
     allvcp = pd.DataFrame()
 
-    with ProcessPoolExecutor(max_workers=17) as executor:
-        for tempdf in list(tqdm(executor.map(vcpStock,slist,chunksize=2),total=len(slist))):
+    with ProcessPoolExecutor(max_workers=16) as executor:
+        for tempdf in tqdm(executor.map(allvcpStock,slist,chunksize=2),total=len(slist)):
             allvcp = pd.concat([tempdf, allvcp], ignore_index=True)
 
         allvcp.to_excel("Data/allvcp.xlsx",index=False)
