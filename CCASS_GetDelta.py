@@ -72,6 +72,7 @@ bblist = bigbrokerlist["No"]
 #get stock excel file from path
 dir_path = "../CCASS/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
+slist = slist[:]
 
 def GetDelta(sno):
 
@@ -92,8 +93,8 @@ def GetDelta(sno):
 
 
 def main():
-    with ProcessPoolExecutor(max_workers=10) as executor:
-        zip(executor.map(GetDelta,slist,chunksize=5))
+    with ProcessPoolExecutor(max_workers=5) as executor:
+        zip(executor.map(GetDelta,slist,chunksize=2))
         #list(tqdm(executor.map(GetDelta,slist,chunksize=5),total=len(slist)))
 
 if __name__ == '__main__':

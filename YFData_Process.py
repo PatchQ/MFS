@@ -98,13 +98,13 @@ def CalData(sno):
     # Condition 9: true range in the last 10 days is less than 8% of current price (consolidation)
     df["cond9"] = (df["Close"].rolling(10).max() - df["Close"].rolling(10).min())/df["Close"].rolling(10).min() < 0.1
 
-    # Condition 8: Turnover is larger than 2 million
-    df["cond10"]  = df["Volume"]*df["Close"] >= 2000000
+    # Condition 10: Turnover is larger than 2 million
+    #df["cond10"]  = df["Volume"]*df["Close"] >= 2000000
 
     # Condition 10: 30 SMA must be trending up
-    df["cond11"] = df["30SMA_Slope"] > 0.0                
+    df["cond10"] = df["30SMA_Slope"] > 0.0                
     
-    df["VCP"] = (df["cond1"] & df["cond2"] & df["cond3"] & df["cond4"] & df["cond5"] & df["cond6"] & df["cond7"] & df["cond8"] & df["cond9"] & df["cond10"] & df["cond11"] )
+    df["VCP"] = (df["cond1"] & df["cond2"] & df["cond3"] & df["cond4"] & df["cond5"] & df["cond6"] & df["cond7"] & df["cond8"] & df["cond9"] & df["cond10"])
    
     df.to_excel(dir_path+"/"+sno+".xlsx",index=False)
 
