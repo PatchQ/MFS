@@ -5,6 +5,7 @@ import os
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
+from futu import *
 
 def allvcpStock(sno):
     endate = "2022-09-01"
@@ -98,8 +99,6 @@ def main2():
 
         allvcp.to_excel("Data/allvcp.xlsx",index=False)
         print("Finish")
-
-
 
 if __name__ == '__main__':
     #main1()

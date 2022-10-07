@@ -17,7 +17,7 @@ def getData(sno):
 
     outputlist = yf.download(tempsno, interval='1d', prepost=False)
     outputlist.insert(0,"sno", sno)
-
+    outputlist = outputlist.loc[outputlist["Volume"]>0]
     outputlist.to_excel("../YFData/"+sno+".xlsx")
 
 
