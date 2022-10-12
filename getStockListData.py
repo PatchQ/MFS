@@ -4,6 +4,7 @@ import numpy as np
 import requests
 import openpyxl
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 def getStockNo(tab,indno):
     url = "http://www.aastocks.com/tc/stocks/market/industry/sector-industry-details.aspx?t={}".format(tab)+"&industrysymbol={}".format(indno)
@@ -66,7 +67,7 @@ indnolist = indlist["行業編號"]
 
 stocklist = pd.DataFrame()
 
-for val in indnolist:
+for val in tqdm(indnolist):
     
     print(val)
 

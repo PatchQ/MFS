@@ -63,7 +63,7 @@ def getCCASSData(sno,date):
 
 
 end_date = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
-start_date = (date.today() - timedelta(days=25)).strftime("%Y%m%d")
+start_date = (date.today() - timedelta(days=70)).strftime("%Y%m%d")
 daterange = pd.date_range(start_date, end_date)
 
 bigbrokerlist = pd.read_excel("Data/bigbrokerlist.xlsx",dtype=str)
@@ -77,25 +77,23 @@ slist = slist[:]
 def GetDelta(sno):
 
     #get file modified date
-    #filemdate = date.fromtimestamp(os.path.getmtime(dir_path+"/"+sno+".xlsx"))
+    filemdate = date.fromtimestamp(os.path.getmtime(dir_path+"/"+sno+".xlsx"))
 
-    #if(filemdate.strftime("%Y%m%d")!=date.today().strftime("%Y%m%d")):
-    df = pd.read_excel(dir_path+"/"+sno+".xlsx")
+    #if(True):
+    if(filemdate.strftime("%Y%m%d")!=date.today().strftime("%Y%m%d")):
+        df = pd.read_excel(dir_path+"/"+sno+".xlsx")
 
-    for single_date in daterange:
-        tempdf = df.query("date=="+single_date.strftime('%Y%m%d')+"")
-        if(tempdf.size==0):
-            temp = getCCASSData(sno,single_date.strftime("%Y%m%d"))
-            df = pd.concat([df, temp], ignore_index=True)
+        for single_date in daterange:
+            tempdf = df.query("date=="+single_date.strftime('%Y%m%d')+"")
+            if(tempdf.size==0):
+                print(single_date)
+                temp = getCCASSData(sno,single_date.strftime("%Y%m%d"))
+                df = pd.concat([df, temp], ignore_index=True)
 
-    df.to_excel("../CCASS/"+sno+".xlsx",index=False)
+        df["date"] = df["date"].astype(int)
+        df = df.sort_values(by='date', ascending=False)
+        df.to_excel("../CCASS/"+sno+".xlsx",index=False)
 
 
-
-def main():
-    with ProcessPoolExecutor(max_workers=5) as executor:
-        zip(executor.map(GetDelta,slist,chunksize=2))
-        #list(tqdm(executor.map(GetDelta,slist,chunksize=5),total=len(slist)))
-
-if __name__ == '__main__':
-    main()
+for sno in tqdm(slist):
+    GetDelta(sno)

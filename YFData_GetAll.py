@@ -7,7 +7,7 @@ import yfinance as yf
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 
-stocklist = pd.read_excel("Data/outputlist.xlsx",dtype=str)
+stocklist = pd.read_excel("Data/stocklist.xlsx",dtype=str)
 outputlist = pd.DataFrame()
 slist = stocklist["股票編號"][:]
 

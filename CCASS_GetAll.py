@@ -76,6 +76,7 @@ slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 #diff two list by set 
 difflist = list(set(snolist) - set(slist))
 difflist.sort(reverse=False)
+difflist = ["00012.HK"]
 
 for sno in difflist:
 
