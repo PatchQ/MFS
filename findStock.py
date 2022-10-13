@@ -1,3 +1,4 @@
+from re import S
 import pandas as pd
 import numpy as np
 import openpyxl
@@ -5,7 +6,7 @@ import os
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
-from futu import *
+import yfinance as yf
 
 def allvcpStock(sno):
     endate = "2022-09-01"
@@ -100,7 +101,31 @@ def main2():
         allvcp.to_excel("Data/allvcp.xlsx",index=False)
         print("Finish")
 
+def main3():
+    #S = yf.Ticker("ES=F")
+    S = yf.Ticker("^HSI")
+
+    print(S.info)
+
+    df = S.history(period="max")
+
+    #print(S.actions)
+    #print(S.financials)
+    #print(S.major_holders)
+    #print(S.institutional_holders)
+
+    #show cashflow
+    print(S.cashflow)
+    print(S.quarterly_cashflow)
+
+    #show earnings
+    print(S.earnings)
+    print(S.quarterly_earnings)
+
+    print(df)
+
 if __name__ == '__main__':
     #main1()
-    main2()
+    #main2()
+    main3()
 

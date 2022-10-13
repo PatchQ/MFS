@@ -63,14 +63,12 @@ def getStockNo(tab,indno):
 
 
 indlist = pd.read_excel("Data/indlist.xlsx",dtype=str)
-indnolist = indlist["行業編號"]
+indnolist = indlist["行業編號"][:]
 
 stocklist = pd.DataFrame()
 
 for val in tqdm(indnolist):
     
-    print(val)
-
     df1 = getStockNo(1,val)
     df4 = getStockNo(4,val)
     df6 = getStockNo(6,val)
@@ -79,6 +77,8 @@ for val in tqdm(indnolist):
 
     stocklist = pd.concat([stocklist, df], ignore_index=True)
 
+stocklist["sno"] = stocklist["股票編號"].apply(lambda s: s.lstrip("0").zfill(7))
+stocklist = stocklist.sort_values(by="股票編號")
 
 stocklist.to_excel("Data/stocklist.xlsx",index=False)
 

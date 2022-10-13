@@ -9,17 +9,19 @@ from concurrent.futures import ProcessPoolExecutor
 
 stocklist = pd.read_excel("Data/stocklist.xlsx",dtype=str)
 outputlist = pd.DataFrame()
-slist = stocklist["股票編號"][:]
+indexlist = pd.Series(["^HSI","^DJI","^IXIC","^GSPC","^N225","^FTSE","^GDAXI","^FCHI","000001.SS","399001.SZ"])
+slist = stocklist["sno"][:].append(indexlist)
+
+#sdate = "1980-01-01"
+sdate = "2021-01-01"
+edate = datetime.today().strftime("%Y-%m-%d")
 
 def getData(sno):
-    tempsno = str(sno).lstrip("0")
-    tempsno = tempsno.zfill(7)
 
-    outputlist = yf.download(tempsno, interval='1d', prepost=False)
+    outputlist = yf.download(sno, interval='1d', auto_adjust=True, start=sdate, end=edate)
     outputlist.insert(0,"sno", sno)
     outputlist = outputlist.loc[outputlist["Volume"]>0]
     outputlist.to_excel("../YFData/"+sno+".xlsx")
-
 
 def main():
     with ProcessPoolExecutor(max_workers=17) as executor:
