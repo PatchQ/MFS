@@ -8,14 +8,20 @@ from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
 import yfinance as yf
 
+#get stock excel file from path
+OUTPATH = "../SData/P_YFData/"
+EDATE = "2022-09-01"
+SLIST = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(OUTPATH)))
+SLIST = SLIST[:]
+
+
 def allvcpStock(sno):
-    endate = "2022-09-01"
 
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
 
-    df = pd.read_excel(dir_path+"/"+sno+".xlsx",index_col=0)
-    df = df.loc[df.index>=endate]
+    df = pd.read_excel(OUTPATH+sno+".xlsx",index_col=0)
+    df = df.loc[df.index>=EDATE]
     df = df.loc[df["VCP"]]
     df = df.reset_index()
 
@@ -27,7 +33,7 @@ def vcpStock(sno):
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
 
-    df = pd.read_excel(dir_path+"/"+sno+".xlsx")
+    df = pd.read_excel(OUTPATH+sno+".xlsx")
 
     if (df.iloc[df.shape[0]-1]["VCP"]):
         print(sno)
@@ -79,14 +85,11 @@ def findLStock():
     stocklist.to_excel("Data/findLStock.xlsx",index=False)
 
 
-#get stock excel file from path
-dir_path = "../YFData/"
-slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
-slist = slist[:]
+
 
 def main1():
     with ProcessPoolExecutor(max_workers=17) as executor:
-        list(tqdm(executor.map(vcpStock,slist,chunksize=2),total=len(slist)))
+        list(tqdm(executor.map(vcpStock,SLIST,chunksize=2),total=len(SLIST)))
         #list(tqdm(executor.map(allvcpStock,slist,chunksize=2),total=len(slist)))
         #list(tqdm(executor.map(findHStock,slist,chunksize=2),total=len(slist)))
         #list(tqdm(executor.map(findLStock,slist,chunksize=2),total=len(slist)))
@@ -94,8 +97,8 @@ def main1():
 def main2():
     allvcp = pd.DataFrame()
 
-    with ProcessPoolExecutor(max_workers=16) as executor:
-        for tempdf in tqdm(executor.map(allvcpStock,slist,chunksize=2),total=len(slist)):
+    with ProcessPoolExecutor(max_workers=17) as executor:
+        for tempdf in tqdm(executor.map(allvcpStock,SLIST,chunksize=2),total=len(SLIST)):
             allvcp = pd.concat([tempdf, allvcp], ignore_index=True)
 
         allvcp.to_excel("Data/allvcp.xlsx",index=False)
@@ -126,6 +129,6 @@ def main3():
 
 if __name__ == '__main__':
     #main1()
-    #main2()
-    main3()
+    main2()
+    #main3()
 

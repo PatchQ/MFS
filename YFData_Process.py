@@ -11,6 +11,12 @@ from tqdm import tqdm
 from scipy.stats import linregress
 from concurrent.futures import ProcessPoolExecutor
 
+#get stock excel file from path
+PATH = "../SData/YFData/"
+OUTPATH = "../SData/P_YFData/"
+SLIST = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(PATH)))
+SLIST = SLIST[:]
+
 def cal_slope(arr):
     #return (arr[-1]-arr[0])/len(arr)
     y = np.array(arr)
@@ -18,15 +24,9 @@ def cal_slope(arr):
     slope, intercept, r_value, p_value, std_err = linregress(x,y)
     return slope
 
-
-#get stock excel file from path
-dir_path = "../YFData/"
-slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
-slist = slist[:]
-
 def CalData(sno):
 
-    df = pd.read_excel(dir_path+"/"+sno+".xlsx")
+    df = pd.read_excel(PATH+sno+".xlsx")
     sma = [10,20,30,50,100,150,200,250]
 
     for x in sma:
@@ -97,12 +97,12 @@ def CalData(sno):
     
     df["VCP"] = (df["cond1"] & df["cond2"] & df["cond3"] & df["cond4"] & df["cond5"] & df["cond6"] & df["cond7"] & df["cond8"] & df["cond9"] & df["cond10"])
    
-    df.to_excel(dir_path+"/P_"+sno+".xlsx",index=False)
+    df.to_excel(OUTPATH+"P_"+sno+".xlsx",index=False)
 
 
 def main():
     with ProcessPoolExecutor(max_workers=17) as executor:
-        list(tqdm(executor.map(CalData,slist,chunksize=2),total=len(slist)))
+        list(tqdm(executor.map(CalData,SLIST,chunksize=2),total=len(SLIST)))
 
 if __name__ == '__main__':
     main()
