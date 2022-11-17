@@ -14,10 +14,10 @@ from sklearn.metrics import confusion_matrix
 
 
 #get stock excel file from path
-dir_path = "../YFData/"
+dir_path = "../SData/P_YFData/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 slist = slist[:]
-slist = ["02382.HK"]
+slist = ["P_^HSI"]
 
 for sno in tqdm(slist):
     print(sno)
@@ -25,7 +25,7 @@ for sno in tqdm(slist):
     tempsno = tempsno.zfill(7)
 
     df = pd.read_excel(dir_path+sno+".xlsx",index_col=0)
-    df = df.loc[df.index>"2019-12-31"]
+    #df = df.loc[df.index>"2019-12-31"]
     df.drop(columns=["sno"], inplace=True)
 
 

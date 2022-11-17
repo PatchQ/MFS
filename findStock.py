@@ -1,11 +1,10 @@
-
 import pandas as pd
 import numpy as np
+import concurrent.futures as cf
+import yfinance as yf
 import os
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures import ThreadPoolExecutor
-import yfinance as yf
+
 
 #get stock excel file from path
 OUTPATH = "../SData/P_YFData/"
@@ -87,7 +86,7 @@ def findLStock():
 
 
 def main1():
-    with ProcessPoolExecutor(max_workers=17) as executor:
+    with cf.ProcessPoolExecutor(max_workers=17) as executor:
         list(tqdm(executor.map(vcpStock,SLIST,chunksize=2),total=len(SLIST)))
         #list(tqdm(executor.map(allvcpStock,slist,chunksize=2),total=len(slist)))
         #list(tqdm(executor.map(findHStock,slist,chunksize=2),total=len(slist)))
@@ -96,7 +95,7 @@ def main1():
 def main2():
     allvcp = pd.DataFrame()
 
-    with ProcessPoolExecutor(max_workers=17) as executor:
+    with cf.ProcessPoolExecutor(max_workers=17) as executor:
         for tempdf in tqdm(executor.map(allvcpStock,SLIST,chunksize=2),total=len(SLIST)):
             allvcp = pd.concat([tempdf, allvcp], ignore_index=True)
 

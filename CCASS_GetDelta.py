@@ -11,7 +11,8 @@ from tqdm import tqdm
 
 PATH = "../SData/CCASS/"
 OUTPATH = "../SData/CCASS_Delta/"
-SDATE = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
+#SDATE = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
+SDATE = "20221013"
 EDATE = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
 DATERANGE = pd.date_range(SDATE, EDATE)
 
@@ -75,22 +76,22 @@ def getCCASSData(sno,date):
 def GetDelta(sno):
 
     #get file modified date
-    filemdate = date.fromtimestamp(os.path.getmtime(PATH+sno+".xlsx"))
+    #filemdate = date.fromtimestamp(os.path.getmtime(PATH+sno+".xlsx"))
 
     #if(True):
-    if(filemdate.strftime("%Y%m%d")!=date.today().strftime("%Y%m%d")):
-        df = pd.read_excel(PATH+sno+".xlsx")
+    #if(filemdate.strftime("%Y%m%d")!=date.today().strftime("%Y%m%d")):
+    df = pd.read_excel(PATH+sno+".xlsx")
 
-        for valdate in DATERANGE:
-            print(valdate)
-            tempdf = df.query("date=="+valdate.strftime('%Y%m%d')+"")
-            if(tempdf.size==0):
-                temp = getCCASSData(sno,valdate.strftime("%Y%m%d"))
-                df = pd.concat([df, temp], ignore_index=True)
+    for valdate in DATERANGE:
+        print(valdate)
+        tempdf = df.query("date=="+valdate.strftime('%Y%m%d')+"")
+        if(tempdf.size==0):
+            temp = getCCASSData(sno,valdate.strftime("%Y%m%d"))
+            df = pd.concat([df, temp], ignore_index=True)
 
-        df["date"] = df["date"].astype(int)
-        df = df.sort_values(by='date')
-        df.to_excel(OUTPATH+sno+".xlsx",index=False)
+    df["date"] = df["date"].astype(int)
+    df = df.sort_values(by='date')
+    df.to_excel(OUTPATH+sno+".xlsx",index=False)
 
 
 for sno in tqdm(SLIST):

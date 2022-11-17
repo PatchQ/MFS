@@ -1,13 +1,10 @@
-
-from tracemalloc import start
 import pandas as pd
 import numpy as np
+import concurrent.futures as cf
 import os
-from datetime import date, timedelta
-import yfinance as yf
 from tqdm import tqdm
 from scipy.stats import linregress
-from concurrent.futures import ProcessPoolExecutor
+
 
 #get stock excel file from path
 PATH = "../SData/YFData/"
@@ -16,11 +13,13 @@ SLIST = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(PATH)))
 SLIST = SLIST[:]
 
 def cal_slope(arr):
-    #return (arr[-1]-arr[0])/len(arr)
     y = np.array(arr)
     x = np.arange(len(y))
     slope, intercept, r_value, p_value, std_err = linregress(x,y)
     return slope
+
+#def cal2(arr):
+    #return (arr[-1]-arr[0])/len(arr)
 
 def CalData(sno):
 
@@ -31,7 +30,10 @@ def CalData(sno):
         df["SMA_"+str(x)] = round(df["Close"].rolling(window=x).mean(), 2)
 
     df["SMA_Slope_30"] = df["SMA_30"].rolling(20).apply(cal_slope)
+    #df["SMA_Slope_30_2"] = df["SMA_30"].rolling(20).apply(cal2)
+
     df["SMA_Slope_200"] = df["SMA_200"].rolling(20).apply(cal_slope)
+    #df["SMA_Slope_200_2"] = df["SMA_200"].rolling(20).apply(cal2)
 
     for x in sma:
         df["VSMA_"+str(x)] = round(df["Volume"].rolling(window=x).mean(), 2)
@@ -66,6 +68,8 @@ def CalData(sno):
 
     # Condition 3: 200 SMA must be trending up for at least 1 month (ideally 4-5 months)
     df["cond3"] = df["SMA_Slope_200"] > 0.0
+    #df["cond3_2"] = df["SMA_Slope_200_2"] > 0.0
+
 
     # Condition 4: 50 SMA > 150 SMA and 150 SMA > 200 SMA
     df["cond4"] = ((df["SMA_50"] > df["SMA_150"]) & (df["SMA_150"]> df["SMA_200"]))
@@ -88,7 +92,8 @@ def CalData(sno):
     df["cond9"] = (df["Close"].rolling(10).max() - df["Close"].rolling(10).min())/df["Close"].rolling(10).min() < 0.1
 
     # Condition 10: 30 SMA must be trending up
-    df["cond10"] = df["SMA_Slope_30"] > 0.0        
+    df["cond10"] = df["SMA_Slope_30"] > 0.0
+    #df["cond10_2"] = df["SMA_Slope_30_2"] > 0.0        
 
     # Condition 11: Turnover is larger than 2 million
     df["cond11"]  = df["Volume"]*df["Close"] >= 2000000        
@@ -99,7 +104,8 @@ def CalData(sno):
 
 
 def main():
-    with ProcessPoolExecutor(max_workers=17) as executor:
+
+    with cf.ProcessPoolExecutor(max_workers=17) as executor:
         list(tqdm(executor.map(CalData,SLIST,chunksize=2),total=len(SLIST)))
 
 if __name__ == '__main__':
