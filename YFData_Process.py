@@ -4,13 +4,8 @@ import concurrent.futures as cf
 import os
 from tqdm import tqdm
 from scipy.stats import linregress
+import time as t
 
-
-#get stock excel file from path
-PATH = "../SData/YFData/"
-OUTPATH = "../SData/P_YFData/"
-SLIST = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(PATH)))
-SLIST = SLIST[:]
 
 def cal_slope(arr):
     y = np.array(arr)
@@ -18,10 +13,10 @@ def cal_slope(arr):
     slope, intercept, r_value, p_value, std_err = linregress(x,y)
     return slope
 
-#def cal2(arr):
-    #return (arr[-1]-arr[0])/len(arr)
+def CalData(sno,type):
 
-def CalData(sno):
+    PATH = "../SData/YFData/"+type+"/"
+    OUTPATH = "../SData/YFData/"+type+"_P/" 
 
     df = pd.read_excel(PATH+sno+".xlsx")
     sma = [10,20,30,50,100,150,200,250]
@@ -30,10 +25,9 @@ def CalData(sno):
         df["SMA_"+str(x)] = round(df["Close"].rolling(window=x).mean(), 2)
 
     df["SMA_Slope_30"] = df["SMA_30"].rolling(20).apply(cal_slope)
-    #df["SMA_Slope_30_2"] = df["SMA_30"].rolling(20).apply(cal2)
 
     df["SMA_Slope_200"] = df["SMA_200"].rolling(20).apply(cal_slope)
-    #df["SMA_Slope_200_2"] = df["SMA_200"].rolling(20).apply(cal2)
+
 
     for x in sma:
         df["VSMA_"+str(x)] = round(df["Volume"].rolling(window=x).mean(), 2)
@@ -68,8 +62,6 @@ def CalData(sno):
 
     # Condition 3: 200 SMA must be trending up for at least 1 month (ideally 4-5 months)
     df["cond3"] = df["SMA_Slope_200"] > 0.0
-    #df["cond3_2"] = df["SMA_Slope_200_2"] > 0.0
-
 
     # Condition 4: 50 SMA > 150 SMA and 150 SMA > 200 SMA
     df["cond4"] = ((df["SMA_50"] > df["SMA_150"]) & (df["SMA_150"]> df["SMA_200"]))
@@ -93,7 +85,6 @@ def CalData(sno):
 
     # Condition 10: 30 SMA must be trending up
     df["cond10"] = df["SMA_Slope_30"] > 0.0
-    #df["cond10_2"] = df["SMA_Slope_30_2"] > 0.0        
 
     # Condition 11: Turnover is larger than 2 million
     df["cond11"]  = df["Volume"]*df["Close"] >= 2000000        
@@ -103,10 +94,27 @@ def CalData(sno):
     df.to_excel(OUTPATH+"P_"+sno+".xlsx",index=False)
 
 
-def main():
+def main(type):
+
+    #get stock excel file from path
+    PATH = "../SData/YFData/"+type+"/"
+    
+    SLIST = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(PATH)))
+
+    TLIST = [type for i in range(len(SLIST))]
+    SLIST = SLIST[:]
 
     with cf.ProcessPoolExecutor(max_workers=17) as executor:
-        list(tqdm(executor.map(CalData,SLIST,chunksize=2),total=len(SLIST)))
+        list(tqdm(executor.map(CalData,SLIST,TLIST,chunksize=2),total=len(SLIST)))
+
 
 if __name__ == '__main__':
-    main()
+    start = t.perf_counter()
+
+    main("L")
+    main("M")
+    main("S")
+
+    finish = t.perf_counter()
+    print(f'It took {round(finish-start,2)} second(s) to finish.')
+    

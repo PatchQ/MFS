@@ -12,14 +12,15 @@ from tqdm import tqdm
 PATH = "../SData/CCASS/"
 OUTPATH = "../SData/CCASS_Delta/"
 #SDATE = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
-SDATE = "20221013"
+SDATE = "20220512"
 EDATE = (date.today() - timedelta(days=1)).strftime("%Y%m%d")
 DATERANGE = pd.date_range(SDATE, EDATE)
 
 BBLIST = pd.read_excel("Data/bigbrokerlist.xlsx",dtype=str)
 BBLIST = BBLIST["No"]
-SLIST = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(PATH)))
-SLIST = SLIST[:]
+#SLIST = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(PATH)))
+#SLIST = SLIST[0:1]
+SLIST = {"09988.HK"}
 
 
 def getCCASSData(sno,date):

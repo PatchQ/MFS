@@ -29,8 +29,8 @@ def getStockNo(tab,indno):
 
     if (tab==4):
         th = table_rows[1].find_all('th')
-        templist = [val.text.strip() for val in th if val.text.strip()]
-        headerlist = headerlist[:2]+templist+headerlist[-1:]
+        templist = [val.text.strip() for val in th if val.text.strip()]        
+        headerlist = headerlist[:2]+templist+headerlist[-1:]        
 
     res_td = []
 
@@ -38,18 +38,33 @@ def getStockNo(tab,indno):
         td = tr.find_all('td')
         row_td = [val.text.strip() for val in td if val.text.strip()]
 
-
         if row_td:
             res_td.append(row_td)
 
     df_td = pd.DataFrame(res_td, columns=headerlist)
+
+
+
    
-    nolist =  [("|".join(val.split("   "))).split("|")[1].split()[0] for val in df_td["名稱/  \r代號"] if val.strip()]
+    nolist = []
+    for val in df_td["名稱/  \r代號"]:
+        if val.strip():
+            if "   " in val:
+                nolist.append(("|".join(val.split("   "))).split("|")[1].split()[0])                
+            else:
+                nolist.append(val.split()[0])
+  
     df_td.insert(0,"股票編號",nolist)
 
-
     if (tab==1):
-        namelist = [("|".join(val.split("   "))).split("|")[0].split()[0] for val in df_td["名稱/  \r代號"] if val.strip()]
+        namelist = []
+        for val in df_td["名稱/  \r代號"]:
+            if val.strip():
+                if "   " in val:
+                    namelist.append(("|".join(val.split("   "))).split("|")[0].split()[0])                
+                else:
+                    namelist.append(val.split()[0])  
+
         indnolist = [indno for val in df_td["名稱/  \r代號"]]
         df_td.insert(1,"股票名稱",namelist)
         df_td.insert(2,"行業編號",indnolist)
@@ -57,9 +72,25 @@ def getStockNo(tab,indno):
         df_td = df_td.drop(columns=["現價#"])
 
     df_td = df_td.drop(columns=["名稱/  \r代號"])
-    #df_td = df_td.set_axis(headerlist[1:-1], axis=1, inplace=False)
 
     return df_td
+
+
+
+def changeAmount(val):
+    if ("億" in val):
+        val = val.replace("億","").replace(",","")
+        val = float(val) * 100000000
+    elif("千萬" in val):
+        val = val.replace("千萬","").replace(",","")
+        val = float(val) * 10000000
+    elif("百萬" in val):
+        val = val.replace("百萬","").replace(",","")
+        val = float(val) * 1000000
+    else:
+        val=0
+    return val
+
 
 
 indlist = pd.read_excel("Data/indlist.xlsx",dtype=str)
@@ -70,17 +101,36 @@ stocklist = pd.DataFrame()
 for val in tqdm(indnolist):
     
     df1 = getStockNo(1,val)
-    df4 = getStockNo(4,val)
-    df6 = getStockNo(6,val)
+    df4 = getStockNo(4,val)    
+    df6 = getStockNo(6,val)    
 
     df = df1.join(df4,rsuffix='_df4').join(df6,rsuffix='_df6')
-
     stocklist = pd.concat([stocklist, df], ignore_index=True)
 
 stocklist["sno"] = stocklist["股票編號"].apply(lambda s: s.lstrip("0").zfill(7))
-stocklist = stocklist.sort_values(by="股票編號")
 
-stocklist.to_excel("Data/stocklist.xlsx",index=False)
+
+
+#filter
+stocklist["數字市值"] = stocklist["市值"].apply(lambda s: changeAmount(s)).astype(float)
+
+stocklistL = stocklist.query("數字市值 >= 10000000000")
+stocklistL = stocklistL.assign(type="L")
+stocklistL = stocklistL.sort_values(by="股票編號")
+
+stocklistM = stocklist.query("數字市值 < 10000000000").query("數字市值 >= 2000000000")
+stocklistM = stocklistM.assign(type="M")
+stocklistM = stocklistM.sort_values(by="股票編號")
+
+stocklistS = stocklist.query("數字市值 < 2000000000")
+stocklistS = stocklistS.assign(type="S")
+stocklistS = stocklistS.sort_values(by="股票編號")
+
+
+
+stocklistL.to_excel("Data/stocklist_L.xlsx",index=False)
+stocklistM.to_excel("Data/stocklist_M.xlsx",index=False)
+stocklistS.to_excel("Data/stocklist_S.xlsx",index=False)
 
 
 
