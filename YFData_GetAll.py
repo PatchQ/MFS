@@ -43,6 +43,11 @@ def main():
     with cf.ProcessPoolExecutor(max_workers=17) as executor:
         list(tqdm(executor.map(getData,SLIST["sno"],SLIST["type"],chunksize=2),total=len(SLIST)))
 
+def main_ipad():
+    with cf.ThreadPoolExecutor(max_workers=17) as executor:
+        list(tqdm(executor.map(getData,SLIST["sno"],SLIST["type"],chunksize=2),total=len(SLIST)))
+
+
 if __name__ == '__main__':
     start = t.perf_counter()
 
