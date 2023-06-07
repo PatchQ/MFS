@@ -12,6 +12,8 @@ EDATE = "2022-09-01"
 SLIST = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(OUTPATH)))
 SLIST = SLIST[:]
 
+#testing
+
 
 def allvcpStock(sno):
 
