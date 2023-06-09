@@ -7,8 +7,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 def getStockNo(tab,indno):
-    url = "http://www.aastocks.com/tc/stocks/market/industry/sector-industry-details.aspx?t={}".format(tab)+"&industrysymbol={}".format(indno)
-
+    url = "http://www.aastocks.com/tc/stocks/market/industry/sector-industry-details.aspx?s=0&o=1&hk=0&t={}".format(tab)+"&industrysymbol={}".format(indno)    
     sess = requests.session()
 
     headers = {
@@ -20,6 +19,9 @@ def getStockNo(tab,indno):
     soup = BeautifulSoup(req.text, features="html.parser")
     table =  soup.find('table',attrs={'id':'tblTS2'})
     table_rows = table.find_all('tr')
+
+    print(table)
+
 
     th = table_rows[0].find_all('th')
     headerlist = [val.text.strip() for val in th if val.text.strip()]
@@ -94,7 +96,7 @@ def changeAmount(val):
 
 
 indlist = pd.read_excel("Data/indlist.xlsx",dtype=str)
-indnolist = indlist["行業編號"][:]
+indnolist = indlist["行業編號"][29:30]
 
 stocklist = pd.DataFrame()
 
@@ -127,10 +129,10 @@ stocklistS = stocklistS.assign(type="S")
 stocklistS = stocklistS.sort_values(by="股票編號")
 
 
-
-stocklistL.to_excel("Data/stocklist_L.xlsx",index=False)
-stocklistM.to_excel("Data/stocklist_M.xlsx",index=False)
-stocklistS.to_excel("Data/stocklist_S.xlsx",index=False)
+stocklist.to_excel("Data/stocklist_A.xlsx",index=False)
+stocklistL.to_excel("Data/stocklist_LA.xlsx",index=False)
+stocklistM.to_excel("Data/stocklist_MA.xlsx",index=False)
+stocklistS.to_excel("Data/stocklist_SA.xlsx",index=False)
 
 
 
