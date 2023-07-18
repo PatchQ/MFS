@@ -28,3 +28,5 @@ json_data = json.loads(json_data)
 
 for data in json_data:
     print(data['d0'].replace("||","|").replace("||","|"))
+
+
