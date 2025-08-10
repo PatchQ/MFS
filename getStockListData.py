@@ -7,7 +7,8 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 def getStockNo(tab,indno):
-    url = "http://www.aastocks.com/tc/stocks/market/industry/sector-industry-details.aspx?s=0&o=1&hk=0&t={}".format(tab)+"&industrysymbol={}".format(indno)    
+    #url = "https://www.aastocks.com/tc/stocks/market/industry/sector-industry-details.aspx?s=&o=1&p=$0&t={}".format(tab)+"&industrysymbol={}".format(indno)
+    url = "https://www.aastocks.com/tc/stocks/market/industry/sector-industry-details.aspx?industrysymbol=070203&t=1&s=&o=1&p=$0"
     sess = requests.session()
 
     headers = {
