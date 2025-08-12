@@ -7,8 +7,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 def getStockNo(tab,indno):
-    #url = "https://www.aastocks.com/tc/stocks/market/industry/sector-industry-details.aspx?s=&o=1&p=$0&t={}".format(tab)+"&industrysymbol={}".format(indno)
-    url = "https://www.aastocks.com/tc/stocks/market/industry/sector-industry-details.aspx?industrysymbol=070203&t=1&s=&o=1&p=$0"
+    url = "http://www.aastocks.com/tc/stocks/market/industry/sector-industry-details.aspx?s=&o=1&p=&t={}".format(tab)+"&industrysymbol={}".format(indno)
     sess = requests.session()
 
     headers = {
@@ -20,9 +19,6 @@ def getStockNo(tab,indno):
     soup = BeautifulSoup(req.text, features="html.parser")
     table =  soup.find('table',attrs={'id':'tblTS2'})
     table_rows = table.find_all('tr')
-
-    print(table)
-
 
     th = table_rows[0].find_all('th')
     headerlist = [val.text.strip() for val in th if val.text.strip()]
@@ -97,7 +93,7 @@ def changeAmount(val):
 
 
 indlist = pd.read_excel("Data/indlist.xlsx",dtype=str)
-indnolist = indlist["行業編號"][29:30]
+indnolist = indlist["行業編號"][:]
 
 stocklist = pd.DataFrame()
 
