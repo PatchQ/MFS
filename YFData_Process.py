@@ -6,6 +6,8 @@ from tqdm import tqdm
 from scipy.stats import linregress
 import time as t
 
+PATH = "../SData/YFData/"
+OUTPATH = "../SData/YFData_P/" 
 
 def cal_slope(arr):
     y = np.array(arr)
@@ -13,10 +15,7 @@ def cal_slope(arr):
     slope, intercept, r_value, p_value, std_err = linregress(x,y)
     return slope
 
-def CalData(sno,type):
-
-    PATH = "../SData/YFData/"+type+"/"
-    OUTPATH = "../SData/YFData/"+type+"_P/" 
+def CalData(sno):
 
     df = pd.read_excel(PATH+sno+".xlsx")
     sma = [10,20,30,50,100,150,200,250]
@@ -94,26 +93,19 @@ def CalData(sno,type):
     df.to_excel(OUTPATH+"P_"+sno+".xlsx",index=False)
 
 
-def main(type):
+def main():
 
-    #get stock excel file from path
-    PATH = "../SData/YFData/"+type+"/"
-    
     SLIST = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(PATH)))
-
-    TLIST = [type for i in range(len(SLIST))]
     SLIST = SLIST[:]
 
     with cf.ProcessPoolExecutor(max_workers=17) as executor:
-        list(tqdm(executor.map(CalData,SLIST,TLIST,chunksize=2),total=len(SLIST)))
+        list(tqdm(executor.map(CalData,SLIST,chunksize=2),total=len(SLIST)))
 
 
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    main("L")
-    main("M")
-    main("S")
+    main()
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

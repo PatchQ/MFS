@@ -12,29 +12,15 @@ SDATE = "1980-01-01"
 EDATE = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
 
 
-STOCKLIST_L = pd.read_excel("Data/stocklist_L.xlsx",dtype=str)
-STOCKLIST_M = pd.read_excel("Data/stocklist_M.xlsx",dtype=str)
-STOCKLIST_S = pd.read_excel("Data/stocklist_S.xlsx",dtype=str)
+STOCKLIST = pd.read_excel("Data/stocklist_A.xlsx",dtype=str)
+#INDEXLIST = pd.Series(["^HSI","^DJI","^IXIC","^GSPC","^N225","^FTSE","^GDAXI","^FCHI","000001.SS","399001.SZ"])
+SLISTA = STOCKLIST[["sno"]]
 
-INDEXLIST = pd.Series(["^HSI","^DJI","^IXIC","^GSPC","^N225","^FTSE","^GDAXI","^FCHI","000001.SS","399001.SZ"])
-
-#SLIST_L = STOCKLIST_L["sno"].append(INDEXLIST)
-SLIST_L = STOCKLIST_L[["sno"]]
-SLIST_L = SLIST_L.assign(type="L")
-
-SLIST_M = STOCKLIST_M[["sno"]]
-SLIST_M = SLIST_M.assign(type="M")
-
-SLIST_S = STOCKLIST_S[["sno"]]
-SLIST_S = SLIST_S.assign(type="S")
-
-SLIST = pd.concat([SLIST_L, SLIST_M], ignore_index=True)
-SLIST = pd.concat([SLIST, SLIST_S], ignore_index=True)
-
-SLIST = SLIST[:]
+#SLIST = pd.concat([SLISTA, INDEXLIST], ignore_index=True)
+SLIST = SLISTA[:]
 
 
-def getData(sno,type):        
+def getData(sno):        
     ticker = yf.Ticker(sno)
     outputlist = ticker.history(period="max")
     outputlist.index = pd.to_datetime(pd.to_datetime(outputlist.index).strftime('%Y%m%d'))
@@ -45,11 +31,11 @@ def getData(sno,type):
 def main():
     #with cf.ProcessPoolExecutor(max_workers=17) as executor:
     with cf.ThreadPoolExecutor(max_workers=17) as executor:
-        list(tqdm(executor.map(getData,SLIST["sno"],SLIST["type"],chunksize=2),total=len(SLIST)))
+        list(tqdm(executor.map(getData,SLIST["sno"],chunksize=2),total=len(SLIST)))
 
 def main_ipad():
     with cf.ThreadPoolExecutor(max_workers=17) as executor:
-        list(tqdm(executor.map(getData,SLIST["sno"],SLIST["type"],chunksize=2),total=len(SLIST)))
+        list(tqdm(executor.map(getData,SLIST["sno"],chunksize=2),total=len(SLIST)))
 
 
 if __name__ == '__main__':

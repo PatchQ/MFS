@@ -22,7 +22,7 @@ def cal_slope(arr):
 end_date = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
 
 #get stock excel file from path
-dir_path = "../YFData/"
+dir_path = "../SData/YFData/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 
 for sno in tqdm(slist[343:344]):
