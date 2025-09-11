@@ -9,7 +9,7 @@ from tqdm import tqdm
 #get stock excel file from path
 OUTPATH = "../SData/P_YFData/"
 #EDATE = "2022-09-01"
-EDATE = "2025-09-01"
+EDATE = "2025-09-03"
 SLIST = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(OUTPATH)))
 SLIST = SLIST[:]
 
@@ -24,6 +24,19 @@ def allvcpStock(sno):
     df = pd.read_excel(OUTPATH+sno+".xlsx",index_col=0)
     df = df.loc[df.index>=EDATE]
     df = df.loc[df["VCP"]]
+    df = df.reset_index()
+
+    return df
+
+
+def allemaStock(sno):
+
+    tempsno = str(sno).lstrip("0")
+    tempsno = tempsno.zfill(7)
+
+    df = pd.read_excel(OUTPATH+sno+".xlsx",index_col=0)
+    df = df.loc[df.index>=EDATE]
+    df = df.loc[df["EMA"]]
     df = df.reset_index()
 
     return df
@@ -95,6 +108,17 @@ def main1():
         #list(tqdm(executor.map(findHStock,slist,chunksize=2),total=len(slist)))
         #list(tqdm(executor.map(findLStock,slist,chunksize=2),total=len(slist)))
 
+def mainEMA():
+    allema = pd.DataFrame()
+
+    with cf.ProcessPoolExecutor(max_workers=17) as executor:
+        for tempdf in tqdm(executor.map(allemaStock,SLIST,chunksize=2),total=len(SLIST)):            
+            allema = pd.concat([tempdf, allema], ignore_index=True)
+            
+
+        allema.to_excel("Data/allema.xlsx",index=False)
+        print("Finish")        
+
 def main2():
     allvcp = pd.DataFrame()
 
@@ -103,7 +127,7 @@ def main2():
             allvcp = pd.concat([tempdf, allvcp], ignore_index=True)
 
         allvcp.to_excel("Data/allvcp.xlsx",index=False)
-        print("Finish")
+        print("Finish")        
 
 def main3():
     #S = yf.Ticker("ES=F")
@@ -128,8 +152,10 @@ def main3():
 
     print(df)
 
+
 if __name__ == '__main__':
     #main1()
-    main2()
+    #main2()
     #main3()
+    mainEMA()
 

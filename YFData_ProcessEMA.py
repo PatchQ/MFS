@@ -8,21 +8,6 @@ import time as t
 from sklearn.ensemble import IsolationForest
 from sklearn.impute import SimpleImputer
 
-# Configuration
-LOOKBACK_PERIOD = "6mo"
-
-MIN_BASE_DURATION = 30
-
-RSI_PERIOD = 14
-
-ATR_PERIOD = 14
-
-KC_PERIOD = 20
-
-VOLUME_SPIKE_MULTIPLIER = 1.5
-
-ADX_PERIOD = 14
-
 PATH = "../SData/YFData/"
 
 OUTPATH = "../SData/P_YFData/" 
@@ -154,49 +139,13 @@ def CalIndicators(df):
 
     df = safe_convert_data(df)
 
-    if len(df) < max(ATR_PERIOD, KC_PERIOD, ADX_PERIOD) * 2:
-        return df
-
     try:
-        # Price indicators
-        df['MA20'] = round(df['Close'].rolling(20, min_periods=10).mean(),2)
-        df['MA50'] = round(df['Close'].rolling(50, min_periods=25).mean(),2)
-
         # Volatility indicators
-        df['EMA20'] = df['Close'].ewm(span=KC_PERIOD, min_periods=KC_PERIOD//2, adjust=False).mean()     
-
         df['EMA10'] = df['Close'].ewm(span=10, min_periods=5, adjust=False).mean()
         df['EMA22'] = df['Close'].ewm(span=22, min_periods=11, adjust=False).mean()     
         df['EMA50'] = df['Close'].ewm(span=50, min_periods=25, adjust=False).mean()     
         df['EMA100'] = df['Close'].ewm(span=100, min_periods=50, adjust=False).mean()             
         df['EMA250'] = df['Close'].ewm(span=250, min_periods=125, adjust=False).mean()
-
-        df['ATR'] = calATR(df,ATR_PERIOD)
-        df['Upper_KC'] = df['EMA20'] + 2 * df['ATR']
-        df['Lower_KC'] = df['EMA20'] - 2 * df['ATR']
-        df['KC_Width'] = (df['Upper_KC'] - df['Lower_KC']) / df['EMA20']
-
-        # Momentum indicators
-        tempresult = calADX(df,ADX_PERIOD)
-        df['ADX'] = tempresult['ADX']
-        df['PlusDI'] = tempresult['PlusDI']
-        df['MinusDI'] = tempresult['MinusDI']
-
-        df['RSI'] = CalRSI(df, RSI_PERIOD)
-
-        # ML Anomaly Detection
-        imputer = SimpleImputer(strategy='median')
-        clean_data = imputer.fit_transform(df[['ATR', 'Volume']])
-        model = IsolationForest(contamination=0.1, random_state=42)
-        df['Anomaly_Score'] = model.fit_predict(clean_data)
-
-        # Uptrend check
-        df['Price_Increase'] = df["Close"].pct_change(periods=30).shift(periods=-30)
-        
-        if df['Price_Increase'] < 0.3 or df['Close'] < df['MA50']:
-            df['Uptrend'] = False
-        else:
-            df['Uptrend'] = True
         
         return df        
 
@@ -206,93 +155,14 @@ def CalIndicators(df):
     
 
 
-def ProcessVCP(sno):
+def AnalyzeData(sno):
    
     df = pd.read_excel(PATH+sno+".xlsx")
     df = CalIndicators(df)
 
-    try:
-        if df.empty or len(df) < MIN_BASE_DURATION:
-            df['VCP'] = 'Insufficient data'
-            df.to_excel(OUTPATH+"P_"+sno+".xlsx",index=False)
+    df['EMA'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))
 
-        # Contraction analysis
-        contractions = []
-        closes = df['Close'].values
-        i = len(df) - 1
-        contraction_count = 0
-
-        while i > 0 and contraction_count < 6:
-
-            if closes[i] < closes[i-1]:
-                start = i
-                while i > 0 and closes[i] < closes[i-1]:
-                    i -= 1
-                end = i
-
-                high = df['High'].iloc[start:end+1].max()
-                low = df['Low'].iloc[start:end+1].min()
-                retracement = (high - low) / high
-
-                if contractions and retracement > contractions[-1]['retracement'] * 0.6:
-                    break
-
-                contractions.append({
-                    'retracement': retracement,
-                    'kc_width': df['KC_Width'].iloc[start:end+1].mean()
-                })
-
-                contraction_count += 1
-
-            i -= 1
-
-        df['Contractions'] = len(contractions)
-
-        if len(contractions) >= 2:
-            df['Contraction'] = True
-            
-
-        # Pattern validation        
-        valid_contractions = all(
-            contractions[i]['retracement'] < contractions[i-1]['retracement'] * 0.6
-            for i in range(1, len(contractions))
-        )
-
-        kc_contraction = all(
-            contractions[i]['kc_width'] < contractions[i-1]['kc_width']
-            for i in range(1, len(contractions))
-        )
-
-        # Additional metrics
-        df['ADX_Strength'] = df['ADX'].iloc[-1] > 25
-        df['DI_Bullish'] = df['PlusDI'].iloc[-1] > df['MinusDI'].iloc[-1]
-        df['RSI_Value'] = round(df['RSI'].iloc[-1], 1)
-        df['Anomaly_Free'] = df['Anomaly_Score'].iloc[-1] == 1
-        df['Volatility_Decrease'] = f"{(df['KC_Width'].iloc[-60:-30].mean()/df['KC_Width'].iloc[-10:].mean()-1)*100:.1f}%" if len(df) > 60 else 'N/A'
-
-        # Volume analysis
-        recent_volume = df['Volume'].iloc[-10:].mean()
-        contraction_volume = np.mean([c['kc_width'] for c in contractions[-2:]])
-        df['Volume_Contraction'] = contraction_volume < recent_volume * 0.7
-
-        # Breakout check
-        resistance = df['High'].iloc[-20:-1].max()
-        current_close = df['Close'].iloc[-1]
-        volume_spike = df['Volume'].iloc[-1] > df['Volume'].rolling(20).mean().iloc[-1] * VOLUME_SPIKE_MULTIPLIER
-        df['Breakout_Detected'] = current_close > resistance and volume_spike
-
-        # Final decision
-        df['VCP'] = all([valid_contractions, kc_contraction, df['Volume_Contraction'], df['Breakout_Detected'], df['Anomaly_Free']])
-        
-        df.to_excel(OUTPATH+"P_"+sno+".xlsx",index=False)
-
-
-    except Exception as e:
-        df['Reason'] = f"Analysis error: {str(e)}"
-        df.to_excel(OUTPATH+"P_"+sno+".xlsx",index=False)
-
-    
-
+    df.to_excel(OUTPATH+"P_"+sno+".xlsx",index=False)
 
 
 
@@ -300,10 +170,10 @@ def ProcessVCP(sno):
 def main():
 
     SLIST = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(PATH)))
-    SLIST = SLIST[:1]
+    SLIST = SLIST[:]
 
     with cf.ProcessPoolExecutor(max_workers=17) as executor:
-        list(tqdm(executor.map(ProcessVCP,SLIST,chunksize=2),total=len(SLIST)))
+        list(tqdm(executor.map(AnalyzeData,SLIST,chunksize=2),total=len(SLIST)))
 
 
 if __name__ == '__main__':
