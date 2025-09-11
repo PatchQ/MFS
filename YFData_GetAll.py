@@ -12,7 +12,7 @@ SDATE = "1980-01-01"
 EDATE = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
 
 
-STOCKLIST = pd.read_excel("Data/stocklist_A.xlsx",dtype=str)
+STOCKLIST = pd.read_excel("Data/stocklist_LA.xlsx",dtype=str)
 #INDEXLIST = pd.Series(["^HSI","^DJI","^IXIC","^GSPC","^N225","^FTSE","^GDAXI","^FCHI","000001.SS","399001.SZ"])
 SLISTA = STOCKLIST[["sno"]]
 
@@ -30,7 +30,7 @@ def getData(sno):
 
 def main():
     #with cf.ProcessPoolExecutor(max_workers=17) as executor:
-    with cf.ThreadPoolExecutor(max_workers=17) as executor:
+    with cf.ProcessPoolExecutor(max_workers=17) as executor:
         list(tqdm(executor.map(getData,SLIST["sno"],chunksize=2),total=len(SLIST)))
 
 def main_ipad():
