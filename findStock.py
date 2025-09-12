@@ -9,7 +9,7 @@ from tqdm import tqdm
 #get stock excel file from path
 OUTPATH = "../SData/P_YFData/"
 #EDATE = "2022-09-01"
-EDATE = "2025-09-11"
+EDATE = "2025-09-12"
 SLIST = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(OUTPATH)))
 SLIST = SLIST[:]
 

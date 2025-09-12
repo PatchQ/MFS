@@ -17,12 +17,12 @@ STOCKLIST = pd.read_excel("Data/stocklist_LA.xlsx",dtype=str)
 SLISTA = STOCKLIST[["sno"]]
 
 #SLIST = pd.concat([SLISTA, INDEXLIST], ignore_index=True)
-SLIST = SLISTA[:]
+SLIST = SLISTA[:1]
 
 
 def getData(sno):        
     ticker = yf.Ticker(sno)
-    outputlist = ticker.history(period="max")
+    outputlist = ticker.history(period="max",auto_adjust=False)
     outputlist.index = pd.to_datetime(pd.to_datetime(outputlist.index).strftime('%Y%m%d'))
     outputlist = outputlist[outputlist['Volume'] > 0]
     outputlist.insert(0,"sno", sno)    

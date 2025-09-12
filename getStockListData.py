@@ -113,11 +113,11 @@ stocklist["sno"] = stocklist["股票編號"].apply(lambda s: s.lstrip("0").zfill
 #filter
 stocklist["數字市值"] = stocklist["市值"].apply(lambda s: changeAmount(s)).astype(float)
 
-stocklistL = stocklist.query("數字市值 >= 10000000000")
+stocklistL = stocklist.query("數字市值 >= 30000000000")
 stocklistL = stocklistL.assign(type="L")
 stocklistL = stocklistL.sort_values(by="股票編號")
 
-stocklistM = stocklist.query("數字市值 < 10000000000").query("數字市值 >= 2000000000")
+stocklistM = stocklist.query("數字市值 < 30000000000").query("數字市值 >= 2000000000")
 stocklistM = stocklistM.assign(type="M")
 stocklistM = stocklistM.sort_values(by="股票編號")
 

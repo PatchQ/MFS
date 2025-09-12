@@ -160,8 +160,8 @@ def AnalyzeData(sno):
     df = pd.read_excel(PATH+sno+".xlsx")
     df = CalIndicators(df)
 
-    df['EMA'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))
-
+    df['EMA'] = ((df["Close"] > df["EMA10"]) & (df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))
+    df['EMA_diff'] = ((df["EMA10"] - df["EMA22"]) + (df["EMA22"] - df["EMA50"]) + (df["EMA50"] - df["EMA100"])) / 3 
     df.to_excel(OUTPATH+"P_"+sno+".xlsx",index=False)
 
 
