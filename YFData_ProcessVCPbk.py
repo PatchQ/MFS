@@ -385,28 +385,28 @@ def scan_vcp(csv_path):
 
 
 
-# if __name__ == "__main__":
-#     results_df = scan_vcp('../Data/sources/Index/NYSE01.csv')
+if __name__ == "__main__":
+    results_df = scan_vcp('../Data/sources/Index/NYSE01.csv')
 
-#     if not results_df.empty:
-#         print("\nVCP Scan Results:")
-#         print(results_df[results_df['VCP']])
-#         print("\nFull Analysis:")
-#         print(results_df)
-#         results_df.to_csv("./vcp_results.csv", index=False)
+    if not results_df.empty:
+        print("\nVCP Scan Results:")
+        print(results_df[results_df['VCP']])
+        print("\nFull Analysis:")
+        print(results_df)
+        results_df.to_csv("./vcp_results.csv", index=False)
 
-#         # Load a CSV file into a DataFrame
-#         df = pd.read_csv("./vcp_results.csv")
+        # Load a CSV file into a DataFrame
+        df = pd.read_csv("./vcp_results.csv")
 
-#         # Drop rows with any NaN values
-#         df_cleaned = df.dropna()
+        # Drop rows with any NaN values
+        df_cleaned = df.dropna()
 
-#         # Save the filtered DataFrame to a new CSV file
-#         df_cleaned.to_csv("./cleaned_file.csv", index=False)
+        # Save the filtered DataFrame to a new CSV file
+        df_cleaned.to_csv("./cleaned_file.csv", index=False)
 
-#         print("Filtered data saved to cleaned_file.csv")
-#     else:
-#         print("\nNo valid data processed - check input symbols or data availability")
+        print("Filtered data saved to cleaned_file.csv")
+    else:
+        print("\nNo valid data processed - check input symbols or data availability")
 
 
 
