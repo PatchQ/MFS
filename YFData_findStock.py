@@ -18,7 +18,8 @@ def findStock(sno,stype,signal):
 
     df = pd.read_excel(PATH+"/"+stype+"/"+sno+".xlsx",index_col=0)
     df = df.loc[df.index>=EDATE]
-    df = df.loc[df[''+signal+'']]
+    #df = df.loc[df[''+signal+''] & df["EMA"]]
+    df = df.loc[df[signal.split('_')].all(axis=1)]
     df = df.reset_index()
 
     return df
@@ -38,7 +39,7 @@ def main(stype,signal):
         for tempdf in tqdm(executor.map(findStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],chunksize=1),total=len(SLIST)):            
             signaldf = pd.concat([tempdf, signaldf], ignore_index=True)
             
-        signaldf.to_excel(PATH+"/"+signal+"_"+stype+".xlsx",index=False)
+        signaldf.to_excel("Data/"+signal+"_"+stype+".xlsx",index=False)
         print("Finish")        
 
 
@@ -47,12 +48,13 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
 
-    #main("L","EMA")
-    #main("L","VCP")
-
-    main("L","T1")
-    main("M","T1")
-    main("S","T1")
+    #main("L","T1")
+    #main("M","T1")
+    #main("S","T1")
+    
+    main("L","T1_EMA")
+    main("M","T1_EMA")
+    main("S","T1_EMA")
     
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
