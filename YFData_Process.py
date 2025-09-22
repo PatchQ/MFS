@@ -212,7 +212,7 @@ def main(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #main("L")
+    main("L")
     main("M")
     main("S")
 

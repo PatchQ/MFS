@@ -1,7 +1,5 @@
 import pandas as pd
-import numpy as np
 import concurrent.futures as cf
-import yfinance as yf
 import os
 import time as t
 from tqdm import tqdm
@@ -40,7 +38,7 @@ def main(stype,signal):
         for tempdf in tqdm(executor.map(findStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],chunksize=1),total=len(SLIST)):            
             signaldf = pd.concat([tempdf, signaldf], ignore_index=True)
             
-        signaldf.to_excel("Data/all"+signal+"_"+stype+".xlsx",index=False)
+        signaldf.to_excel(PATH+"/"+signal+"_"+stype+".xlsx",index=False)
         print("Finish")        
 
 

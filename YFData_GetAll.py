@@ -21,7 +21,7 @@ def getData(sno,stype):
     outputlist.to_excel(PATH+"/"+stype+"/"+sno+".xlsx")
 
 def main(stype):
-    STOCKLIST = pd.read_excel("Data/stocklist_"+stype+"A.xlsx",dtype=str)
+    STOCKLIST = pd.read_excel("Data/stocklist_"+stype+".xlsx",dtype=str)
     #INDEXLIST = pd.Series(["^HSI","^DJI","^IXIC","^GSPC","^N225","^FTSE","^GDAXI","^FCHI","000001.SS","399001.SZ"])
     SLIST = STOCKLIST[["sno"]]
     SLIST = SLIST.assign(stype=stype+"")
@@ -32,7 +32,7 @@ def main(stype):
 
 
 def main_ipad(stype):
-    STOCKLIST = pd.read_excel("Data/stocklist_"+stype+"A.xlsx",dtype=str)
+    STOCKLIST = pd.read_excel("Data/stocklist_"+stype+".xlsx",dtype=str)
     #INDEXLIST = pd.Series(["^HSI","^DJI","^IXIC","^GSPC","^N225","^FTSE","^GDAXI","^FCHI","000001.SS","399001.SZ"])
     SLIST = STOCKLIST[["sno"]]
     SLIST = SLIST.assign(stype=stype+"")    
