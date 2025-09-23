@@ -145,9 +145,8 @@ def CheckEMA(df):
         df['EMA100'] = df['Close'].ewm(span=100, min_periods=50, adjust=False).mean()             
         df['EMA250'] = df['Close'].ewm(span=250, min_periods=125, adjust=False).mean()
 
-        df['EMA'] = ((df["Close"] > df["EMA10"]) & (df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))
-        df['EMA_diff'] = ((df["EMA10"] - df["EMA22"]) + (df["EMA22"] - df["EMA50"]) + (df["EMA50"] - df["EMA100"])) / 3 
-    
+        df['EMA'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))        
+        
         return df        
 
     except Exception as e:

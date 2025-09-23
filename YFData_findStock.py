@@ -3,12 +3,13 @@ import concurrent.futures as cf
 import os
 import time as t
 from tqdm import tqdm
+from datetime import datetime
 
 
 #get stock excel file from path
 PATH = "../SData/P_YFData/"
-#EDATE = "2022-09-01"
-EDATE = "2025-09-22"
+#EDATE = "2025-09-22"
+EDATE = datetime.now().strftime("%Y-%m-%d")
 
 
 def findStock(sno,stype,signal):
