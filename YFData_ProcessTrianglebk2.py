@@ -35,7 +35,6 @@ def convertData(df):
     df.dropna(subset=numeric_cols, how='all', inplace=True)
     df.ffill(inplace=True)
     df.bfill(inplace=True)
-
     return df
 
 def CheckEMA(df):
@@ -58,31 +57,34 @@ def CheckEMA(df):
         return df
     
 
-def CheckTriangle(sno, stype, days, resistance_threshold=0.05, min_days_between_peaks=10):
+def find_resistance_test_pattern(symbol, period="1y", resistance_threshold=0.02, 
+                                min_days_between_peaks=10, breakout_threshold=0.01):
     """
-    找出股票三次測試同一高位的模式
+    找出股票三次測試同一高位的模式，並檢查中間是否有突破
+    
     參數:
-    sno (str): 股票代號
+    symbol (str): 股票代號
     period (str): 資料期間
     resistance_threshold (float): 阻力位識別閾值 (百分比)
     min_days_between_peaks (int): 峰值之間的最小天數
+    breakout_threshold (float): 突破閾值 (百分比)
     
     返回:
     dict: 包含模式資訊的字典
     """
     
-    stock = pd.read_excel(PATH+"/"+stype+"/"+sno+".xlsx",index_col="Date")   
-    stock = convertData(stock.tail(days))
-    stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')
-
-    print(stock)
+    # 下載股票資料    
+    ticker = yf.Ticker(symbol)
+    stock = ticker.history(period=period,auto_adjust=True)    
+    #stock = convertData(stock)    
+    stock.index = pd.to_datetime(stock.index)
 
     if stock.empty:
         print("無法下載資料，請檢查股票代號和期間設定")
         return None
     
     # 確保索引是DatetimeIndex
-    stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')
+    stock.index = pd.to_datetime(stock.index)
     
     # 計算價格變動
     stock['Price_Change'] = stock['Close'].pct_change()
@@ -105,20 +107,23 @@ def CheckTriangle(sno, stype, days, resistance_threshold=0.05, min_days_between_
             # 按時間排序峰值
             sorted_peaks = sorted(peaks_in_level, key=lambda x: x['date'])
             
-            # 檢查是否符合模式條件
-            valid_pattern = check_pattern_conditions(stock, sorted_peaks, min_days_between_peaks)
+            # 檢查是否符合模式條件，包括突破檢查
+            valid_pattern = check_pattern_conditions(
+                stock, sorted_peaks, min_days_between_peaks, resistance_level, breakout_threshold
+            )
             
             if valid_pattern:
                 patterns.append({
                     'resistance_level': resistance_level,
                     'peaks': sorted_peaks,
                     'pullbacks': valid_pattern['pullbacks'],
-                    'pattern_strength': calculate_pattern_strength(valid_pattern)
+                    'pattern_strength': calculate_pattern_strength(valid_pattern),
+                    'breakout_checked': True
                 })
     
     return {
-        'sno': sno,
-        'days': days,
+        'symbol': symbol,
+        'period': period,
         'patterns': patterns,
         'all_peaks': peaks,
         'resistance_levels': resistance_levels
@@ -176,14 +181,14 @@ def group_similar_highs(peaks, threshold=0.02):
     
     return groups
 
-def check_pattern_conditions(stock_data, peaks, min_days_between_peaks):
+def check_pattern_conditions(stock_data, peaks, min_days_between_peaks, resistance_level, breakout_threshold):
     """
-    檢查是否符合三次測試同一高位的模式條件
+    檢查是否符合三次測試同一高位的模式條件，並檢查中間是否有突破
     """
     if len(peaks) < 3:
         return None
     
-    # 檢查峰值之間的時間間隔 - 修復這裡的錯誤
+    # 檢查峰值之間的時間間隔
     for i in range(1, len(peaks)):
         # 確保日期是datetime對象
         if isinstance(peaks[i]['date'], (pd.Timestamp, datetime)):
@@ -196,6 +201,18 @@ def check_pattern_conditions(stock_data, peaks, min_days_between_peaks):
             
         if days_between < min_days_between_peaks:
             return None
+    
+    # 檢查在峰值之間是否有突破阻力位的情況
+    for i in range(len(peaks) - 1):
+        start_idx = peaks[i]['index']
+        end_idx = peaks[i+1]['index']
+        
+        # 檢查兩個峰值之間的價格是否曾突破阻力位
+        between_prices = stock_data.iloc[start_idx:end_idx]['Close']
+        breakout_level = resistance_level * (1 + breakout_threshold)
+        
+        if any(price > breakout_level for price in between_prices):
+            return None  # 中間有突破，不符合模式
     
     # 找出每次測試後的回落低點
     pullbacks = []
@@ -271,23 +288,24 @@ def calculate_pattern_strength(pattern):
     
     return min(10, (similarity_score + pullback_score) / 2)
 
-def analyze_resistance_patterns(sno, stype, days ,resistance_threshold=0.05):
+def analyze_resistance_patterns(symbol, period="1y", breakout_threshold=0.01):
     """
     分析並顯示阻力位測試模式
     """
-    #result = find_resistance_test_pattern(days,period,resistance_threshold=resistance_threshold)
-    result = CheckTriangle(sno, stype, days, resistance_threshold, min_days_between_peaks=10)
+    result = find_resistance_test_pattern(symbol, period, breakout_threshold=breakout_threshold)
     
     if result is None or not result['patterns']:
-        print(f"在 {sno} 的 {days} 資料中未找到符合條件的模式")
+        print(f"在 {symbol} 的 {period} 資料中未找到符合條件的模式")
         return
     
-    print(f"股票 {sno} 的阻力位測試模式分析（期間: {days}）")
+    print(f"股票 {symbol} 的阻力位測試模式分析（期間: {period}）")
+    print(f"突破檢查閾值: {breakout_threshold*100}%")
     print("=" * 80)
     
     for i, pattern in enumerate(result['patterns']):
         print(f"\n模式 #{i+1} (強度: {pattern['pattern_strength']:.1f}/10)")
         print(f"阻力位: ${pattern['resistance_level']:.2f}")
+        print(f"突破檢查: {'已通過' if pattern.get('breakout_checked', False) else '未檢查'}")
         print("-" * 50)
         
         peaks = pattern['peaks']
@@ -319,103 +337,231 @@ def analyze_resistance_patterns(sno, stype, days ,resistance_threshold=0.05):
                     improvement = ((pullback['price'] - prev_pullback['price']) / prev_pullback['price']) * 100
                     print(f"  較前一次回調低點上漲: {improvement:.2f}%")
             
+            # 檢查下一個峰值之前是否有突破
+            if j < len(peaks) - 1:
+                next_peak = peaks[j+1]
+                if isinstance(next_peak['date'], (pd.Timestamp, datetime)):
+                    next_peak_date_str = next_peak['date'].strftime('%Y-%m-%d')
+                else:
+                    next_peak_date_str = str(next_peak['date'])
+                    
+                print(f"  下一次測試日期: {next_peak_date_str}")
+            
             print()
     
     return result
 
-
-# 簡化版本 - 更穩定的實現
-def simple_resistance_pattern(symbol, period="1y", lookback_days=30, resistance_threshold=0.02):
+def visualize_resistance_pattern(symbol, period="1y", pattern_index=0, breakout_threshold=0.01):
     """
-    簡化版本的三次測試高位模式識別
+    可視化阻力位測試模式
+    """
+    result = find_resistance_test_pattern(symbol, period, breakout_threshold=breakout_threshold)
+    
+    if result is None or not result['patterns']:
+        print("沒有可視化的模式")
+        return
+    
+    if pattern_index >= len(result['patterns']):
+        print(f"模式索引 {pattern_index} 超出範圍")
+        return
+    
+    pattern = result['patterns'][pattern_index]
+    stock = yf.download(symbol, period=period, progress=False)
+    stock.index = pd.to_datetime(stock.index)  # 確保索引是日期時間
+    
+    # 創建圖表
+    plt.figure(figsize=(15, 10))
+    
+    # 繪製股價走勢
+    plt.plot(stock.index, stock['Close'], label='收盤價', linewidth=1, color='black')
+    
+    # 標記峰值
+    for i, peak in enumerate(pattern['peaks']):
+        # 確保日期是正確的格式
+        if not isinstance(peak['date'], (pd.Timestamp, datetime)):
+            peak_date = stock.index[peak['date']] if isinstance(peak['date'], int) else pd.to_datetime(peak['date'])
+        else:
+            peak_date = peak['date']
+            
+        plt.scatter(peak_date, peak['price'], color='red', marker='v', s=100, zorder=5)
+        plt.annotate(f'A{i+1}', (peak_date, peak['price']), 
+                    xytext=(5, 15), textcoords='offset points', fontweight='bold')
+    
+    # 標記回調低點
+    for i, pullback in enumerate(pattern['pullbacks']):
+        if not isinstance(pullback['date'], (pd.Timestamp, datetime)):
+            pullback_date = stock.index[pullback['date']] if isinstance(pullback['date'], int) else pd.to_datetime(pullback['date'])
+        else:
+            pullback_date = pullback['date']
+            
+        plt.scatter(pullback_date, pullback['price'], color='green', marker='^', s=100, zorder=5)
+        plt.annotate(f'{"B" if i == 0 else "C"}', (pullback_date, pullback['price']), 
+                    xytext=(5, -15), textcoords='offset points', fontweight='bold')
+    
+    # 繪製阻力位水平線
+    resistance_level = pattern['resistance_level']
+    plt.axhline(y=resistance_level, color='red', linestyle='--', alpha=0.7, 
+                label=f'阻力位: ${resistance_level:.2f}')
+    
+    # 繪製突破檢查線
+    breakout_level = resistance_level * (1 + breakout_threshold)
+    plt.axhline(y=breakout_level, color='orange', linestyle=':', alpha=0.5, 
+                label=f'突破檢查線: ${breakout_level:.2f} (+{breakout_threshold*100}%)')
+    
+    # 添加趨勢線 (連接回調低點)
+    if len(pattern['pullbacks']) >= 2:
+        pullback_dates = []
+        pullback_prices = []
+        
+        for pullback in pattern['pullbacks']:
+            if not isinstance(pullback['date'], (pd.Timestamp, datetime)):
+                pullback_date = stock.index[pullback['date']] if isinstance(pullback['date'], int) else pd.to_datetime(pullback['date'])
+            else:
+                pullback_date = pullback['date']
+                
+            pullback_dates.append(pullback_date)
+            pullback_prices.append(pullback['price'])
+            
+        plt.plot(pullback_dates, pullback_prices, 'g--', alpha=0.7, label='上升趨勢線')
+    
+    plt.title(f'{symbol} 三次測試高位模式 (強度: {pattern["pattern_strength"]:.1f}/10)')
+    plt.xlabel('日期')
+    plt.ylabel('價格 (USD)')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+# 簡化版本 - 更穩定的實現，包含突破檢查
+def simple_resistance_pattern(symbol, period="1y", lookback_days=60, 
+                             resistance_threshold=0.03, breakout_threshold=0.01):
+    """
+    簡化版本的三次測試高位模式識別，包含突破檢查
     """
     # 下載股票資料
+    # 下載股票資料    
     ticker = yf.Ticker(symbol)
     stock = ticker.history(period=period,auto_adjust=True)    
-    stock = convertData(stock)
+    #stock = convertData(stock)    
     stock.index = pd.to_datetime(stock.index)
-    
-    # 找出最近的高點作為潛在阻力位
-    recent_high = stock['Close'].tail(lookback_days).max()
-    resistance_level = recent_high
-    
-    # 找出所有接近這個阻力位的點
-    resistance_points = []
-    for i in range(len(stock)):
-        if abs(stock['Close'].iloc[i] - resistance_level) / resistance_level <= resistance_threshold:
-            resistance_points.append({
+
+    # 找出所有高點
+    highs = []
+    for i in range(5, len(stock)-5):
+        if stock['Close'].iloc[i] == stock['Close'].iloc[i-5:i+6].max():
+            highs.append({
                 'date': stock.index[i],
                 'price': stock['Close'].iloc[i],
                 'index': i
             })
     
-    # 如果至少有3個點，嘗試識別模式
-    if len(resistance_points) >= 3:
-        # 按時間排序
-        resistance_points.sort(key=lambda x: x['date'])
+    # 按價格分組高點
+    groups = {}
+    for high in highs:
+        found_group = False
+        for level in groups:
+            if abs(high['price'] - level) / level <= resistance_threshold:
+                groups[level].append(high)
+                found_group = True
+                break
         
-        # 找出回調低點
-        pullbacks = []
-        for i in range(len(resistance_points)-1):
-            start_idx = resistance_points[i]['index']
-            end_idx = resistance_points[i+1]['index']
-            
-            # 在兩個阻力點之間找最低點
-            if end_idx > start_idx:
-                pullback_data = stock.iloc[start_idx:end_idx]
-                min_idx = pullback_data['Close'].idxmin()
-                min_price = pullback_data['Close'].min()
-                
-                pullbacks.append({
-                    'date': min_idx,
-                    'price': min_price
-                })
-        
-        # 檢查回調低點是否依次抬高
-        valid_pattern = True
-        if len(pullbacks) >= 2:
-            for i in range(1, len(pullbacks)):
-                if pullbacks[i]['price'] <= pullbacks[i-1]['price']:
-                    valid_pattern = False
-                    break
-        
-        if valid_pattern and len(pullbacks) >= 2:
-            print(f"找到三次測試高位模式!")
-            print(f"阻力位: ${resistance_level:.2f}")
-            
-            for i, point in enumerate(resistance_points[:3]):  # 只顯示前三次測試
-                print(f"第{i+1}次測試: {point['date'].strftime('%Y-%m-%d')} - ${point['price']:.2f}")
-                if i < len(pullbacks):
-                    print(f"  回調低點: {pullbacks[i]['date'].strftime('%Y-%m-%d')} - ${pullbacks[i]['price']:.2f}")
-            
-            return {
-                'resistance_level': resistance_level,
-                'resistance_points': resistance_points[:3],
-                'pullbacks': pullbacks
-            }
+        if not found_group:
+            groups[high['price']] = [high]
     
-    print("未找到符合條件的模式")
-    return None
+    # 找出至少有3個高點的群組
+    valid_groups = {level: sorted(peaks, key=lambda x: x['date']) 
+                   for level, peaks in groups.items() if len(peaks) >= 3}
+    
+    # 檢查每個群組是否符合模式條件
+    patterns = []
+    for level, peaks in valid_groups.items():
+        # 檢查峰值之間是否有突破
+        valid_pattern = True
+        for i in range(len(peaks)-1):
+            start_idx = peaks[i]['index']
+            end_idx = peaks[i+1]['index']
+            between_prices = stock.iloc[start_idx:end_idx]['Close']
+            
+            if any(price > level * (1 + breakout_threshold) for price in between_prices):
+                valid_pattern = False
+                break
+        
+        if valid_pattern:
+            # 找出回調低點
+            pullbacks = []
+            for i in range(len(peaks)-1):
+                start_idx = peaks[i]['index']
+                end_idx = peaks[i+1]['index']
+                pullback_data = stock.iloc[start_idx:end_idx]
+                
+                if len(pullback_data) > 0:
+                    min_idx = pullback_data['Close'].idxmin()
+                    min_price = pullback_data['Close'].min()
+                    pullbacks.append({
+                        'date': min_idx,
+                        'price': min_price
+                    })
+            
+            # 檢查回調低點是否依次抬高
+            if len(pullbacks) >= 2:
+                ascending = True
+                for i in range(1, len(pullbacks)):
+                    if pullbacks[i]['price'] <= pullbacks[i-1]['price']:
+                        ascending = False
+                        break
+                
+                if ascending:
+                    patterns.append({
+                        'resistance_level': level,
+                        'peaks': peaks[:3],  # 只取前三次測試
+                        'pullbacks': pullbacks[:2]  # 只取前兩次回調
+                    })
+    
+    # 輸出結果
+    if patterns:
+        print(f"找到 {len(patterns)} 個符合條件的模式!")
+        for i, pattern in enumerate(patterns):
+            print(f"\n模式 #{i+1}:")
+            print(f"阻力位: ${pattern['resistance_level']:.2f}")
+            
+            for j, peak in enumerate(pattern['peaks']):
+                print(f"第{j+1}次測試: {peak['date'].strftime('%Y-%m-%d')} - ${peak['price']:.2f}")
+                if j < len(pattern['pullbacks']):
+                    print(f"  回調低點: {pattern['pullbacks'][j]['date'].strftime('%Y-%m-%d')} - ${pattern['pullbacks'][j]['price']:.2f}")
+        
+        return patterns
+    else:
+        print("未找到符合條件的模式")
+        return None
 
 # 使用範例
 if __name__ == "__main__":
     # 在程式開始時呼叫
     set_chinese_font()
     # 設定股票代號
-    sno = "1810.HK"  # 更改為你想要分析的股票
-    stype = "L"
-    days = 250
-    lookback_days=30
-    resistance_threshold=0.02
+    symbol = "1810.HK"  # 更改為你想要分析的股票
+    period = "4mo"
+    breakout_threshold = 0.01
     
-    print("=== 三次測試高位模式分析 ===")
+    print("=== 三次測試高位模式分析 (含突破檢查) ===")
+    print("\n嘗試簡化版本分析...")
     
     # 使用簡化版本（更穩定）
-    #result = simple_resistance_pattern(sno,period=period,lookback_days=lookback_days,resistance_threshold=resistance_threshold)
-    result = None
-
-
+    sresult = simple_resistance_pattern(symbol, period=period, breakout_threshold=breakout_threshold)
+    #result = None
+    
     # 如果簡化版本找不到，嘗試完整版本
-    if result is None:
-        print("\n嘗試完整版本分析...")        
-        result = analyze_resistance_patterns(sno, stype, days ,resistance_threshold)        
+    # print("\n嘗試完整版本分析...")
+    # result = analyze_resistance_patterns(symbol, period=period, breakout_threshold=breakout_threshold)
+        
+    # # 可視化第一個找到的模式
+    # if result and result['patterns']:
+    #     visualize_resistance_pattern(symbol, period=period, pattern_index=0, breakout_threshold=breakout_threshold)
+
+    # # 敏感度分析 - 不同的突破閾值
+    # print("\n=== 敏感度分析 (不同突破閾值) ===")
+    # for threshold in [0.005, 0.01, 0.02]:
+    #     print(f"\n突破閾值: {threshold*100}%")
+    #     patterns = simple_resistance_pattern(symbol, period="4mo", breakout_threshold=threshold)
+    #     if patterns:
+    #         print(f"找到 {len(patterns)} 個模式")

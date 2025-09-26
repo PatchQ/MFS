@@ -575,13 +575,6 @@ def visualize_strongest_patterns(result):
     plt.tight_layout()
     plt.show()
 
-import yfinance as yf
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-import matplotlib.pyplot as plt
-import mplfinance as mpf
-
 def enhanced_resistance_pattern_with_candlestick(symbol, periods=["3mo", "6mo", "1y"], 
                                                resistance_threshold=0.03, breakout_threshold=0.01,
                                                use_sliding_window=True, window_days=90, step_days=30):
@@ -612,9 +605,8 @@ def visualize_strongest_patterns_with_candlestick(result):
     
     # 使用最長的時間範圍進行可視化
     longest_period = result['periods_analyzed'][-1]
-    
-    ticker = yf.Ticker(symbol)
-    data = ticker.history(period=longest_period,auto_adjust=True)    
+    stock = yf.Ticker(symbol)
+    data = stock.history(period=longest_period,auto_adjust=True)        
     data.index = pd.to_datetime(data.index)
     
     # 準備陰陽燭數據
@@ -629,14 +621,14 @@ def visualize_strongest_patterns_with_candlestick(result):
     )
     
     custom_style = mpf.make_mpf_style(marketcolors=mc, 
-                                      gridstyle='--', 
-                                      gridcolor='gray',
-                                      base_mpf_style='charles', 
-                                      rc={
-                                          'font.family': 'Microsoft YaHei',
-                                          'axes.unicode_minus': False
-                                         }
-                                        )
+                                    gridstyle='--', 
+                                    gridcolor='gray',
+                                    base_mpf_style='charles', 
+                                    rc={
+                                        'font.family': 'Microsoft YaHei',
+                                        'axes.unicode_minus': False
+                                        }
+                                    )
     
     # 創建自定義繪圖函數來標記關鍵點
     apds = []
@@ -712,7 +704,7 @@ def visualize_strongest_patterns_with_candlestick(result):
     
     try:
         # 創建圖表
-        fig, axes = mpf.plot(            
+        fig, axes = mpf.plot(
             ohlc_data,
             type='candle',
             style=custom_style,
@@ -774,7 +766,7 @@ def visualize_strongest_patterns_with_candlestick(result):
             plt.Line2D([0], [0], color='C0', marker='^', linestyle='None', label='模式1: B/C點(回調)'),
             plt.Line2D([0], [0], color='C1', marker='v', linestyle='--', label='模式2: A點(峰值)'),
             plt.Line2D([0], [0], color='C1', marker='^', linestyle='None', label='模式2: B/C點(回調)'),
-            plt.Line2D([0], [0], color='purple', marker='s', linestyle='None', label='D點(潛在低點)')
+            plt.Line2D([0], [0], color='purple', marker='s', linestyle='None', label='D點(更高低點)')
         ]
         
         ax_main.legend(handles=legend_elements, loc='upper left')
@@ -817,6 +809,12 @@ def visualize_strongest_patterns_with_candlestick(result):
                 c_point = pattern['pullbacks'][1]
                 d_change = ((d_point['price'] - c_point['price']) / c_point['price'] * 100)
                 print(f"  D點較C點變化: {d_change:.2f}%")
+                
+                # 判斷D點的意義
+                if d_point['price'] > c_point['price']:
+                    print("  → D點高於C點，形成更高低點，是看漲信號")
+                else:
+                    print("  → D點低於C點，可能破壞上升趨勢")
 
 def visualize_strongest_patterns_simple(result):
     """
@@ -830,8 +828,8 @@ def visualize_strongest_patterns_simple(result):
     
     # 使用最長的時間範圍進行可視化
     longest_period = result['periods_analyzed'][-1]
-    ticker = yf.Ticker(symbol)
-    data = ticker.history(period=longest_period,auto_adjust=True)    
+    stock = yf.Ticker(symbol)
+    data = stock.history(period=longest_period,auto_adjust=True)        
     data.index = pd.to_datetime(data.index)
     
     # 創建圖表
@@ -876,6 +874,28 @@ def visualize_strongest_patterns_simple(result):
             plt.annotate('D', (d_point['date'], d_point['price']),
                         xytext=(5, -25), textcoords='offset points',
                         fontweight='bold', color='purple', fontsize=12)
+            
+            # 繪製上升趨勢線（連接B、C、D點）
+            trend_points = []
+            trend_dates = []
+            
+            # 添加B點
+            if len(pullbacks) > 0:
+                trend_points.append(pullbacks[0]['price'])
+                trend_dates.append(pullbacks[0]['date'])
+            
+            # 添加C點
+            if len(pullbacks) > 1:
+                trend_points.append(pullbacks[1]['price'])
+                trend_dates.append(pullbacks[1]['date'])
+            
+            # 添加D點
+            trend_points.append(d_point['price'])
+            trend_dates.append(d_point['date'])
+            
+            # 繪製趨勢線
+            plt.plot(trend_dates, trend_points, 'g--', alpha=0.7, 
+                    label=f'模式{i+1} 上升趨勢線')
     
     plt.title(f'{symbol} 最強阻力模式分析 ({longest_period})')
     plt.xlabel('日期')
@@ -887,7 +907,7 @@ def visualize_strongest_patterns_simple(result):
 
 def identify_d_point(data, peaks, pullbacks, lookback_days=30):
     """
-    識別D低點：在第三次測試高位後出現的新低點
+    識別D低點：在第三次測試高位後出現的新低點，且D點必須高於C點
     
     參數:
     data: 股票數據
@@ -940,13 +960,13 @@ def identify_d_point(data, peaks, pullbacks, lookback_days=30):
     # 選擇最低的點作為D點候選
     d_candidate = min(potential_d_points, key=lambda x: x['price'])
     
-    # 檢查D點是否符合條件（低於前一個回調低點C，但高於B）
+    # 檢查D點是否符合條件（D點必須高於C點，且高於B點）
     if len(pullbacks) >= 2:
         b_point = pullbacks[0]['price']
         c_point = pullbacks[1]['price']
         
-        # D點應該低於C點，但高於B點（保持整體上升趨勢）
-        if d_candidate['price'] < c_point and d_candidate['price'] > b_point:
+        # 修改條件：D點應該高於C點，且高於B點（形成更高的低點）
+        if d_candidate['price'] > c_point and d_candidate['price'] > b_point:
             return d_candidate
     
     return None
@@ -959,7 +979,7 @@ if __name__ == "__main__":
     result = enhanced_resistance_pattern_with_candlestick(
         "9879.HK",
         periods=["2mo", "4mo", "6mo", "8mo", "1y"],
-        resistance_threshold=0.04,
+        resistance_threshold=0.02,
         breakout_threshold=0.015,
         use_sliding_window=False,
         window_days=60,
