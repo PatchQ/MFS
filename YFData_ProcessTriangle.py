@@ -21,8 +21,8 @@ BREAKOUT_RATE (float): 突破檢查閾值
 MIN_PEAKS (int): 峰值之間的最小天數
 """
 DAYS=150
-RESISTANCE_RATE=0.005
-BREAKOUT_RATE=0.015
+RESISTANCE_RATE=0.004
+BREAKOUT_RATE=0.004
 MIN_PEAKS=10
 
 SLIDING_WINDOW = False
@@ -695,9 +695,9 @@ def main(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    main("L")
+    #main("L")
     #main("M")
-    #main("S")
+    main("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
