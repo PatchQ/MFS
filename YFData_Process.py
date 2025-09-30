@@ -145,13 +145,15 @@ def CheckEMA(df):
         df['EMA100'] = df['Close'].ewm(span=100, min_periods=50, adjust=False).mean()             
         df['EMA250'] = df['Close'].ewm(span=250, min_periods=125, adjust=False).mean()
 
-        df['EMA'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))        
+        df['EMA1'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))        
+        df['EMA2'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]))        
         
         return df        
 
     except Exception as e:
         print(f"Indicator error: {str(e)}")
-        df['EMA'] = False
+        df['EMA1'] = False
+        df['EMA2'] = False
         return df
     
 
@@ -160,7 +162,7 @@ def CheckT1(df, days, threshold=0.1):
 
         if len(df) < days:
             print(f"數據不足，無法計算 {days} 天波動")
-            df["T1"] = False
+            df["T1_"+str(days)] = False
             return df
         
         # 取最近N天的數據
@@ -174,13 +176,13 @@ def CheckT1(df, days, threshold=0.1):
         volatility = (highest - lowest) / lowest
         
         # 檢查波動是否在閾值內
-        df["T1"] = volatility <= threshold
+        df["T1_"+str(days)] = volatility <= threshold
 
         return df
 
     except Exception as e:
         print(f"Indicator error: {str(e)}")
-        df["T1"] = False
+        df["T1_"+str(days)] = False
         return df
 
 
@@ -192,6 +194,7 @@ def AnalyzeData(sno,stype):
     df = convertData(df)
     df = CheckEMA(df)
     df = CheckT1(df,22)
+    df = CheckT1(df,10)
 
     df.to_excel(OUTPATH+"/"+stype+"/P_"+sno+".xlsx",index=False)
 

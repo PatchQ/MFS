@@ -8,8 +8,8 @@ from datetime import datetime
 
 #get stock excel file from path
 PATH = "../SData/P_YFData/"
-EDATE = "2025-09-26"
-#EDATE = datetime.now().strftime("%Y-%m-%d")
+#EDATE = "2025-09-29"
+EDATE = datetime.now().strftime("%Y-%m-%d")
 
 
 def findStock(sno,stype,signal):
@@ -20,7 +20,7 @@ def findStock(sno,stype,signal):
     df = pd.read_excel(PATH+"/"+stype+"/"+sno+".xlsx",index_col=0)
     df = df.loc[df.index>=EDATE]
     #df = df.loc[df[''+signal+''] & df["EMA"]]
-    df = df.loc[df[signal.split('_')].all(axis=1)]
+    df = df.loc[df[signal.split('&')].all(axis=1)]
     df = df.reset_index()
 
     return df
@@ -53,9 +53,14 @@ if __name__ == '__main__':
     #main("M","T1")
     #main("S","T1")
     
-    main("L","T1_EMA")
-    main("M","T1_EMA")
-    main("S","T1_EMA")
+    main("L","T1_22&EMA1")
+    main("M","T1_22&EMA1")
+    main("S","T1_22&EMA1")
+
+    main("L","T1_10&EMA2")
+    main("M","T1_10&EMA2")
+    main("S","T1_10&EMA2")
+
     
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
