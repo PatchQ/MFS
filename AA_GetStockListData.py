@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 def getStockNo(tab,indno):
+    
     url = "http://www.aastocks.com/tc/stocks/market/industry/sector-industry-details.aspx?s=&o=1&p=&t={}".format(tab)+"&industrysymbol={}".format(indno)
     sess = requests.session()
 
@@ -88,47 +89,46 @@ def changeAmount(val):
     return val
 
 
+def getStockListData():
 
-indlist = pd.read_excel("Data/indlist.xlsx",dtype=str)
-indnolist = indlist["行業編號"][:]
+    indlist = pd.read_csv("Data/indlist.csv",dtype=str)
+    indnolist = indlist["行業編號"][:]
 
-stocklist = pd.DataFrame()
+    stocklist = pd.DataFrame()
 
-for val in tqdm(indnolist):
-    
-    df1 = getStockNo(1,val)
-    df4 = getStockNo(4,val)    
-    df6 = getStockNo(6,val)    
+    for val in tqdm(indnolist):
+        
+        df1 = getStockNo(1,val)
+        df4 = getStockNo(4,val)    
+        df6 = getStockNo(6,val)    
 
-    df = df1.join(df4,rsuffix='_df4').join(df6,rsuffix='_df6')
-    stocklist = pd.concat([stocklist, df], ignore_index=True)
+        df = df1.join(df4,rsuffix='_df4').join(df6,rsuffix='_df6')
+        stocklist = pd.concat([stocklist, df], ignore_index=True)
 
-stocklist["sno"] = stocklist["股票編號"].apply(lambda s: s.lstrip("0").zfill(7))
-
-
-
-#filter
-stocklist["數字市值"] = stocklist["市值"].apply(lambda s: changeAmount(s)).astype(float)
-
-stocklistL = stocklist.query("數字市值 >= 30000000000")
-stocklistL = stocklistL.assign(type="L")
-stocklistL = stocklistL.sort_values(by="股票編號")
-
-stocklistM = stocklist.query("數字市值 < 30000000000").query("數字市值 >= 2000000000")
-stocklistM = stocklistM.assign(type="M")
-stocklistM = stocklistM.sort_values(by="股票編號")
-
-stocklistS = stocklist.query("數字市值 < 2000000000")
-stocklistS = stocklistS.assign(type="S")
-stocklistS = stocklistS.sort_values(by="股票編號")
-
-
-stocklist.to_excel("Data/stocklist.xlsx",index=False)
-stocklistL.to_excel("Data/stocklist_L.xlsx",index=False)
-stocklistM.to_excel("Data/stocklist_M.xlsx",index=False)
-stocklistS.to_excel("Data/stocklist_S.xlsx",index=False)
+    stocklist["sno"] = stocklist["股票編號"].apply(lambda s: s.lstrip("0").zfill(7))
 
 
 
-    
+    #filter
+    stocklist["數字市值"] = stocklist["市值"].apply(lambda s: changeAmount(s)).astype(float)
+
+    stocklistL = stocklist.query("數字市值 >= 30000000000")
+    stocklistL = stocklistL.assign(type="L")
+    stocklistL = stocklistL.sort_values(by="股票編號")
+
+    stocklistM = stocklist.query("數字市值 < 30000000000").query("數字市值 >= 2000000000")
+    stocklistM = stocklistM.assign(type="M")
+    stocklistM = stocklistM.sort_values(by="股票編號")
+
+    stocklistS = stocklist.query("數字市值 < 2000000000")
+    stocklistS = stocklistS.assign(type="S")
+    stocklistS = stocklistS.sort_values(by="股票編號")
+
+
+    stocklist.to_csv("Data/stocklist.csv",index=False,encoding="utf-8-sig")
+    stocklistL.to_csv("Data/stocklist_L.csv",index=False,encoding="utf-8-sig")
+    stocklistM.to_csv("Data/stocklist_M.csv",index=False,encoding="utf-8-sig")
+    stocklistS.to_csv("Data/stocklist_S.csv",index=False,encoding="utf-8-sig")
+
+
    

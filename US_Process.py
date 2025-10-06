@@ -8,8 +8,8 @@ import time as t
 from sklearn.ensemble import IsolationForest
 from sklearn.impute import SimpleImputer
 
-PATH = "../SData/YFData/"
-OUTPATH = "../SData/P_YFData/" 
+PATH = "../SData/USData/"
+OUTPATH = "../SData/P_USData/" 
 
 def convertData(df):
 
@@ -186,36 +186,33 @@ def CheckT1(df, days, threshold=0.1):
 
 
 
-def AnalyzeData(sno,stype):
+def AnalyzeData(sno):
    
-    df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv")
+    df = pd.read_csv(PATH+"/"+sno+".csv")
     
     df = convertData(df)
     df = CheckEMA(df)
     df = CheckT1(df,22)
     df = CheckT1(df,10)
 
-    df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
+    df.to_csv(OUTPATH+"/P_"+sno+".csv",index=False)
 
 
 
-def YFprocessData(stype):
+def YFprocessData():
 
-    snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
-    SLIST = pd.DataFrame(snolist, columns=["sno"])
-    SLIST = SLIST.assign(stype=stype+"")
+    snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH)))
+    SLIST = pd.DataFrame(snolist, columns=["sno"])    
     SLIST = SLIST[:]
 
     with cf.ProcessPoolExecutor(max_workers=12) as executor:
-        list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
+        list(tqdm(executor.map(AnalyzeData,SLIST["sno"],chunksize=1),total=len(SLIST)))
 
 
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #YFprocessData("L")
-    #YFprocessData("M")
-    #YFprocessData("S")
+    YFprocessData()
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
