@@ -8,7 +8,7 @@ from datetime import datetime
 
 #get stock csv file from path
 OUTPATH = "../SData/P_USData/"
-EDATE = "2025-10-03"
+EDATE = "2025-10-06"
 #EDATE = datetime.now().strftime("%Y-%m-%d")
 
 
