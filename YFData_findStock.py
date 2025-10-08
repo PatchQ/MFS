@@ -3,13 +3,13 @@ import concurrent.futures as cf
 import os
 import time as t
 from tqdm import tqdm
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 #get stock csv file from path
 OUTPATH = "../SData/P_YFData/"
 #EDATE = "2025-09-30"
-EDATE = datetime.now().strftime("%Y-%m-%d")
+EDATE = (datetime.now() - timedelta(days=0)).strftime("%Y-%m-%d")
 
 
 def findStock(sno,stype,signal,ruleout):
@@ -42,6 +42,7 @@ def YFfindSignal(stype,signal,ruleout=""):
 
     with cf.ProcessPoolExecutor(max_workers=12) as executor:
         for tempdf in tqdm(executor.map(findStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
+            tempdf = tempdf.dropna(axis=1, how="all")
             signaldf = pd.concat([tempdf, signaldf], ignore_index=True)
             
         signaldf["sno"] = signaldf["sno"].str.replace(r'^0+', '', regex=True)
