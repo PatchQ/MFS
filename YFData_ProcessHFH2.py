@@ -204,7 +204,7 @@ def analyze_trend_structure(ticker, period="6mo", tolerance=0.001):
     """
     # 下载数据
     s = yf.Ticker(ticker)
-    stock = s.history(period=period,auto_adjust=True)      
+    stock = s.history(period=period,auto_adjust=False)      
     
     if stock.empty:
         print(f"无法获取 {ticker} 的数据")
@@ -500,13 +500,24 @@ def find_zigzag_swings_with_classification(high_series, low_series, min_percent_
         tolerance
     )
 
+def find_all_patterns(df, pattern_length=3):
+    all_patterns = []
+    for i in range(len(df) - pattern_length + 1):
+        sequence = list(df['pattern'].iloc[i:i+pattern_length])
+        all_patterns.append({
+            'start_index': i,
+            'sequence': sequence,
+            'as_string': '->'.join(sequence)
+        })
+    return all_patterns
+
 # 使用示例
 if __name__ == "__main__":
 
     set_chinese_font()
     # 分析单个股票    
-    ticker = "0005.HK"
-    period = "6mo"
+    ticker = "0011.HK"
+    period = "6y"
     tolerance = 0.001  # 0.1% 的容忍度
     
     print(f"分析 {ticker} 的趋势结构...")
@@ -527,7 +538,17 @@ if __name__ == "__main__":
         print(f"趋势强度: {trend_analysis['trend_strength']}")
         
         print(f"\n=== 详细摆动点分类 ===")
-        print(swing_points)
+
+        swing_points['PATTERN'] = ""
+
+        for i in range(len(swing_points) - 2):
+            templist = list(swing_points['classification'].iloc[i:i+3])            
+            swing_points['PATTERN'].iloc[i] = ''.join(templist)
+
+        swing_points["BOSS"] = (swing_points['PATTERN']=="LHLLHH")
+
+        swing_points.to_csv("Data/0011_HHLL.csv", index=False)
+
         
         # 检查是否有未分类的点
         unclassified = swing_points[swing_points['classification'].isna()]
@@ -543,38 +564,38 @@ if __name__ == "__main__":
         
         visualize_trend_analysis(ticker, stock_data, swing_points, trend_analysis)
     
-    # 方法2: 使用 ZigZag 指标 (更精确)
-    print(f"\n=== 使用 ZigZag 指标分析 ===")    
-    s = yf.Ticker(ticker)
-    stock_data = s.history(period=period,auto_adjust=True)      
+    # # 方法2: 使用 ZigZag 指标 (更精确)
+    # print(f"\n=== 使用 ZigZag 指标分析 ===")    
+    # s = yf.Ticker(ticker)
+    # stock_data = s.history(period=period,auto_adjust=True)      
 
 
-    zigzag_classified = find_zigzag_swings_with_classification(
-        stock_data['High'], 
-        stock_data['Low'], 
-        min_percent_change=2.0,
-        tolerance=tolerance
-    )
+    # zigzag_classified = find_zigzag_swings_with_classification(
+    #     stock_data['High'], 
+    #     stock_data['Low'], 
+    #     min_percent_change=2.0,
+    #     tolerance=tolerance
+    # )
     
-    # 分析趋势
-    hh_count = len(zigzag_classified[zigzag_classified['classification'] == 'HH'])
-    hl_count = len(zigzag_classified[zigzag_classified['classification'] == 'HL'])
-    lh_count = len(zigzag_classified[zigzag_classified['classification'] == 'LH'])
-    ll_count = len(zigzag_classified[zigzag_classified['classification'] == 'LL'])
-    same_h_count = len(zigzag_classified[zigzag_classified['classification'] == '-H'])
-    same_l_count = len(zigzag_classified[zigzag_classified['classification'] == '-L'])
+    # # 分析趋势
+    # hh_count = len(zigzag_classified[zigzag_classified['classification'] == 'HH'])
+    # hl_count = len(zigzag_classified[zigzag_classified['classification'] == 'HL'])
+    # lh_count = len(zigzag_classified[zigzag_classified['classification'] == 'LH'])
+    # ll_count = len(zigzag_classified[zigzag_classified['classification'] == 'LL'])
+    # same_h_count = len(zigzag_classified[zigzag_classified['classification'] == '-H'])
+    # same_l_count = len(zigzag_classified[zigzag_classified['classification'] == '-L'])
     
-    bullish_signals = hh_count + hl_count
-    bearish_signals = lh_count + ll_count
+    # bullish_signals = hh_count + hl_count
+    # bearish_signals = lh_count + ll_count
     
-    if bullish_signals > bearish_signals:
-        zigzag_trend = "上升"
-    elif bearish_signals > bullish_signals:
-        zigzag_trend = "下降"
-    else:
-        zigzag_trend = "震荡"
+    # if bullish_signals > bearish_signals:
+    #     zigzag_trend = "上升"
+    # elif bearish_signals > bullish_signals:
+    #     zigzag_trend = "下降"
+    # else:
+    #     zigzag_trend = "震荡"
     
-    print("ZigZag 摆动点:")
-    print(zigzag_classified)
-    print(f"ZigZag 趋势方向: {zigzag_trend}")
-    print(f"趋势强度: {abs(bullish_signals - bearish_signals)}")
+    # print("ZigZag 摆动点:")
+    # print(zigzag_classified)
+    # print(f"ZigZag 趋势方向: {zigzag_trend}")
+    # print(f"趋势强度: {abs(bullish_signals - bearish_signals)}")

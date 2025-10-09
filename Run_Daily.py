@@ -30,13 +30,13 @@ if __name__ == '__main__':
     YFprocessData("S")
 
     #get Signal to excelfile
-    YFfindSignal("L","T1_22&EMA1")
-    YFfindSignal("M","T1_22&EMA1")
-    YFfindSignal("S","T1_22&EMA1")
+    YFfindSignal("L","T1_22&EMA1",0)
+    YFfindSignal("M","T1_22&EMA1",0)
+    YFfindSignal("S","T1_22&EMA1",0)
 
-    YFfindSignal("L","T1_10&EMA2","EMA1")
-    YFfindSignal("M","T1_10&EMA2","EMA1")
-    YFfindSignal("S","T1_10&EMA2","EMA1")
+    YFfindSignal("L","T1_10&EMA2",0,"EMA1")
+    YFfindSignal("M","T1_10&EMA2",0,"EMA1")
+    YFfindSignal("S","T1_10&EMA2",0,"EMA1")
 
     
     finish = t.perf_counter()
