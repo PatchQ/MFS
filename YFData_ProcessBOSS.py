@@ -28,49 +28,100 @@ def convertData(df):
     df.bfill(inplace=True)
     return df
 
-def find_swing_points(high_series, low_series):
+def find_swing_points(high_series, low_series, close_series):
     """
     找出摆动高点和摆动低点
     """
     # 使用滚动窗口找到局部高点和低点
     highs = high_series.rolling(window=WINDOW, center=True).max()
-    lows = low_series.rolling(window=WINDOW, center=True).min()
+    lows = low_series.rolling(window=WINDOW, center=True).min()  
     
     # 找出摆动高点 (当前高点等于滚动窗口内的最大值)
     swing_high_mask = high_series == highs
-    swing_highs = high_series[swing_high_mask]
-    
+    swing_high_dates = high_series[swing_high_mask].index
+    swing_high_prices = high_series[swing_high_mask].values    
+
     # 找出摆动低点 (当前低点等于滚动窗口内的最小值)
     swing_low_mask = low_series == lows
-    swing_lows = low_series[swing_low_mask]
+    swing_low_dates = low_series[swing_low_mask].index
+    swing_low_prices = low_series[swing_low_mask].values
+
+    # 获取对应的收盘价并存储为额外属性
+    swing_high_closes = []
+    for date in swing_high_dates:
+        if date in close_series.index:
+            swing_high_closes.append(close_series[date])
+        else:
+            swing_high_closes.append(None)
+    
+    swing_low_closes = []
+    for date in swing_low_dates:
+        if date in close_series.index:
+            swing_low_closes.append(close_series[date])
+        else:
+            swing_low_closes.append(None)
+    
+    # 创建包含所有信息的DataFrame
+    swing_highs = pd.DataFrame({
+        'date': swing_high_dates,
+        'price': swing_high_prices,
+        'close': swing_high_closes,
+        'type': 'high'
+    })
+    
+    swing_lows = pd.DataFrame({
+        'date': swing_low_dates,
+        'price': swing_low_prices,
+        'close': swing_low_closes,
+        'type': 'low'
+    })
     
     # 过滤掉太接近的摆动点
-    swing_highs = filter_close_points(swing_highs, WINDOW)
-    swing_lows = filter_close_points(swing_lows, WINDOW)
+    swing_highs = filter_close_points_df(swing_highs, WINDOW)
+    swing_lows = filter_close_points_df(swing_lows, WINDOW)
     
     return swing_highs, swing_lows
 
-def filter_close_points(series, min_distance):
+def filter_close_points_df(df, min_distance):
     """
-    过滤掉距离太近的摆动点
-    """
-    filtered = pd.Series(index=series.index, dtype=float)
-    last_index = None
+    过滤掉距离太近的摆动点 - DataFrame版本
     
-    for date, value in series.items():
-        if last_index is None:
-            filtered[date] = value
-            last_index = date
+    参数:
+    df: 包含摆动点的DataFrame
+    min_distance: 最小距离（天数）
+    price_col: 价格列名
+    
+    返回:
+    过滤后的DataFrame
+    """
+    if len(df) == 0:
+        return df
+    
+    # 按日期排序
+    df = df.sort_values('date').reset_index(drop=True)
+    
+    filtered_df = pd.DataFrame(columns=df.columns)
+    last_date = None
+    
+    for i, row in df.iterrows():
+        current_date = row['date']
+        
+        if last_date is None:
+            filtered_df = filtered_df.dropna(axis=1, how="all")
+            filtered_df = pd.concat([filtered_df, pd.DataFrame([row])], ignore_index=True)
+            last_date = current_date
         else:
             # 计算与前一个点的距离 (天数)
-            days_diff = (date - last_index).days
+            days_diff = (current_date - last_date).days
             if days_diff >= min_distance:
-                filtered[date] = value
-                last_index = date
+                filtered_df = filtered_df.dropna(axis=1, how="all")
+                filtered_df = pd.concat([filtered_df, pd.DataFrame([row])], ignore_index=True)
+                last_date = current_date
     
-    return filtered.dropna()
+    return filtered_df
 
-def classify_all_swing_points(swing_highs, swing_lows):
+
+def classify_all_swing_points(highs_df, lows_df):
     """
     分类所有摆动点为 HH, HL, LH, LL, -H, -L
     
@@ -79,19 +130,7 @@ def classify_all_swing_points(swing_highs, swing_lows):
     
     返回:
     swing_analysis: 包含所有摆动点及其分类的DataFrame
-    """
-    # 合并所有摆动点并标记类型
-    highs_df = pd.DataFrame({
-        'date': swing_highs.index,
-        'price': swing_highs.values,
-        'type': 'high'
-    })
-    
-    lows_df = pd.DataFrame({
-        'date': swing_lows.index,
-        'price': swing_lows.values,
-        'type': 'low'
-    })
+    """   
     
     # 合并并排序
     all_swings = pd.concat([highs_df, lows_df]).sort_values('date')
@@ -157,22 +196,24 @@ def calHHLL(sno, stype):
     stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
     
     # 找出摆动点
-    swing_highs, swing_lows = find_swing_points(stock['High'], stock['Low'])
+    swing_highs, swing_lows = find_swing_points(stock['High'], stock['Low'], stock["Close"])
     
     # 分类所有摆动点
     swing_analysis = classify_all_swing_points(swing_highs, swing_lows)
 
     swing_analysis['PATTERN'] = ""
+    swing_analysis['HHClose'] = 0
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         for i in range(len(swing_analysis) - 2):
             templist = list(swing_analysis['classification'].iloc[i:i+3])            
+            swing_analysis['HHClose'].iloc[i] = swing_analysis['close'].iloc[i+2]
             swing_analysis['PATTERN'].iloc[i] = ''.join(templist)
 
+    swing_analysis["BOSS"] = ((swing_analysis['PATTERN']=="LHLLHH") & (swing_analysis['HHClose']>swing_analysis['price']))
     swing_analysis.insert(1,"sno", sno)
     swing_analysis.insert(2,"stype", stype)
-    swing_analysis["BOSS"] = (swing_analysis['PATTERN']=="LHLLHH")       
     swing_analysis.to_csv(OUTPATH+"/HHLL/HL_"+sno+".csv",index=False)
 
     return swing_analysis
@@ -186,7 +227,7 @@ def AnalyzeData(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    with cf.ProcessPoolExecutor(max_workers=12) as executor:
+    with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(calHHLL,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 

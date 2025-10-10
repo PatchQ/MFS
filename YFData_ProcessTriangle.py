@@ -15,15 +15,17 @@ OUTPATH = "../SData/P_YFData/"
 
 """
 參數:
-DAYS (list): 多個時間範圍列表
+PERIOD (list): 多個時間範圍列表
 RESISTANCE_RATE (float): 阻力位識別閾值
 BREAKOUT_RATE (float): 突破檢查閾值
 MIN_PEAKS (int): 峰值之間的最小天數
 """
-DAYS=150
+
+PERIOD="6mo"
 RESISTANCE_RATE=0.004
 BREAKOUT_RATE=0.004
 MIN_PEAKS=10
+ADJ=False
 
 SLIDING_WINDOW = False
 WINDOW_DAYS = 60
@@ -73,7 +75,7 @@ def CheckEMA(df):
         return False
     
         
-def find_resistance_test_pattern(sno,stype):
+def find_resistance_test_pattern(sno, stype):
     """
     找出股票三次測試同一高位的模式，並檢查中間是否有突破
     
@@ -89,8 +91,9 @@ def find_resistance_test_pattern(sno,stype):
     """
     
     # 下載股票資料
-    df = pd.read_excel(PATH+"/"+stype+"/"+sno+".xlsx",index_col="Date")   
-    stock = df.tail(DAYS)            
+    ticker = yf.Ticker(sno)
+    stock = ticker.history(period=PERIOD,auto_adjust=ADJ)
+    stock = stock[stock['Volume'] > 0]
     stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
     
     if stock.empty:
@@ -138,7 +141,7 @@ def find_resistance_test_pattern(sno,stype):
     
     return {
         'symbol': sno,
-        'period': DAYS,
+        'period': PERIOD,
         'patterns': patterns,
         'all_peaks': peaks,
         'resistance_levels': resistance_levels
@@ -310,10 +313,10 @@ def CheckTriangle(sno, stype):
     result = find_resistance_test_pattern(sno, stype)
     
     if result is None or not result['patterns']:
-        print(f"在 {sno} 的 {DAYS} 資料中未找到符合條件的模式")
+        print(f"在 {sno} 的 {PERIOD} 資料中未找到符合條件的模式")
         return
     
-    print(f"股票 {sno} 的阻力位測試模式分析（期間: {DAYS}）")
+    print(f"股票 {sno} 的阻力位測試模式分析（期間: {PERIOD}）")
     print(f"突破檢查閾值: {BREAKOUT_RATE*100}%")
     print("=" * 80)
     
@@ -386,12 +389,13 @@ def visualize_resistance_pattern(sno, stype, pattern_index=0):
     
     pattern = result['patterns'][pattern_index]
 
-    df = pd.read_excel(PATH+"/"+stype+"/"+sno+".xlsx", index_col="Date")   
-    stock = df.tail(DAYS).copy()  # 使用 copy() 避免 SettingWithCopyWarning
-    
-    # 確保索引是 datetime 類型
-    stock.index = pd.to_datetime(stock.index, utc=True).tz_convert('Asia/Shanghai')
-    
+    ticker = yf.Ticker(sno)
+    stock = ticker.history(period=PERIOD,auto_adjust=ADJ)
+    stock = stock[stock['Volume'] > 0]
+    stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
+
+    #stock = df.tail(DAYS).copy()  # 使用 copy() 避免 SettingWithCopyWarning
+        
     # 準備陰陽燭圖所需的數據
     if not all(col in stock.columns for col in ['Open', 'High', 'Low', 'Close']):
         print("缺少陰陽燭圖所需的數據欄位 (Open, High, Low, Close)")
@@ -632,10 +636,11 @@ def visualize_resistance_pattern_simple(sno, stype, pattern_index=0):
     
     pattern = result['patterns'][pattern_index]
 
-    df = pd.read_excel(PATH+"/"+stype+"/"+sno+".xlsx", index_col="Date")   
-    stock = df.tail(DAYS).copy()
-    stock.index = pd.to_datetime(stock.index, utc=True).tz_convert('Asia/Shanghai')
-    
+    ticker = yf.Ticker(sno)
+    stock = ticker.history(period=PERIOD,auto_adjust=ADJ)
+    stock = stock[stock['Volume'] > 0]
+    stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
+
     # 準備陰陽燭圖數據
     ohlc_data = stock[['Open', 'High', 'Low', 'Close', 'Volume']].copy()
     
@@ -683,7 +688,7 @@ def visualize_resistance_pattern_simple(sno, stype, pattern_index=0):
 
 def main(stype):
 
-    snolist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(PATH+"/"+stype)))
+    snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
@@ -695,8 +700,8 @@ def main(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #main("L")
-    #main("M")
+    main("L")
+    main("M")
     main("S")
 
     finish = t.perf_counter()

@@ -33,11 +33,6 @@ if __name__ == '__main__':
     YFfindSignal("L","T1_22&EMA1",0)
     YFfindSignal("M","T1_22&EMA1",0)
     YFfindSignal("S","T1_22&EMA1",0)
-
-    YFfindSignal("L","T1_10&EMA2",0,"EMA1")
-    YFfindSignal("M","T1_10&EMA2",0,"EMA1")
-    YFfindSignal("S","T1_10&EMA2",0,"EMA1")
-
     
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
