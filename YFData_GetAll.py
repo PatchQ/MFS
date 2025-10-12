@@ -14,7 +14,7 @@ EDATE = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
 
 def getData(sno,stype):        
     ticker = yf.Ticker(sno)
-    outputlist = ticker.history(period="max",auto_adjust=True)
+    outputlist = ticker.history(period="max",auto_adjust=False)
     outputlist.index = pd.to_datetime(pd.to_datetime(outputlist.index).strftime('%Y%m%d'))
     outputlist = outputlist[outputlist['Volume'] > 0]
     outputlist.insert(0,"sno", sno)    
@@ -34,9 +34,9 @@ def YFgetAll(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #YFgetAll("L")
-    #YFgetAll("M")
-    #YFgetAll("S")
+    YFgetAll("L")
+    YFgetAll("M")
+    YFgetAll("S")    
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

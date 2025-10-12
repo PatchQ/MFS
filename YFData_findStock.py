@@ -47,9 +47,11 @@ def YFfindSignal(stype,signal,days=0,ruleout=""):
         for tempdf in tqdm(executor.map(findStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["days"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
             tempdf = tempdf.dropna(axis=1, how="all")
             signaldf = pd.concat([tempdf, signaldf], ignore_index=True)
-            
-        signaldf["sno"] = signaldf["sno"].str.replace(r'^0+', '', regex=True)
-        signaldf.to_csv("Data/"+signal+"_"+stype+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
+
+        if len(signaldf)!=0:
+            signaldf["sno"] = signaldf["sno"].str.replace(r'^0+', '', regex=True)
+
+        signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
         print("Finish")        
 
 
@@ -57,14 +59,18 @@ def YFfindSignal(stype,signal,days=0,ruleout=""):
 if __name__ == '__main__':
 
     start = t.perf_counter()
+    
+    YFfindSignal("L","T1_22&EMA2",2,"EMA1")
+    YFfindSignal("M","T1_22&EMA2",2,"EMA1")
+    YFfindSignal("S","T1_22&EMA2",2,"EMA1")    
 
-    #YFfindSignal("L","T1_22&EMA1")
-    # YFfindSignal("M","T1_22&EMA1")
-    # YFfindSignal("S","T1_22&EMA1")
+    YFfindSignal("L","T1_50&EMA1",2)
+    YFfindSignal("M","T1_50&EMA1",2)
+    YFfindSignal("S","T1_50&EMA1",2)        
 
-    # YFfindSignal("L","T1_10&EMA2","EMA1")
-    # YFfindSignal("M","T1_10&EMA2","EMA1")
-    # YFfindSignal("S","T1_10&EMA2","EMA1")
+    YFfindSignal("L","T1_22&EMA1",2,"T1_50")
+    YFfindSignal("M","T1_22&EMA1",2,"T1_50")
+    YFfindSignal("S","T1_22&EMA1",2,"T1_50")
 
     YFfindSignal("HHLL","BOSS",30)
     

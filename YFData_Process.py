@@ -13,7 +13,7 @@ OUTPATH = "../SData/P_YFData/"
 
 def convertData(df):
 
-    numeric_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+    numeric_cols = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
     df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
     df.dropna(subset=numeric_cols, how='all', inplace=True)
     df.ffill(inplace=True)
@@ -100,7 +100,7 @@ def calADX(df, period):
 
 def calRSI(df,period):
     # 计算价格变化
-    delta = df['Close'].diff()
+    delta = df['Adj Close'].diff()
     
     # 分离上涨和下跌的变化
     gain = delta.where(delta > 0, 0)
@@ -120,7 +120,7 @@ def calRSI(df,period):
 
 def calRSI_SMA(df,period):
     
-    delta = df['Close'].diff()
+    delta = df['Adj Close'].diff()
     gain = delta.where(delta > 0, 0)
     loss = -delta.where(delta < 0, 0)
     
@@ -138,11 +138,11 @@ def CheckEMA(df):
 
     try:
         # Volatility indicators
-        df['EMA10'] = df['Close'].ewm(span=10, min_periods=5, adjust=False).mean()
-        df['EMA22'] = df['Close'].ewm(span=22, min_periods=11, adjust=False).mean()     
-        df['EMA50'] = df['Close'].ewm(span=50, min_periods=25, adjust=False).mean()     
-        df['EMA100'] = df['Close'].ewm(span=100, min_periods=50, adjust=False).mean()             
-        df['EMA250'] = df['Close'].ewm(span=250, min_periods=125, adjust=False).mean()
+        df['EMA10'] = df['Adj Close'].ewm(span=10, min_periods=5, adjust=False).mean()
+        df['EMA22'] = df['Adj Close'].ewm(span=22, min_periods=11, adjust=False).mean()     
+        df['EMA50'] = df['Adj Close'].ewm(span=50, min_periods=25, adjust=False).mean()     
+        df['EMA100'] = df['Adj Close'].ewm(span=100, min_periods=50, adjust=False).mean()             
+        df['EMA250'] = df['Adj Close'].ewm(span=250, min_periods=125, adjust=False).mean()
 
         df['EMA1'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))        
         df['EMA2'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]))        
@@ -193,7 +193,7 @@ def AnalyzeData(sno,stype):
     df = convertData(df)
     df = CheckEMA(df)
     df = CheckT1(df,22)
-    df = CheckT1(df,10)
+    df = CheckT1(df,50)
 
     df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
 
@@ -213,9 +213,9 @@ def YFprocessData(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #YFprocessData("L")
-    #YFprocessData("M")
-    #YFprocessData("S")
+    YFprocessData("L")
+    YFprocessData("M")
+    YFprocessData("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
