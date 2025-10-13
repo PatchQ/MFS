@@ -12,7 +12,7 @@ OUTPATH = "../SData/P_YFData/"
 EDATE = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
 
-def findStock(sno,stype,signal,days,ruleout):
+def filterStock(sno,stype,signal,days,ruleout):
 
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
@@ -32,7 +32,7 @@ def findStock(sno,stype,signal,days,ruleout):
 
 
 
-def YFfindSignal(stype,signal,days=0,ruleout=""):
+def YFSignal(stype,signal,days=0,ruleout=""):
     signaldf = pd.DataFrame()
 
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(OUTPATH+"/"+stype+"/")))
@@ -44,7 +44,7 @@ def YFfindSignal(stype,signal,days=0,ruleout=""):
     SLIST = SLIST[:]
 
     with cf.ProcessPoolExecutor(max_workers=12) as executor:
-        for tempdf in tqdm(executor.map(findStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["days"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
+        for tempdf in tqdm(executor.map(filterStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["days"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
             tempdf = tempdf.dropna(axis=1, how="all")
             signaldf = pd.concat([tempdf, signaldf], ignore_index=True)
 
@@ -58,21 +58,23 @@ def YFfindSignal(stype,signal,days=0,ruleout=""):
 
 if __name__ == '__main__':
 
+    DAYS = 0
     start = t.perf_counter()
     
-    YFfindSignal("L","T1_22&EMA2",2,"EMA1")
-    YFfindSignal("M","T1_22&EMA2",2,"EMA1")
-    YFfindSignal("S","T1_22&EMA2",2,"EMA1")    
+    # YFSignal("L","T1_22&EMA2",DAYS,"EMA1")
+    # YFSignal("M","T1_22&EMA2",DAYS,"EMA1")
+    # YFSignal("S","T1_22&EMA2",DAYS,"EMA1")    
 
-    YFfindSignal("L","T1_50&EMA1",2)
-    YFfindSignal("M","T1_50&EMA1",2)
-    YFfindSignal("S","T1_50&EMA1",2)        
+    # YFSignal("L","T1_50&EMA1",DAYS)
+    # YFSignal("M","T1_50&EMA1",DAYS)
+    # YFSignal("S","T1_50&EMA1",DAYS)        
 
-    YFfindSignal("L","T1_22&EMA1",2,"T1_50")
-    YFfindSignal("M","T1_22&EMA1",2,"T1_50")
-    YFfindSignal("S","T1_22&EMA1",2,"T1_50")
+    # YFSignal("L","T1_22&EMA1",DAYS,"T1_50")
+    # YFSignal("M","T1_22&EMA1",DAYS,"T1_50")
+    # YFSignal("S","T1_22&EMA1",DAYS,"T1_50")
 
-    YFfindSignal("HHLL","BOSS",30)
+    YFSignal("HHLL","BOSS1",30)
+    YFSignal("HHLL","BOSS2",30)
     
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

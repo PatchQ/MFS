@@ -1,12 +1,13 @@
 import pandas as pd
 import time as t
+import tushare as ts
 
 
 from AA_GetIndustryList import getIndustryList
 from AA_GetStockListData import getStockListData
 from YFData_GetAll import YFgetAll
 from YFData_Process import YFprocessData
-from YFData_FindStock import YFfindSignal
+from YFData_FilterStock import YFSignal
 
 PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/" 
@@ -26,19 +27,12 @@ if __name__ == '__main__':
     #YFgetAll("M")
     #YFgetAll("S")
 
-    #process All Data
-    YFprocessData("L")
-    YFprocessData("M")
-    YFprocessData("S")
-
-    #get Signal to excelfile
-    # YFfindSignal("L","T1_22&EMA1")
-    # YFfindSignal("M","T1_22&EMA1")
-    # YFfindSignal("S","T1_22&EMA1")
-
-    # YFfindSignal("L","T1_10&EMA2","EMA1")
-    # YFfindSignal("M","T1_10&EMA2","EMA1")
-    # YFfindSignal("S","T1_10&EMA2","EMA1")
+    
+    ts.set_token('4228ed3bd2b53edd9c1ced494c8190da84cd05b2869822905b4a1bbd')
+    pro = ts.pro_api()
+    stock = ts.get_hist_data('0005.HK')
+    print(stock)
+    
 
     
     finish = t.perf_counter()

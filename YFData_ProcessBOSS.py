@@ -14,9 +14,10 @@ import warnings
 PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/" 
 
-PERIOD="1y"
+#PERIOD="1y"
+DAYS=300
 TOLERANCE=0.001
-WINDOW=10
+WINDOW=5
 
 
 def convertData(df):
@@ -190,10 +191,18 @@ def classify_all_swing_points(highs_df, lows_df):
 
 def calHHLL(sno, stype):
         
-    ticker = yf.Ticker(sno)
-    stock = ticker.history(period=PERIOD,auto_adjust=False)
-    stock = stock[stock['Volume'] > 0]
-    stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
+    nowprice = 0
+    df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv",index_col=0)    
+    df = convertData(df)
+    stock = df.tail(DAYS)    
+
+    # ticker = yf.Ticker(sno)
+    # stock = ticker.history(period=PERIOD,auto_adjust=False)
+    # stock = stock[stock['Volume'] > 0]
+    stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai') 
+
+    if len(stock)!=0:
+        nowprice = stock['Close'].iloc[-1]
     
     # 找出摆动点
     swing_highs, swing_lows = find_swing_points(stock['High'], stock['Low'], stock["Close"])
@@ -203,15 +212,18 @@ def calHHLL(sno, stype):
 
     swing_analysis['PATTERN'] = ""
     swing_analysis['HHClose'] = 0
+    swing_analysis['HLLow'] = 0
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         for i in range(len(swing_analysis) - 2):
             templist = list(swing_analysis['classification'].iloc[i:i+3])            
             swing_analysis['HHClose'].iloc[i] = swing_analysis['close'].iloc[i+2]
+            swing_analysis['HLLow'].iloc[i] = swing_analysis['price'].iloc[i+1]
             swing_analysis['PATTERN'].iloc[i] = ''.join(templist)
 
-    swing_analysis["BOSS"] = ((swing_analysis['PATTERN']=="LHLLHH") & (swing_analysis['HHClose']>swing_analysis['price']))
+    swing_analysis["BOSS1"] = ((swing_analysis['PATTERN']=="LHLLHH") & (swing_analysis['HHClose']>swing_analysis['price']))
+    swing_analysis["BOSS2"] = ((swing_analysis['PATTERN']=="HHHLHH") & (nowprice>swing_analysis['HLLow']))
     swing_analysis.insert(1,"sno", sno)
     swing_analysis.insert(2,"stype", stype)
     swing_analysis.to_csv(OUTPATH+"/HHLL/HL_"+sno+".csv",index=False)
