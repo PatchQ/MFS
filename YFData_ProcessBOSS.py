@@ -17,7 +17,7 @@ OUTPATH = "../SData/P_YFData/"
 #PERIOD="1y"
 DAYS=300
 TOLERANCE=0.001
-WINDOW=5
+WINDOW=10
 
 
 def convertData(df):
@@ -232,7 +232,7 @@ def calHHLL(sno, stype):
 
 
 
-def AnalyzeData(stype):
+def YFProcessBOSS(stype):
 
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
@@ -247,9 +247,9 @@ def AnalyzeData(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    AnalyzeData("L")
-    AnalyzeData("M")
-    AnalyzeData("S")
+    YFProcessBOSS("L")
+    YFProcessBOSS("M")
+    YFProcessBOSS("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

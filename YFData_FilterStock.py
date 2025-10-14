@@ -52,7 +52,7 @@ def YFSignal(stype,signal,days=0,ruleout=""):
             signaldf["sno"] = signaldf["sno"].str.replace(r'^0+', '', regex=True)
 
         signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
-        print("Finish")        
+        print("Finish")
 
 
 

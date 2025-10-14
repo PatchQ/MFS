@@ -1,11 +1,11 @@
 import pandas as pd
 import time as t
-import tushare as ts
+import yfinance as yf
 
 
 from AA_GetIndustryList import getIndustryList
 from AA_GetStockListData import getStockListData
-from YFData_GetAll import YFgetAll
+from YFData_Collect import YFgetAll
 from YFData_Process import YFprocessData
 from YFData_FilterStock import YFSignal
 
@@ -26,13 +26,6 @@ if __name__ == '__main__':
     #YFgetAll("L")
     #YFgetAll("M")
     #YFgetAll("S")
-
-    
-    ts.set_token('4228ed3bd2b53edd9c1ced494c8190da84cd05b2869822905b4a1bbd')
-    pro = ts.pro_api()
-    stock = ts.get_hist_data('0005.HK')
-    print(stock)
-    
 
     
     finish = t.perf_counter()
