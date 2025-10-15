@@ -165,12 +165,12 @@ def CheckT1(df, days, threshold=0.1):
             return df
         
         # 取最近N天的數據
-        recent_data = df.tail(days)
+        #recent_data = df.tail(days)
         
         # 計算最高價、最低價
-        highest = recent_data['High'].max()
-        lowest = recent_data['Low'].min()
-        
+        highest = df['High'].rolling(window=days).max()
+        lowest = df['Low'].rolling(window=days).min()
+                
         # 計算波動幅度
         volatility = (highest - lowest) / lowest
         

@@ -37,10 +37,10 @@ if __name__ == '__main__':
     YFprocessData("M")
     YFprocessData("S")
 
-    #process All Data to BOSS
-    YFProcessBOSS("L")
-    YFProcessBOSS("M")
-    YFProcessBOSS("S")
+    # #process All Data to BOSS
+    # YFProcessBOSS("L")
+    # YFProcessBOSS("M")
+    # YFProcessBOSS("S")
 
     # #get Signal to excelfile
     YFSignal("L","T1_22&EMA2",DAYS,"EMA1")
@@ -55,8 +55,8 @@ if __name__ == '__main__':
     YFSignal("M","T1_22&EMA1",DAYS,"T1_50")
     YFSignal("S","T1_22&EMA1",DAYS,"T1_50")
 
-    YFSignal("HHLL","BOSS1",30)
-    YFSignal("HHLL","BOSS2",30)
+    # YFSignal("HHLL","BOSS1",30)
+    # YFSignal("HHLL","BOSS2",30)
     
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

@@ -15,9 +15,9 @@ PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/" 
 
 #PERIOD="1y"
-DAYS=300
+DAYS=0
 TOLERANCE=0.001
-WINDOW=10
+WINDOW=7
 
 
 def convertData(df):
@@ -192,10 +192,10 @@ def classify_all_swing_points(highs_df, lows_df):
 def calHHLL(sno, stype):
         
     nowprice = 0
-    df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv",index_col=0)    
+    df = pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv",index_col=0)    
     df = convertData(df)
-    stock = df.tail(DAYS)    
 
+    stock = df.copy()
     # ticker = yf.Ticker(sno)
     # stock = ticker.history(period=PERIOD,auto_adjust=False)
     # stock = stock[stock['Volume'] > 0]
@@ -210,31 +210,57 @@ def calHHLL(sno, stype):
     # 分类所有摆动点
     swing_analysis = classify_all_swing_points(swing_highs, swing_lows)
 
+    df = df.reset_index()    
+    swing_analysis = swing_analysis.reset_index()
+    swing_analysis['date'] = swing_analysis['date'].dt.strftime("%Y-%m-%d")
+
     swing_analysis['PATTERN'] = ""
-    swing_analysis['HHClose'] = 0
-    swing_analysis['HLLow'] = 0
+    swing_analysis['LLClose'] = ""
+    swing_analysis['LLDate'] = ""
+    swing_analysis['HHClose'] = ""
+    swing_analysis['HHDate'] = ""
+    
+    df['classification'] = ""
+    df['PATTERN'] = ""
+    df['LLClose'] = ""
+    df['LLDate'] = ""
+    df['HHClose'] = ""
+    df['HHDate'] = ""
+    
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         for i in range(len(swing_analysis) - 2):
-            templist = list(swing_analysis['classification'].iloc[i:i+3])            
-            swing_analysis['HHClose'].iloc[i] = swing_analysis['close'].iloc[i+2]
-            swing_analysis['HLLow'].iloc[i] = swing_analysis['price'].iloc[i+1]
+            templist = list(swing_analysis['classification'].iloc[i:i+3])
             swing_analysis['PATTERN'].iloc[i] = ''.join(templist)
 
+            swing_analysis['LLClose'].iloc[i] = swing_analysis['close'].iloc[i+1]
+            swing_analysis['LLDate'].iloc[i] = swing_analysis['date'].iloc[i+1]
+            swing_analysis['HHClose'].iloc[i] = swing_analysis['close'].iloc[i+2]
+            swing_analysis['HHDate'].iloc[i] = swing_analysis['date'].iloc[i+2]
+
+            date_match = (df["Date"] == swing_analysis['date'].iloc[i])
+            df.loc[date_match, "LLClose"] = swing_analysis["LLClose"].iloc[i]         
+            df.loc[date_match, "LLDate"] = swing_analysis["LLDate"].iloc[i]
+            df.loc[date_match, "HHClose"] = swing_analysis["HHClose"].iloc[i]
+            df.loc[date_match, "HHDate"] = swing_analysis["HHDate"].iloc[i]
+            df.loc[date_match, "PATTERN"] = swing_analysis["PATTERN"].iloc[i]
+            
+
     swing_analysis["BOSS1"] = ((swing_analysis['PATTERN']=="LHLLHH") & (swing_analysis['HHClose']>swing_analysis['price']))
-    swing_analysis["BOSS2"] = ((swing_analysis['PATTERN']=="HHHLHH") & (nowprice>swing_analysis['HLLow']))
+    #swing_analysis["BOSS2"] = ((swing_analysis['PATTERN']=="HHHLHH") & (nowprice>swing_analysis['HLLow']))
     swing_analysis.insert(1,"sno", sno)
     swing_analysis.insert(2,"stype", stype)
     swing_analysis.to_csv(OUTPATH+"/HHLL/HL_"+sno+".csv",index=False)
 
-    return swing_analysis
+    df["BOSS1"] = ((df['PATTERN']=="LHLLHH") & (df['HHClose']>df['High']))    
+    df.to_csv(OUTPATH+"/"+stype+"/"+sno+".csv",index=False)
 
 
 
 def YFProcessBOSS(stype):
 
-    snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
+    snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(OUTPATH+"/"+stype+"/")))    
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
