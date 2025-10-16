@@ -55,7 +55,9 @@ if __name__ == '__main__':
     YFSignal("M","T1_22&EMA1",DAYS,"T1_50")
     YFSignal("S","T1_22&EMA1",DAYS,"T1_50")
 
-    # YFSignal("HHLL","BOSS1",30)
+    YFSignal("L","BOSS1",30)
+    YFSignal("M","BOSS1",30)
+    YFSignal("S","BOSS1",30)
     # YFSignal("HHLL","BOSS2",30)
     
     finish = t.perf_counter()

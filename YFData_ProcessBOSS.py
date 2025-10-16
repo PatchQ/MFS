@@ -234,13 +234,13 @@ def calHHLL(sno, stype):
             templist = list(swing_analysis['classification'].iloc[i:i+3])
             swing_analysis['PATTERN'].iloc[i] = ''.join(templist)
 
-            swing_analysis['LLClose'].iloc[i] = swing_analysis['close'].iloc[i+1]
+            swing_analysis['LLLow'].iloc[i] = swing_analysis['price'].iloc[i+1]
             swing_analysis['LLDate'].iloc[i] = swing_analysis['date'].iloc[i+1]
             swing_analysis['HHClose'].iloc[i] = swing_analysis['close'].iloc[i+2]
             swing_analysis['HHDate'].iloc[i] = swing_analysis['date'].iloc[i+2]
 
             date_match = (df["Date"] == swing_analysis['date'].iloc[i])
-            df.loc[date_match, "LLClose"] = swing_analysis["LLClose"].iloc[i]         
+            df.loc[date_match, "LLLow"] = swing_analysis["LLLow"].iloc[i]         
             df.loc[date_match, "LLDate"] = swing_analysis["LLDate"].iloc[i]
             df.loc[date_match, "HHClose"] = swing_analysis["HHClose"].iloc[i]
             df.loc[date_match, "HHDate"] = swing_analysis["HHDate"].iloc[i]
@@ -253,6 +253,10 @@ def calHHLL(sno, stype):
     swing_analysis.insert(2,"stype", stype)
     swing_analysis.to_csv(OUTPATH+"/HHLL/HL_"+sno+".csv",index=False)
 
+    BOSSRule1 = df['PATTERN']=="LHLLHH"
+    BOSSRule2 = df['HHClose']>df['High']
+    BOSSRule3 = df['LLLow']<df['Low'].rolling(window=22).min()
+    
     df["BOSS1"] = ((df['PATTERN']=="LHLLHH") & (df['HHClose']>df['High']))    
     df.to_csv(OUTPATH+"/"+stype+"/"+sno+".csv",index=False)
 
