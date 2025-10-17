@@ -17,30 +17,25 @@ if __name__ == '__main__':
 
     DAYS = 0
     #get IndustryList from AA
-    #getIndustryList()
+    getIndustryList()
 
     #get All number from AA
-    #getStockListData()
+    getStockListData()
 
     # #get All History Data from YF
-    # YFgetAll("L")
-    # YFgetAll("M")
-    # YFgetAll("S")
+    YFgetAll("L")
+    YFgetAll("M")
+    YFgetAll("S")
 
     #get Daily Data from YF
-    YFgetDaily("L")
-    YFgetDaily("M")
-    YFgetDaily("S")
+    # YFgetDaily("L")
+    # YFgetDaily("M")
+    # YFgetDaily("S")
 
     #process All Data
     YFprocessData("L")
     YFprocessData("M")
     YFprocessData("S")
-
-    # #process All Data to BOSS
-    # YFProcessBOSS("L")
-    # YFProcessBOSS("M")
-    # YFProcessBOSS("S")
 
     # #get Signal to excelfile
     YFSignal("L","T1_22&EMA2",DAYS,"EMA1")
@@ -57,8 +52,7 @@ if __name__ == '__main__':
 
     YFSignal("L","BOSS1",30)
     YFSignal("M","BOSS1",30)
-    YFSignal("S","BOSS1",30)
-    # YFSignal("HHLL","BOSS2",30)
+    YFSignal("S","BOSS1",30)    
     
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
