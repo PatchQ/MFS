@@ -209,6 +209,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     df['HHClose'] = 0
     df['HHDate'] = ""
     
+    
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -236,11 +237,39 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
 
     BOSSRule1 = df['PATTERN']=="LHLLHH"
     BOSSRule2 = df['HHClose']>df['High']
-    BOSSRule3 = df['LLLow']<df['Low'].rolling(window=22).min()
+    BOSSRule3 = df['LLLow']<df['Low'].rolling(window=22).min()  
 
     #df["BOSS1"] = ((df['PATTERN']=="LHLLHH") & (df['HHClose']>df['High']))    
     df["BOSS1"] = (BOSSRule1 & BOSSRule2 & BOSSRule3)    
+
+    tempdf = df.loc[df["BOSS1"]]
+
+    df.set_index("Date", inplace=True)
+    df.index = pd.to_datetime(df.index)
+
+    df['bullish_count'] = ""
+    df['bullish_ratio'] = 0
+    df['strong_bullish'] = ""
+    df['medium_bullish'] = 0
+    df['weak_bullish'] = ""    
+
+    for i in range(len(tempdf)):
+        sdate = pd.to_datetime(tempdf["LLDate"].iloc[i])
+        edate = pd.to_datetime(tempdf["HHDate"].iloc[i])
+        fdf = df.loc[(df.index>sdate) & (df.index<=edate)]
+
+        bullish_count, bullish_ratio = calCandleStick(fdf)
+        strong_bullish, medium_bullish, weak_bullish = calCandleStickBody(fdf)
+
+        date_match = (df.index == tempdf['Date'].iloc[i])
+        df.loc[date_match, "bullish_count"] = bullish_count
+        df.loc[date_match, "bullish_ratio"] = bullish_ratio
+        df.loc[date_match, "strong_bullish"] = strong_bullish
+        df.loc[date_match, "medium_bullish"] = medium_bullish
+        df.loc[date_match, "weak_bullish"] = weak_bullish
     
+    df["BOSS1"] = (df["BOSS1"] & (df["bullish_ratio"]>=0.6))   
+
     return df
 
 
@@ -448,8 +477,41 @@ def extendData(df, extension_days=10):
     return result
 
 
+def calCandleStick(df):
+
+    bullish_ratio = 0
+    total_candles = len(df)
+    bullish_condition = df['Close'] > df['Open']    
+    bullish_count = bullish_condition.sum()
+    
+    if bullish_count!=0:
+        bullish_ratio = round((bullish_count / total_candles),2)
+
+    return bullish_count, bullish_ratio
+
+def calCandleStickBody(df):
+
+    bullish_condition = df['Close'] > df['Open']
+    bullish_df = df[bullish_condition].copy()
+    strong_bullish = 0
+    medium_bullish = 0
+    weak_bullish = 0
+    
+    if len(bullish_df) > 0:
+        bullish_df['Body_Size'] = abs(bullish_df['Close'] - bullish_df['Open'])
+        bullish_df['Body_Ratio'] = bullish_df['Body_Size'] / (bullish_df['High'] - bullish_df['Low'])                
+        # Strong（body > 60%）
+        strong_bullish = len(bullish_df[bullish_df['Body_Ratio'] > 0.6])
+        # medium（body 30%-60%）
+        medium_bullish = len(bullish_df[(bullish_df['Body_Ratio'] >= 0.3) &  (bullish_df['Body_Ratio'] <= 0.6)])        
+        # weak（body < 30%）
+        weak_bullish = len(bullish_df[bullish_df['Body_Ratio'] < 0.3])  
+
+    return strong_bullish, medium_bullish, weak_bullish
+    
+
 def AnalyzeData(sno,stype):
-   
+       
     df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv",index_col=0)
     
     df = convertData(df)
@@ -460,7 +522,8 @@ def AnalyzeData(sno,stype):
     tempdf = calHHLL(df)    
 
     df = checkLHHHLL(df, sno, stype, tempdf)
-
+    
+    df = df.reset_index()
     df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
 
 
@@ -471,7 +534,7 @@ def YFprocessData(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    with cf.ProcessPoolExecutor(max_workers=12) as executor:
+    with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 
