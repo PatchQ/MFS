@@ -13,7 +13,7 @@ PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/" 
 DAYS=0
 TOLERANCE=0.001
-WINDOW=7
+WINDOW=10
 
 def convertData(df):
 
@@ -247,11 +247,11 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     df.set_index("Date", inplace=True)
     df.index = pd.to_datetime(df.index)
 
-    df['bullish_count'] = ""
-    df['bullish_ratio'] = 0
-    df['strong_bullish'] = ""
+    df['bullish_count'] = 0
+    df['bullish_ratio'] = 0.00
+    df['strong_bullish'] = 0
     df['medium_bullish'] = 0
-    df['weak_bullish'] = ""    
+    df['weak_bullish'] = 0   
 
     for i in range(len(tempdf)):
         sdate = pd.to_datetime(tempdf["LLDate"].iloc[i])
