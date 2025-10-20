@@ -199,6 +199,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     swing_analysis['LLDate'] = ""
     swing_analysis['HHClose'] = 0
     swing_analysis['HHDate'] = ""
+    swing_analysis['HHHigh'] = 0
     swing_analysis['sno'] = sno
     swing_analysis['stype'] = stype
     
@@ -208,6 +209,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     df['LLDate'] = ""
     df['HHClose'] = 0
     df['HHDate'] = ""
+    df['HHHigh'] = 0
     
     
 
@@ -219,8 +221,9 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
 
             swing_analysis['LLLow'].iloc[i] = swing_analysis['price'].iloc[i+1]
             swing_analysis['LLDate'].iloc[i] = swing_analysis['date'].iloc[i+1]
-            swing_analysis['HHClose'].iloc[i] = swing_analysis['close'].iloc[i+2]
+            swing_analysis['HHClose'].iloc[i] = swing_analysis['close'].iloc[i+2]            
             swing_analysis['HHDate'].iloc[i] = swing_analysis['date'].iloc[i+2]
+            swing_analysis['HHHigh'].iloc[i] = swing_analysis['price'].iloc[i+2]
 
             date_match = (df["Date"] == swing_analysis['date'].iloc[i])
             df.loc[date_match, "classification"] = swing_analysis["classification"].iloc[i]
@@ -228,6 +231,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
             df.loc[date_match, "LLDate"] = swing_analysis["LLDate"].iloc[i]
             df.loc[date_match, "HHClose"] = swing_analysis["HHClose"].iloc[i]
             df.loc[date_match, "HHDate"] = swing_analysis["HHDate"].iloc[i]
+            df.loc[date_match, "HHHigh"] = swing_analysis["HHHigh"].iloc[i]
             df.loc[date_match, "PATTERN"] = swing_analysis["PATTERN"].iloc[i]
             
 
@@ -247,11 +251,15 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     df.set_index("Date", inplace=True)
     df.index = pd.to_datetime(df.index)
 
-    df['bullish_count'] = 0
-    df['bullish_ratio'] = 0.00
-    df['strong_bullish'] = 0
-    df['medium_bullish'] = 0
-    df['weak_bullish'] = 0   
+    # df['bullish_count'] = 0
+    # df['bullish_ratio'] = 0.00
+    # df['strong_bullish'] = 0
+    # df['medium_bullish'] = 0
+    # df['weak_bullish'] = 0   
+    # df['buy_price'] = 0.00
+    # df['tp1'] = 0.00
+    # df['tp2'] = 0.00
+    # df['BOSS_STATUS'] = ""
 
     for i in range(len(tempdf)):
         sdate = pd.to_datetime(tempdf["LLDate"].iloc[i])
@@ -266,9 +274,67 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
         df.loc[date_match, "bullish_ratio"] = bullish_ratio
         df.loc[date_match, "strong_bullish"] = strong_bullish
         df.loc[date_match, "medium_bullish"] = medium_bullish
-        df.loc[date_match, "weak_bullish"] = weak_bullish
+        df.loc[date_match, "weak_bullish"] = weak_bullish        
     
-    df["BOSS1"] = (df["BOSS1"] & (df["bullish_ratio"]>=0.6))   
+    df["BOSS1"] = (df["BOSS1"] & (df["bullish_ratio"]>=0.6))  
+    
+    df.loc[df["BOSS1"], "buy_price"] = round(((df["HHHigh"] + df["LLLow"]) / 2),2)
+    df.loc[df["BOSS1"], "tp1"] = df["HHHigh"]
+    df.loc[df["BOSS1"], "tp2"] = df["buy_price"] + (df["HHHigh"] - df["buy_price"]) * 2 
+
+    tempdf = df.loc[df["BOSS1"]]
+
+    for i in range(len(tempdf)):
+        hhdate = pd.to_datetime(tempdf["HHDate"].iloc[i])        
+        buy_price = tempdf["buy_price"].iloc[i]
+        cl_price = tempdf["LLLow"].iloc[i]
+        tp1 = tempdf["tp1"].iloc[i]
+        tp2 = tempdf["tp2"].iloc[i]
+
+        buydate_mask = (df.index > hhdate) & (buy_price>=df["Low"])
+        buydates = df[buydate_mask].index
+
+        if len(buydates)!=0:
+            df.loc[buydates[0],'BOSS_STATUS'] = "BUY"+hhdate.strftime("%Y-%m-%d")
+            print("BUYDate : "+buydates[0].strftime("%Y-%m-%d"))
+
+            tp1date_mask = (df.index > buydates[0]) & (df["High"]>=tp1)
+            tp1dates = df[tp1date_mask].index
+
+            cl1date_mask = (df.index > buydates[0]) & (cl_price>=df["Low"])
+            cl1dates = df[cl1date_mask].index            
+
+            if len(tp1dates)!=0:
+                lasttp1date = tp1dates[0]
+
+            if len(cl1dates)!=0:                
+                lastcl1date = cl1dates[0]
+
+            if (lastcl1date<lasttp1date):
+                df.loc[cl1dates[0],'BOSS_STATUS'] = "CL1"+hhdate.strftime("%Y-%m-%d")
+                print("CL1 : "+cl1dates[0].strftime("%Y-%m-%d"))
+            else:
+                df.loc[tp1dates[0],'BOSS_STATUS'] = "TP1"+hhdate.strftime("%Y-%m-%d")    
+                print("TP1 : "+tp1dates[0].strftime("%Y-%m-%d"))     
+
+                tp2date_mask = (df.index > tp1dates[0]) & (df["High"]>=tp2)
+                tp2dates = df[tp2date_mask].index        
+            
+                cl2date_mask = (df.index > tp1dates[0]) & (cl_price>=df["Low"])
+                cl2dates = df[cl2date_mask].index
+
+                if len(tp2dates)!=0:                
+                    lasttp2date = tp2dates[0]
+
+                if len(cl2dates)!=0:
+                    lastcl2date = cl2dates[0]
+
+                if (lastcl2date<lasttp2date):               
+                    df.loc[cl2dates[0],'BOSS_STATUS'] = "CL2"+hhdate.strftime("%Y-%m-%d")
+                    print("CL2 : "+cl2dates[0].strftime("%Y-%m-%d"))
+                else:
+                    df.loc[tp2dates[0],'BOSS_STATUS'] = "TP2"+hhdate.strftime("%Y-%m-%d")
+                    print("TP2 : "+tp2dates[0].strftime("%Y-%m-%d"))
 
     return df
 
@@ -532,7 +598,7 @@ def YFprocessData(stype):
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
-    SLIST = SLIST[:]
+    SLIST = SLIST[:1]
 
     with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
@@ -542,8 +608,8 @@ if __name__ == '__main__':
     start = t.perf_counter()
 
     YFprocessData("L")
-    YFprocessData("M")
-    YFprocessData("S")
+    #YFprocessData("M")
+    #YFprocessData("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
