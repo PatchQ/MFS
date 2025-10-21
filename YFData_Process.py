@@ -190,6 +190,8 @@ def CheckT1(df, days, threshold=0.1):
 
 def checkLHHHLL(df, sno, stype, swing_analysis):
 
+    #print(sno)
+
     df = df.reset_index()    
     swing_analysis = swing_analysis.reset_index()
     swing_analysis['date'] = swing_analysis['date'].dt.strftime("%Y-%m-%d")
@@ -210,6 +212,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     df['HHClose'] = 0
     df['HHDate'] = ""
     df['HHHigh'] = 0
+    df['BOSS_STATUS'] = ""
     
     
 
@@ -225,6 +228,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
             swing_analysis['HHDate'].iloc[i] = swing_analysis['date'].iloc[i+2]
             swing_analysis['HHHigh'].iloc[i] = swing_analysis['price'].iloc[i+2]
 
+
             date_match = (df["Date"] == swing_analysis['date'].iloc[i])
             df.loc[date_match, "classification"] = swing_analysis["classification"].iloc[i]
             df.loc[date_match, "LLLow"] = swing_analysis["LLLow"].iloc[i]
@@ -237,7 +241,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
 
     swing_analysis["BOSS1"] = ((swing_analysis['PATTERN']=="LHLLHH") & (swing_analysis['HHClose']>swing_analysis['price']))
     #swing_analysis["BOSS2"] = ((swing_analysis['PATTERN']=="HHHLHH") & (nowprice>swing_analysis['HLLow']))    
-    swing_analysis.to_csv(OUTPATH+"/HHLL/HL_"+sno+".csv",index=False)
+    #swing_analysis.to_csv(OUTPATH+"/HHLL/HL_"+sno+".csv",index=False)
 
     BOSSRule1 = df['PATTERN']=="LHLLHH"
     BOSSRule2 = df['HHClose']>df['High']
@@ -245,21 +249,20 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
 
     #df["BOSS1"] = ((df['PATTERN']=="LHLLHH") & (df['HHClose']>df['High']))    
     df["BOSS1"] = (BOSSRule1 & BOSSRule2 & BOSSRule3)    
-
     tempdf = df.loc[df["BOSS1"]]
 
     df.set_index("Date", inplace=True)
     df.index = pd.to_datetime(df.index)
 
-    # df['bullish_count'] = 0
-    # df['bullish_ratio'] = 0.00
-    # df['strong_bullish'] = 0
-    # df['medium_bullish'] = 0
-    # df['weak_bullish'] = 0   
-    # df['buy_price'] = 0.00
-    # df['tp1'] = 0.00
-    # df['tp2'] = 0.00
-    # df['BOSS_STATUS'] = ""
+    df['bullish_count'] = 0
+    df['bullish_ratio'] = 0.00
+    df['strong_bullish'] = 0
+    df['medium_bullish'] = 0
+    df['weak_bullish'] = 0   
+    df['buy_price'] = 0.00
+    df['tp1'] = 0.00
+    df['tp2'] = 0.00
+    
 
     for i in range(len(tempdf)):
         sdate = pd.to_datetime(tempdf["LLDate"].iloc[i])
@@ -267,9 +270,9 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
         fdf = df.loc[(df.index>sdate) & (df.index<=edate)]
 
         bullish_count, bullish_ratio = calCandleStick(fdf)
-        strong_bullish, medium_bullish, weak_bullish = calCandleStickBody(fdf)
+        strong_bullish, medium_bullish, weak_bullish = calCandleStickBody(fdf)        
 
-        date_match = (df.index == tempdf['Date'].iloc[i])
+        date_match = (df.index == tempdf["Date"].iloc[i])
         df.loc[date_match, "bullish_count"] = bullish_count
         df.loc[date_match, "bullish_ratio"] = bullish_ratio
         df.loc[date_match, "strong_bullish"] = strong_bullish
@@ -281,60 +284,85 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     df.loc[df["BOSS1"], "buy_price"] = round(((df["HHHigh"] + df["LLLow"]) / 2),2)
     df.loc[df["BOSS1"], "tp1"] = df["HHHigh"]
     df.loc[df["BOSS1"], "tp2"] = df["buy_price"] + (df["HHHigh"] - df["buy_price"]) * 2 
+    df.loc[df["BOSS1"], "BOSS_STATUS"] = "SB-"+df.loc[df["BOSS1"]].index.strftime("%Y%m%d")
 
-    tempdf = df.loc[df["BOSS1"]]
+    tempdf = df.loc[df["BOSS1"]]    
+    tempdf = tempdf.reset_index()
 
     for i in range(len(tempdf)):
-        hhdate = pd.to_datetime(tempdf["HHDate"].iloc[i])        
+
+        lastbuydate = pd.to_datetime("1900-01-01") 
+        lastcl1date = pd.to_datetime("1900-01-01") 
+        lasttp1date = pd.to_datetime("1900-01-01") 
+        lastcl2date = pd.to_datetime("1900-01-01") 
+        lasttp2date = pd.to_datetime("1900-01-01") 
+        tp1 = False
+        tp2 = False
+        cl1 = False
+        cl2 = False
+        buy = False        
+
+        hhdate = pd.to_datetime(tempdf["HHDate"].iloc[i])
+        startbossdate = tempdf['Date'].iloc[i].strftime("%Y%m%d")     
         buy_price = tempdf["buy_price"].iloc[i]
         cl_price = tempdf["LLLow"].iloc[i]
-        tp1 = tempdf["tp1"].iloc[i]
-        tp2 = tempdf["tp2"].iloc[i]
+        tp1_price = tempdf["tp1"].iloc[i]
+        tp2_price = tempdf["tp2"].iloc[i]
 
         buydate_mask = (df.index > hhdate) & (buy_price>=df["Low"])
         buydates = df[buydate_mask].index
 
         if len(buydates)!=0:
-            df.loc[buydates[0],'BOSS_STATUS'] = "BUY"+hhdate.strftime("%Y-%m-%d")
-            print("BUYDate : "+buydates[0].strftime("%Y-%m-%d"))
+            buy = True            
+            lastbuydate = buydates[0]
 
-            tp1date_mask = (df.index > buydates[0]) & (df["High"]>=tp1)
+        if buy:
+            df.loc[lastbuydate,'BOSS_STATUS'] = "BUY-"+startbossdate
+            #print("BUYDate : "+lastbuydate.strftime("%Y-%m-%d"))
+
+            tp1date_mask = (df.index >= lastbuydate) & (df["High"]>=tp1_price)
             tp1dates = df[tp1date_mask].index
 
-            cl1date_mask = (df.index > buydates[0]) & (cl_price>=df["Low"])
+            cl1date_mask = (df.index >= lastbuydate) & (cl_price>=df["Low"])
             cl1dates = df[cl1date_mask].index            
 
             if len(tp1dates)!=0:
+                tp1=True
                 lasttp1date = tp1dates[0]
 
             if len(cl1dates)!=0:                
+                cl1=True
                 lastcl1date = cl1dates[0]
 
-            if (lastcl1date<lasttp1date):
-                df.loc[cl1dates[0],'BOSS_STATUS'] = "CL1"+hhdate.strftime("%Y-%m-%d")
-                print("CL1 : "+cl1dates[0].strftime("%Y-%m-%d"))
+            if ((lastcl1date<=lasttp1date) & tp1 & cl1):
+                df.loc[lastcl1date,'BOSS_STATUS'] = "CL1-"+startbossdate
+                #print("CL1 : "+lastcl1date.strftime("%Y-%m-%d"))
             else:
-                df.loc[tp1dates[0],'BOSS_STATUS'] = "TP1"+hhdate.strftime("%Y-%m-%d")    
-                print("TP1 : "+tp1dates[0].strftime("%Y-%m-%d"))     
+                if tp1:
+                    df.loc[lasttp1date,'BOSS_STATUS'] = "TP1-"+startbossdate
+                    #print("TP1 : "+lasttp1date.strftime("%Y-%m-%d"))     
 
-                tp2date_mask = (df.index > tp1dates[0]) & (df["High"]>=tp2)
-                tp2dates = df[tp2date_mask].index        
-            
-                cl2date_mask = (df.index > tp1dates[0]) & (cl_price>=df["Low"])
-                cl2dates = df[cl2date_mask].index
+                    tp2date_mask = (df.index >= lasttp1date) & (df["High"]>=tp2_price)
+                    tp2dates = df[tp2date_mask].index        
+                
+                    cl2date_mask = (df.index >= lasttp1date) & (cl_price>=df["Low"])
+                    cl2dates = df[cl2date_mask].index
 
-                if len(tp2dates)!=0:                
-                    lasttp2date = tp2dates[0]
+                    if len(tp2dates)!=0:
+                        tp2 = True                
+                        lasttp2date = tp2dates[0]
 
-                if len(cl2dates)!=0:
-                    lastcl2date = cl2dates[0]
+                    if len(cl2dates)!=0:
+                        cl2 = True
+                        lastcl2date = cl2dates[0]
 
-                if (lastcl2date<lasttp2date):               
-                    df.loc[cl2dates[0],'BOSS_STATUS'] = "CL2"+hhdate.strftime("%Y-%m-%d")
-                    print("CL2 : "+cl2dates[0].strftime("%Y-%m-%d"))
-                else:
-                    df.loc[tp2dates[0],'BOSS_STATUS'] = "TP2"+hhdate.strftime("%Y-%m-%d")
-                    print("TP2 : "+tp2dates[0].strftime("%Y-%m-%d"))
+                    if ((lastcl2date<=lasttp2date) & tp2 & cl2):               
+                        df.loc[lastcl2date,'BOSS_STATUS'] = "CL2-"+startbossdate
+                        #print("CL2 : "+lastcl2date.strftime("%Y-%m-%d"))
+                    else:
+                        if tp2:
+                            df.loc[lasttp2date,'BOSS_STATUS'] = "TP2-"+startbossdate
+                            #print("TP2 : "+lasttp2date.strftime("%Y-%m-%d"))
 
     return df
 
@@ -598,7 +626,7 @@ def YFprocessData(stype):
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
-    SLIST = SLIST[:1]
+    SLIST = SLIST[:]
 
     with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
@@ -608,8 +636,8 @@ if __name__ == '__main__':
     start = t.perf_counter()
 
     YFprocessData("L")
-    #YFprocessData("M")
-    #YFprocessData("S")
+    YFprocessData("M")
+    YFprocessData("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
