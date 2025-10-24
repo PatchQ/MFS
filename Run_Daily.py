@@ -15,7 +15,7 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
 
-    DAYS = 0
+    DAYS = "60"
     #get IndustryList from AA
     #getIndustryList()
 
@@ -38,21 +38,21 @@ if __name__ == '__main__':
     YFprocessData("S")
 
     # #get Signal to excelfile
-    YFSignal("L","T1_22&EMA2",DAYS,"EMA1")
-    YFSignal("M","T1_22&EMA2",DAYS,"EMA1")
-    YFSignal("S","T1_22&EMA2",DAYS,"EMA1")    
+    # YFSignal("L","T1_22&EMA2",DAYS,"EMA1")
+    # YFSignal("M","T1_22&EMA2",DAYS,"EMA1")
+    # YFSignal("S","T1_22&EMA2",DAYS,"EMA1")    
 
-    YFSignal("L","T1_50&EMA1",DAYS)
-    YFSignal("M","T1_50&EMA1",DAYS)
-    YFSignal("S","T1_50&EMA1",DAYS)        
+    # YFSignal("L","T1_50&EMA1",DAYS)
+    # YFSignal("M","T1_50&EMA1",DAYS)
+    # YFSignal("S","T1_50&EMA1",DAYS)        
 
-    YFSignal("L","T1_22&EMA1",DAYS,"T1_50")
-    YFSignal("M","T1_22&EMA1",DAYS,"T1_50")
-    YFSignal("S","T1_22&EMA1",DAYS,"T1_50")
+    # YFSignal("L","T1_22&EMA1",DAYS,"T1_50")
+    # YFSignal("M","T1_22&EMA1",DAYS,"T1_50")
+    # YFSignal("S","T1_22&EMA1",DAYS,"T1_50")
 
-    YFSignal("L","BOSS1",30)
-    YFSignal("M","BOSS1",30)
-    YFSignal("S","BOSS1",30)    
+    YFSignal("L","BOSS1~BOSSCL1",DAYS)
+    YFSignal("M","BOSS1~BOSSCL1",DAYS)
+    YFSignal("S","BOSS1~BOSSCL1",DAYS)       
     
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
