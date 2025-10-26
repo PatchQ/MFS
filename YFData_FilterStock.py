@@ -4,6 +4,7 @@ import os
 import time as t
 from tqdm import tqdm
 from datetime import datetime, timedelta
+from collections import defaultdict
 
 
 #get stock csv file from path
@@ -62,7 +63,7 @@ def YFFilter(stype,signal,SLIST,signaldf):
             signaldf = pd.concat([tempdf, signaldf], ignore_index=True)
 
         if len(signaldf)!=0:
-            signaldf["sno"] = signaldf["sno"].str.replace(r'^0+', '', regex=True)
+            signaldf["SNO"] = signaldf["sno"].str.replace(r'^0+', '', regex=True)
 
         signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
 
@@ -91,7 +92,6 @@ def countBOSS(stype,signal,df):
             groups[key] = []
         groups[key].append(event_code)
 
-    print(groups)        
     
     # 定义目标序列
     seq1 = ['BY1', 'TP1', 'TP2']
@@ -104,52 +104,35 @@ def countBOSS(stype,signal,df):
 
     seq6 = ['BY1']
     
-    # 初始化计数器
-    count_seq1 = 0
-    count_seq2 = 0
-    count_seq3 = 0
-    count_seq4 = 0
-    count_seq5 = 0
-    count_seq6 = 0
+    # 使用defaultdict来存储每只股票的计数
+    stock_counts_dict = defaultdict(lambda: {'TP12': 0, 'TP1': 0, 'TP2': 0, 'TP1C': 0, 'CL1': 0, 'BY1': 0})
     
-    # 存储匹配的组详细信息
-    matches_seq1 = []
-    matches_seq2 = []
-    matches_seq3 = []
-    
-    rdf = pd.DataFrame()
-    tempdf = pd.DataFrame()
-
-    # 遍历每个组
+   # 遍历每个组
     for key, events in groups.items():
         stock, date = key
 
         if events == seq1:
-            count_seq1 += 1            
+            stock_counts_dict[stock]['TP12'] += 1
         elif events == seq2:
-            count_seq2 += 1
+            stock_counts_dict[stock]['TP1'] += 1
         elif events == seq3:
-            count_seq3 += 1
+            stock_counts_dict[stock]['TP2'] += 1
         elif events == seq4:
-            count_seq4 += 1
+            stock_counts_dict[stock]['TP1C'] += 1
         elif events == seq5:
-            count_seq5 += 1
+            stock_counts_dict[stock]['CL1'] += 1
         elif events == seq6:
-            count_seq6 += 1
+            stock_counts_dict[stock]['BY1'] += 1
 
-        print(f"1:{count_seq1},2:{count_seq2},3:{count_seq3},4:{count_seq4},5:{count_seq5},6:{count_seq6}")
-        #matches_seq3.append(f"{stock} at {date}")            
-        tempdf['sno'] = stock
-        tempdf['TP1TP2'] = count_seq1
-        tempdf['TP1CL2'] = count_seq2
-        tempdf['CL1'] = count_seq3
-        tempdf['BY1'] = count_seq4
-        tempdf['TOTAL'] = count_seq1+count_seq2+count_seq3+count_seq4
+    # 将字典转换为DataFrame
+    stock_counts_df = pd.DataFrame.from_dict(stock_counts_dict, orient='index')
+    stock_counts_df = stock_counts_df.reset_index()
+    stock_counts_df.columns = ['sno', 'TP12', 'TP1', 'TP2', 'TP1C', 'CL1', 'BY1']
+    stock_counts_df = stock_counts_df.sort_values('sno')
 
-        rdf = pd.concat([tempdf, rdf], ignore_index=True)
 
     
-    rdf.to_csv("Data/"+stype+"_"+signal+"_Stat_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
+    stock_counts_df.to_csv("Data/"+stype+"_"+signal+"_Stat_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
 
 
 def YFSignal(stype,signal,days=0,ruleout=""):
@@ -158,7 +141,8 @@ def YFSignal(stype,signal,days=0,ruleout=""):
     SLIST = YFGetSLIST(stype,signal,days,ruleout)
     signaldf = YFFilter(stype,signal, SLIST, signaldf)
 
-    countBOSS(stype,signal,signaldf)
+    if "BOSSB~" in signal:
+        countBOSS(stype,signal,signaldf)
     
 
 if __name__ == '__main__':
@@ -187,12 +171,14 @@ if __name__ == '__main__':
     # YFSignal("M","T1_22&EMA1",DAYS,"T1_50")
     # YFSignal("S","T1_22&EMA1",DAYS,"T1_50")
     
-    # YFSignal("L","BOSS1~BOSSCL1",DAYS)
-    # YFSignal("M","BOSS1~BOSSCL1",DAYS)
+    #YFSignal("L","BOSS1~BOSSCL1",DAYS)
+    #YFSignal("M","BOSS1~BOSSCL1",DAYS)
     # YFSignal("S","BOSS1~BOSSCL1",DAYS)    
 
     YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
-    #YFSignal("M","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+    #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+    #YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+
 
 
     #YFSignal("HHLL","BOSS2",30)

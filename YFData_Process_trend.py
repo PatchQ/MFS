@@ -21,16 +21,23 @@ TOLERANCE=0.001
 #WINDOW=10
 
 
-def calHHLL(df, window, trend_window, min_swing_change):
+def calHHLL(df, window, trend_window):
         
     stock = df.copy()
     stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai') 
     stock = extendData(stock)
+   
+    # 找出摆动点
+    # swing_highs1, swing_lows1 = find_swing_points(stock['High'], stock['Low'], stock["Close"], 5)
+    # swing_analysis1 = classify_all_swing_points(swing_highs1, swing_lows1)
 
-    swing_highs, swing_lows = find_swing_points_advanced(stock['High'], stock['Low'], stock["Close"], window, trend_window, min_swing_change)
-    swing_analysis = classify_all_swing_points(swing_highs, swing_lows)
+    swing_highs2, swing_lows2 = find_swing_points_advanced(stock['High'], stock['Low'], stock["Close"], window, trend_window)
+    swing_analysis2 = classify_all_swing_points(swing_highs2, swing_lows2)
         
-    return swing_analysis
+    # 分类所有摆动点
+    # swing_analysis = pd.concat([swing_analysis1, swing_analysis2]).sort_values('date').drop_duplicates(subset=['date'], keep='last')        
+
+    return swing_analysis2
 
 def filter_close_points_df(df, min_distance, price_col='price'):
     """
@@ -62,7 +69,7 @@ def filter_close_points_df(df, min_distance, price_col='price'):
     
     return filtered_df
 
-def find_swing_points_advanced(high_series, low_series, close_series, window, trend_window, min_swing_change):
+def find_swing_points_advanced(high_series, low_series, close_series, window, trend_window):
     """
     高级版本：使用趋势检测来识别主要摆动点
     
@@ -108,15 +115,10 @@ def find_swing_points_advanced(high_series, low_series, close_series, window, tr
     # 过滤：只保留趋势转折点
     swing_highs = filter_trend_swings(swing_highs, trend_highs, is_high=True)
     swing_lows = filter_trend_swings(swing_lows, trend_lows, is_high=False)
-
+    
     # 过滤掉太接近的摆动点
     swing_highs = filter_close_points_df(swing_highs, window, price_col='high')
     swing_lows = filter_close_points_df(swing_lows, window, price_col='low')
-
-    # # 轻微过滤小回调，但不移除任何类型的摆动点
-    # swing_highs = filter_minor_swings_light(swing_highs, min_swing_change, is_high=True)
-    # swing_lows = filter_minor_swings_light(swing_lows, min_swing_change, is_high=False)    
-
     
     return swing_highs, swing_lows
 
@@ -154,40 +156,6 @@ def filter_trend_swings(swing_df, trend_series, is_high=True):
     
     return swing_df.iloc[filtered_swings].reset_index(drop=True)
 
-def filter_minor_swings_light(swing_df, min_change, is_high=True):
-    """
-    轻微过滤小回调，但不移除任何类型的摆动点
-    
-    参数:
-    swing_df: 摆动点DataFrame
-    min_change: 最小变化百分比
-    is_high: 是否是高点（True为高点，False为低点）
-    """
-    if len(swing_df) < 2:
-        return swing_df
-    
-    # 按日期排序
-    swing_df = swing_df.sort_values('date').reset_index(drop=True)
-    
-    # 轻微过滤：只移除极其接近的连续点
-    price_col = 'high' if is_high else 'low'
-    prices = swing_df[price_col].values
-    
-    # 保留所有点，但标记质量
-    swing_df['quality'] = 'good'
-    
-    for i in range(1, len(prices)):
-        prev_price = prices[i-1]
-        current_price = prices[i]
-        
-        # 计算价格变化百分比
-        price_diff_pct = abs((current_price - prev_price) / prev_price)
-        
-        # 如果变化非常小，标记为低质量，但不移除
-        if price_diff_pct < min_change * 0.5:  # 使用更宽松的阈值
-            swing_df.loc[i, 'quality'] = 'minor'
-    
-    return swing_df
 
 def classify_all_swing_points(swing_highs_df, swing_lows_df, tolerance=0.001):
     """
@@ -497,17 +465,16 @@ def AnalyzeData(sno,stype):
     df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv",index_col=0)    
     df = convertData(df)
     
-    #df = calEMA(df)
+    df = calEMA(df)
 
-    window = 6
-    trend_window = 6
-    min_swing_change = 0.02
+    window = 10
+    trend_window = 15
 
-    tempdf = calHHLL(df, window, trend_window, min_swing_change)    
+    tempdf = calHHLL(df, window, trend_window)    
     df = checkLHHHLL(df, sno, stype, tempdf)
 
     #df = calT1(df,22)
-    #df = calT1(df,50)
+    df = calT1(df,50)
         
     df = df.reset_index()
     df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
@@ -518,7 +485,7 @@ def YFprocessData(stype):
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
-    SLIST = SLIST[:]
+    SLIST = SLIST[7:8]
 
     with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
