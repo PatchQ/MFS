@@ -37,7 +37,7 @@ def calCandleStick(df):
 
     bullish_ratio = 0
     total_candles = len(df)
-    bullish_condition = df['Close'] > df['Open']    
+    bullish_condition = df['Close'] >= df['Open']    
     bullish_count = bullish_condition.sum()
     
     if bullish_count!=0:
@@ -47,7 +47,7 @@ def calCandleStick(df):
 
 def calCandleStickBody(df):
 
-    bullish_condition = df['Close'] > df['Open']
+    bullish_condition = df['Close'] >= df['Open']
     bullish_df = df[bullish_condition].copy()
     strong_bullish = 0
     medium_bullish = 0
