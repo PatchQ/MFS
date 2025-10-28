@@ -12,15 +12,275 @@ import warnings
 
 from YFData_Calindicator import *
 
+
+
 PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/" 
 DAYS=0
 TOLERANCE=0.001
 #WINDOW=10
 
+def pivot_high(series, left_bars, right_bars):
+    """
+    识别枢轴高点
+    """
+    highs = []
+    for i in range(left_bars, len(series) - right_bars):
+        left_window = series[i-left_bars:i]
+        right_window = series[i+1:i+right_bars+1]
+        current = series.iloc[i]
+        
+        if (current > max(left_window) and 
+            current > max(right_window)):
+            highs.append((i, current))
+    
+    return highs
+
+def pivot_low(series, left_bars, right_bars):
+    """
+    识别枢轴低点
+    """
+    lows = []
+    for i in range(left_bars, len(series) - right_bars):
+        left_window = series[i-left_bars:i]
+        right_window = series[i+1:i+right_bars+1]
+        current = series.iloc[i]
+        
+        if (current < min(left_window) and 
+            current < min(right_window)):
+            lows.append((i, current))
+    
+    return lows
+
+def find_previous_points(current_index, pivot_points, current_type):
+    """
+    找到前四个相关点 (b, c, d, e)
+    """
+    # 过滤出当前索引之前的点
+    previous_points = [p for p in pivot_points if p[0] < current_index]
+    
+    if len(previous_points) < 4:
+        return None, None, None, None
+    
+    # 根据当前类型找到前四个点
+    ehl = -1 if current_type == 1 else 1  # 相反类型
+    
+    # 找到第一个点 (b)
+    b_point = None
+    for i in range(len(previous_points)-1, -1, -1):
+        if previous_points[i][2] == ehl:
+            b_point = previous_points[i]
+            break
+    
+    if b_point is None:
+        return None, None, None, None
+    
+    # 找到第二个点 (c) - 与当前点同类型
+    c_point = None
+    for i in range(len(previous_points)-1, -1, -1):
+        if (previous_points[i][2] == current_type and 
+            previous_points[i][0] < b_point[0]):
+            c_point = previous_points[i]
+            break
+    
+    if c_point is None:
+        return None, None, None, None
+    
+    # 找到第三个点 (d) - 与第一个点同类型
+    d_point = None
+    for i in range(len(previous_points)-1, -1, -1):
+        if (previous_points[i][2] == ehl and 
+            previous_points[i][0] < c_point[0]):
+            d_point = previous_points[i]
+            break
+    
+    if d_point is None:
+        return b_point, c_point, None, None
+    
+    # 找到第四个点 (e) - 与当前点同类型
+    e_point = None
+    for i in range(len(previous_points)-1, -1, -1):
+        if (previous_points[i][2] == current_type and 
+            previous_points[i][0] < d_point[0]):
+            e_point = previous_points[i]
+            break
+    
+    return b_point, c_point, d_point, e_point
+
+def identify_hh_ll_patterns(high_series, low_series, close_series, left_bars, right_bars):
+    """
+    识别HH, LL, HL, LH模式
+    
+    参数:
+    high_series: 最高价序列
+    low_series: 最低价序列
+    close_series: 收盘价序列
+    left_bars: 左侧柱数
+    right_bars: 右侧柱数
+    
+    返回:
+    patterns_df: 包含所有识别模式的DataFrame
+    """
+    # 识别枢轴高点和低点
+    pivot_highs = pivot_high(high_series, left_bars, right_bars)
+    pivot_lows = pivot_low(low_series, left_bars, right_bars)
+    
+    # 合并所有枢轴点并按索引排序
+    all_pivots = []
+    for idx, price in pivot_highs:
+        all_pivots.append((idx, price, 1))  # 1 表示高点
+    for idx, price in pivot_lows:
+        all_pivots.append((idx, price, -1))  # -1 表示低点
+    
+    # 按索引排序
+    all_pivots.sort(key=lambda x: x[0])
+    
+    # 过滤枢轴点 - 类似TradingView的过滤逻辑
+    filtered_pivots = []
+    for i, (idx, price, p_type) in enumerate(all_pivots):
+        if i == 0:
+            filtered_pivots.append((idx, price, p_type))
+            continue
+        
+        prev_idx, prev_price, prev_type = filtered_pivots[-1]
+        
+        # 过滤条件1: 连续同类型点
+        if (p_type == -1 and prev_type == -1 and 
+            price > prev_price):
+            continue  # 跳过这个点
+        
+        if (p_type == 1 and prev_type == 1 and 
+            price < prev_price):
+            continue  # 跳过这个点
+        
+        # 过滤条件2: 类型转换时的价格关系
+        if (p_type == -1 and prev_type == 1 and 
+            price > prev_price):
+            continue  # 跳过这个点
+        
+        if (p_type == 1 and prev_type == -1 and 
+            price < prev_price):
+            continue  # 跳过这个点
+        
+        filtered_pivots.append((idx, price, p_type))
+    
+    # 识别模式
+    patterns = []
+    for i, (idx, price, p_type) in enumerate(filtered_pivots):
+        if i < 4:  # 需要至少4个点才能判断模式
+            continue
+        
+        # 找到前四个点
+        b_point, c_point, d_point, e_point = find_previous_points(
+            idx, filtered_pivots[:i], p_type
+        )
+        
+        if None in [b_point, c_point, d_point, e_point]:
+            continue
+        
+        b_idx, b_price, b_type = b_point
+        c_idx, c_price, c_type = c_point
+        d_idx, d_price, d_type = d_point
+        e_idx, e_price, e_type = e_point
+        
+        # 判断模式
+        is_hh = False
+        is_ll = False
+        is_hl = False
+        is_lh = False
+        
+        if p_type == 1:  # 当前是高点
+            # HH条件: a > b and a > c and c > b and c > d
+            if (price > b_price and price > c_price and 
+                c_price > b_price and c_price > d_price):
+                is_hh = True
+            
+            # LH条件1: a <= c and (b < c and b < d and d < c and d < e)
+            elif (price <= c_price and 
+                  b_price < c_price and b_price < d_price and 
+                  d_price < c_price and d_price < e_price):
+                is_lh = True
+            
+            # LH条件2: a > b and a < c and b > d
+            elif (price > b_price and price < c_price and 
+                  b_price > d_price):
+                is_lh = True
+        
+        else:  # 当前是低点
+            # LL条件: a < b and a < c and c < b and c < d
+            if (price < b_price and price < c_price and 
+                c_price < b_price and c_price < d_price):
+                is_ll = True
+            
+            # HL条件1: a >= c and (b > c and b > d and d > c and d > e)
+            elif (price >= c_price and 
+                  b_price > c_price and b_price > d_price and 
+                  d_price > c_price and d_price > e_price):
+                is_hl = True
+            
+            # HL条件2: a < b and a > c and b < d
+            elif (price < b_price and price > c_price and 
+                  b_price < d_price):
+                is_hl = True
+        
+        # 记录模式
+        pattern_type = None
+        if is_hh:
+            pattern_type = 'HH'
+        elif is_ll:
+            pattern_type = 'LL'
+        elif is_hl:
+            pattern_type = 'HL'
+        elif is_lh:
+            pattern_type = 'LH'
+        
+        if pattern_type:
+            patterns.append({
+                'date': high_series.index[idx],
+                #'index': idx,
+                'price': price,
+                'type': 'high' if p_type == 1 else 'low',
+                'classification': pattern_type,
+                'close': close_series.iloc[idx] if idx < len(close_series) else None
+            })
+    
+    # 转换为DataFrame
+    if patterns:        
+        patterns_df = pd.DataFrame(patterns)
+    else:
+        patterns.append({
+                'date': datetime.now(),
+                #'index': idx,
+                'price': 0,
+                'type': '',
+                'classification': '',
+                'close': 0
+            })
+        patterns_df = pd.DataFrame(patterns)
+        
+    return patterns_df
+
+def calHHLL(df, left_bars, right_bars):
+    # 下载数据
+    stock_data = df.copy()
+    stock_data.index = pd.to_datetime(stock_data.index,utc=True).tz_convert('Asia/Shanghai') 
+    stock_data = extendData(stock_data)
+
+    # 识别模式
+    patterns_df = identify_hh_ll_patterns(
+        stock_data['High'],
+        stock_data['Low'],
+        stock_data['Close'],
+        left_bars,
+        right_bars
+    )
+
+    return patterns_df
+
+
 def checkLHHHLL(df, sno, stype, swing_analysis):
 
-    #print(sno)
+    #print(sno)    
 
     df.index = pd.to_datetime(df.index)
 
@@ -238,259 +498,20 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     return df
 
 
-def calHHLL(df):
-        
-    stock = df.copy()
-    stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai') 
-    stock = extendData(stock)
-   
-    # 找出摆动点
-    # swing_highs1, swing_lows1 = find_swing_points(stock['High'], stock['Low'], stock["Close"], 5)
-    # swing_analysis1 = classify_all_swing_points(swing_highs1, swing_lows1)
-
-    swing_highs2, swing_lows2 = find_swing_points(stock['High'], stock['Low'], stock["Close"], 10)
-    swing_analysis2 = classify_all_swing_points(swing_highs2, swing_lows2)
-        
-    # 分类所有摆动点
-    # swing_analysis = pd.concat([swing_analysis1, swing_analysis2]).sort_values('date').drop_duplicates(subset=['date'], keep='last')        
-
-    return swing_analysis2
-   
-
-def find_swing_points(high_series, low_series, close_series, window_days):
-    """
-    找出摆动高点和摆动低点
-    """
-    # 使用滚动窗口找到局部高点和低点
-    highs = high_series.rolling(window=window_days, center=True).max()
-    lows = low_series.rolling(window=window_days, center=True).min()  
-    
-    # 找出摆动高点 (当前高点等于滚动窗口内的最大值)
-    swing_high_mask = high_series == highs
-    swing_high_dates = high_series[swing_high_mask].index
-    swing_high_prices = high_series[swing_high_mask].values    
-
-    # 找出摆动低点 (当前低点等于滚动窗口内的最小值)
-    swing_low_mask = low_series == lows
-    swing_low_dates = low_series[swing_low_mask].index
-    swing_low_prices = low_series[swing_low_mask].values
-
-    # 获取对应的收盘价并存储为额外属性
-    swing_high_closes = []
-    for date in swing_high_dates:
-        if date in close_series.index:
-            swing_high_closes.append(close_series[date])
-        else:
-            swing_high_closes.append(None)
-    
-    swing_low_closes = []
-    for date in swing_low_dates:
-        if date in close_series.index:
-            swing_low_closes.append(close_series[date])
-        else:
-            swing_low_closes.append(None)
-    
-    # 创建包含所有信息的DataFrame
-    swing_highs = pd.DataFrame({
-        'date': swing_high_dates,
-        'price': swing_high_prices,
-        'close': swing_high_closes,
-        'type': 'high'
-    })
-    
-    swing_lows = pd.DataFrame({
-        'date': swing_low_dates,
-        'price': swing_low_prices,
-        'close': swing_low_closes,
-        'type': 'low'
-    })
-    
-    # 过滤掉太接近的摆动点
-    swing_highs = filter_close_points_df(swing_highs, window_days)
-    swing_lows = filter_close_points_df(swing_lows, window_days)
-    
-    return swing_highs, swing_lows
-
-
-
-
-
-def filter_close_points_df(df, min_distance):
-    """
-    过滤掉距离太近的摆动点 - DataFrame版本
-    
-    参数:
-    df: 包含摆动点的DataFrame
-    min_distance: 最小距离（天数）
-    price_col: 价格列名
-    
-    返回:
-    过滤后的DataFrame
-    """
-    if len(df) == 0:
-        return df
-    
-    # 按日期排序
-    df = df.sort_values('date').reset_index(drop=True)
-    
-    filtered_df = pd.DataFrame(columns=df.columns)
-    last_date = None
-    
-    for i, row in df.iterrows():
-        current_date = row['date']
-        
-        if last_date is None:
-            filtered_df = filtered_df.dropna(axis=1, how="all")
-            filtered_df = pd.concat([filtered_df, pd.DataFrame([row])], ignore_index=True)
-            last_date = current_date
-        else:
-            # 计算与前一个点的距离 (天数)
-            days_diff = (current_date - last_date).days
-            if days_diff >= min_distance:
-                filtered_df = filtered_df.dropna(axis=1, how="all")
-                filtered_df = pd.concat([filtered_df, pd.DataFrame([row])], ignore_index=True)
-                last_date = current_date
-    
-    return filtered_df
-
-
-def classify_all_swing_points(highs_df, lows_df):
-    """
-    分类所有摆动点为 HH, HL, LH, LL, -H, -L
-    
-    参数:
-    tolerance: 价格相等的容忍度 (0.1%)
-    
-    返回:
-    swing_analysis: 包含所有摆动点及其分类的DataFrame
-    """   
-    
-    # 合并并排序
-    all_swings = pd.concat([highs_df, lows_df]).sort_values('date')
-    all_swings = all_swings.reset_index(drop=True)
-    
-    # 初始化分类列
-    all_swings['classification'] = None
-    
-    # 分离高点和低点序列
-    high_points = all_swings[all_swings['type'] == 'high'].copy().reset_index(drop=True)
-    low_points = all_swings[all_swings['type'] == 'low'].copy().reset_index(drop=True)
-    
-    # 分类高点序列
-    for i in range(len(high_points)):
-        if i == 0:
-            # 第一个高点标记为起始点
-            high_points.loc[i, 'classification'] = 'Start_H'
-            continue
-            
-        current_price = high_points.loc[i, 'price']
-        prev_price = high_points.loc[i-1, 'price']
-        
-        # 计算价格变化百分比
-        price_diff_pct = abs((current_price - prev_price) / prev_price)
-        
-        if price_diff_pct <= TOLERANCE:
-            high_points.loc[i, 'classification'] = "-H"  # 相同高位
-        elif current_price > prev_price:
-            high_points.loc[i, 'classification'] = 'HH'  # 更高高点
-        else:
-            high_points.loc[i, 'classification'] = 'LH'  # 更低高点
-    
-    # 分类低点序列
-    for i in range(len(low_points)):
-        if i == 0:
-            # 第一个低点标记为起始点
-            low_points.loc[i, 'classification'] = 'Start_L'
-            continue
-            
-        current_price = low_points.loc[i, 'price']
-        prev_price = low_points.loc[i-1, 'price']
-        
-        # 计算价格变化百分比
-        price_diff_pct = abs((current_price - prev_price) / prev_price)
-        
-        if price_diff_pct <= TOLERANCE:
-            low_points.loc[i, 'classification'] = "-L"  # 相同低位
-        elif current_price > prev_price:
-            low_points.loc[i, 'classification'] = 'HL'  # 更高低点
-        else:
-            low_points.loc[i, 'classification'] = 'LL'  # 更低低点
-    
-    # 合并分类结果
-    classified_swings = pd.concat([high_points, low_points]).sort_values('date')
-    
-    return classified_swings
-
-def extendData(df, extension_days=10):
-
-    if df.empty:
-        return df
-    
-    # 创建扩展数据
-    last_date = df.index[-1]
-    last_row = df.iloc[-1]
-    
-    # 生成新日期
-    new_dates = [last_date + pd.Timedelta(days=i) for i in range(1, extension_days+1)]
-    
-    # 创建新数据框
-    extended_df = pd.DataFrame(
-        [last_row.values] * extension_days,
-        index=new_dates,
-        columns=df.columns
-    )
-    
-    # 合并数据
-    result = pd.concat([df, extended_df])
-        
-    return result
-
-
-def calCandleStick(df):
-
-    bullish_ratio = 0
-    total_candles = len(df)
-    bullish_condition = df['Close'] >= df['Open']    
-    bullish_count = bullish_condition.sum()
-    
-    if bullish_count!=0:
-        bullish_ratio = round((bullish_count / total_candles),2)
-
-    return bullish_count, bullish_ratio
-
-def calCandleStickBody(df):
-
-    bullish_condition = df['Close'] >= df['Open']
-    bullish_df = df[bullish_condition].copy()
-    strong_bullish = 0
-    medium_bullish = 0
-    weak_bullish = 0
-    
-    if len(bullish_df) > 0:
-        bullish_df['Body_Size'] = abs(bullish_df['Close'] - bullish_df['Open'])
-        bullish_df['Body_Ratio'] = bullish_df['Body_Size'] / (bullish_df['High'] - bullish_df['Low'])                
-        # Strong（body > 60%）
-        strong_bullish = len(bullish_df[bullish_df['Body_Ratio'] > 0.6])
-        # medium（body 30%-60%）
-        medium_bullish = len(bullish_df[(bullish_df['Body_Ratio'] >= 0.3) &  (bullish_df['Body_Ratio'] <= 0.6)])        
-        # weak（body < 30%）
-        weak_bullish = len(bullish_df[bullish_df['Body_Ratio'] < 0.3])  
-
-    return strong_bullish, medium_bullish, weak_bullish
-    
 
 def AnalyzeData(sno,stype):
        
-    df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv",index_col=0)
+    df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv",index_col=0)    
     df = convertData(df)
-
+    
     #df = calEMA(df)
 
-    tempdf = calHHLL(df)    
+
+    tempdf = calHHLL(df, left_bars=3, right_bars=3)
     df = checkLHHHLL(df, sno, stype, tempdf)
 
-    # df = calT1(df,22)
-    # df = calT1(df,50)
+    #df = calT1(df,22)
+    #df = calT1(df,50)
         
     df = df.reset_index()
     df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
@@ -510,9 +531,10 @@ def YFprocessData(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    YFprocessData("L")
+    #YFprocessData("L")
     YFprocessData("M")
-    YFprocessData("S")
+    #YFprocessData("S")
+
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

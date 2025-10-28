@@ -17,20 +17,20 @@ if __name__ == '__main__':
 
     DAYS = "60"
     #get IndustryList from AA
-    getIndustryList()
+    #getIndustryList()
 
     #get All number from AA
-    getStockListData()
+    #getStockListData()
 
     # #get All History Data from YF
-    YFgetAll("L")
-    YFgetAll("M")
-    YFgetAll("S")
+    #YFgetAll("L")
+    #YFgetAll("M")
+    #YFgetAll("S")
 
     #get Daily Data from YF
-    # YFgetDaily("L")
-    # YFgetDaily("M")
-    # YFgetDaily("S")
+    YFgetDaily("L")
+    YFgetDaily("M")
+    YFgetDaily("S")
 
     #process All Data
     #YFprocessData("L")

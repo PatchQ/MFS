@@ -28,7 +28,7 @@ def calHHLL(df, window, trend_window, min_swing_change):
     stock = extendData(stock)
 
     swing_highs, swing_lows = find_swing_points_advanced(stock['High'], stock['Low'], stock["Close"], window, trend_window, min_swing_change)
-    swing_analysis = classify_all_swing_points(swing_highs, swing_lows)
+    swing_analysis = classify_all_swing_points(swing_highs, swing_lows)    
         
     return swing_analysis
 
@@ -494,11 +494,15 @@ def AnalyzeData(sno,stype):
     
     #df = calEMA(df)
 
-    window = 7
-    trend_window = 7
-    min_swing_change = 0.02
+    window = 10
+    trend_window = 6
+    min_swing_change = 0.03
 
     tempdf = calHHLL(df, window, trend_window, min_swing_change)    
+
+    tempdf.to_csv()
+    tempdf.to_csv("Data/WT_0011.HK.csv",index=False)
+
     df = checkLHHHLL(df, sno, stype, tempdf)
 
     #df = calT1(df,22)
@@ -513,7 +517,7 @@ def YFprocessData(stype):
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
-    SLIST = SLIST[:]
+    SLIST = SLIST[7:8]
 
     with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
@@ -523,7 +527,7 @@ if __name__ == '__main__':
     start = t.perf_counter()
 
     YFprocessData("L")
-    YFprocessData("M")
+    #YFprocessData("M")
     #YFprocessData("S")
 
     finish = t.perf_counter()

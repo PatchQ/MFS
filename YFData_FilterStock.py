@@ -55,7 +55,7 @@ def YFGetSLIST(stype,signal,days=0,ruleout=""):
     return SLIST
 
 
-def YFFilter(stype,signal,SLIST,signaldf):    
+def YFFilter(SLIST,signaldf):    
 
     with cf.ProcessPoolExecutor(max_workers=12) as executor:
         for tempdf in tqdm(executor.map(filterStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["days"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
@@ -63,12 +63,8 @@ def YFFilter(stype,signal,SLIST,signaldf):
             signaldf = pd.concat([tempdf, signaldf], ignore_index=True)
 
         if len(signaldf)!=0:
-            signaldf["SNO"] = signaldf["sno"].str.replace(r'^0+', '', regex=True)
+            signaldf["SNO"] = signaldf["sno"].str.replace(r'^0+', '', regex=True)        
 
-        signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
-
-        print(f"{signal} - {stype} : {len(signaldf)}")
-        print("Finish")
         return signaldf
     
 
@@ -96,14 +92,18 @@ def countBOSS(stype,signal,df):
     # 定义目标序列
     seq1 = ['BY1', 'TP1', 'TP2']
     seq2 = ['BY1', 'TP1']
+    seq2_1 = ['TP1']
+
     seq3 = ['BY1', 'TP2']
+    seq3_1 = ['TP2']
     
     seq4 = ['BY1', 'TP1', 'CL2']
 
     seq5 = ['BY1', 'CL1']
+    seq5_1 = ['CL1']
 
     seq6 = ['BY1']
-    
+
     # 使用defaultdict来存储每只股票的计数
     stock_counts_dict = defaultdict(lambda: {'TP12': 0, 'TP1': 0, 'TP2': 0, 'TP1C': 0, 'CL1': 0, 'BY1': 0})
     
@@ -113,13 +113,13 @@ def countBOSS(stype,signal,df):
 
         if events == seq1:
             stock_counts_dict[stock]['TP12'] += 1
-        elif events == seq2:
+        elif (events == seq2) or (events == seq2_1):
             stock_counts_dict[stock]['TP1'] += 1
-        elif events == seq3:
+        elif (events == seq3) or (events == seq3_1):
             stock_counts_dict[stock]['TP2'] += 1
         elif events == seq4:
             stock_counts_dict[stock]['TP1C'] += 1
-        elif events == seq5:
+        elif (events == seq5) or (events == seq5_1):
             stock_counts_dict[stock]['CL1'] += 1
         elif events == seq6:
             stock_counts_dict[stock]['BY1'] += 1
@@ -130,19 +130,25 @@ def countBOSS(stype,signal,df):
     stock_counts_df.columns = ['sno', 'TP12', 'TP1', 'TP2', 'TP1C', 'CL1', 'BY1']
     stock_counts_df = stock_counts_df.sort_values('sno')
 
-
-    
     stock_counts_df.to_csv("Data/"+stype+"_"+signal+"_Stat_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
 
 
 def YFSignal(stype,signal,days=0,ruleout=""):
     
     signaldf = pd.DataFrame()
+    
     SLIST = YFGetSLIST(stype,signal,days,ruleout)
-    signaldf = YFFilter(stype,signal, SLIST, signaldf)
+    signaldf = YFFilter(SLIST, signaldf)
 
     if "BOSSB~" in signal:
         countBOSS(stype,signal,signaldf)
+
+    signaldf = signaldf.sort_values('SNO')
+    signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
+
+    print(f"{signal} - {stype} : {len(signaldf)}")
+    print("Finish")
+        
     
 
 if __name__ == '__main__':
@@ -171,12 +177,12 @@ if __name__ == '__main__':
     # YFSignal("M","T1_22&EMA1",DAYS,"T1_50")
     # YFSignal("S","T1_22&EMA1",DAYS,"T1_50")
     
-    #YFSignal("L","BOSS1~BOSSCL1","30")
-    #YFSignal("M","BOSS1~BOSSCL1","30")
-    # YFSignal("S","BOSS1~BOSSCL1",DAYS)    
+    YFSignal("L","BOSS1~BOSSCL1","30")
+    YFSignal("M","BOSS1~BOSSCL1","30")
+    YFSignal("S","BOSS1~BOSSCL1","30")    
 
-    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
-    YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+    #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+    #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
     #YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
 
 
