@@ -29,7 +29,6 @@ def calHHLL(df, window, trend_window, min_swing_change):
 
     swing_highs, swing_lows = find_swing_points_advanced(stock['High'], stock['Low'], stock["Close"], window, trend_window, min_swing_change)
     swing_analysis = classify_all_swing_points(swing_highs, swing_lows)    
-
         
     return swing_analysis
 
