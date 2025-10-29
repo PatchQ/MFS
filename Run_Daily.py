@@ -20,17 +20,17 @@ if __name__ == '__main__':
     #getIndustryList()
 
     #get All number from AA
-    #getStockListData()
+    getStockListData()
 
     # #get All History Data from YF
-    #YFgetAll("L")
-    #YFgetAll("M")
-    #YFgetAll("S")
+    YFgetAll("L")
+    YFgetAll("M")
+    YFgetAll("S")
 
     #get Daily Data from YF
-    YFgetDaily("L")
-    YFgetDaily("M")
-    YFgetDaily("S")
+    #YFgetDaily("L")
+    #YFgetDaily("M")
+    #YFgetDaily("S")
 
     #process All Data
     #YFprocessData("L")
