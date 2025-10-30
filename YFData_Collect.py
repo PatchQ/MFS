@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import yfinance as yf
 import concurrent.futures as cf
 from tqdm import tqdm
-
+import os
 
 PATH = "../SData/YFData/"
 
@@ -77,9 +77,10 @@ def YFgetAll(stype):
         list(tqdm(executor.map(getYFAll,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 def YFgetDaily(stype):
-    STOCKLIST = pd.read_csv("Data/stocklist_"+stype+".csv",dtype=str)
-    #INDEXLIST = pd.Series(["^HSI","^DJI","^IXIC","^GSPC","^N225","^FTSE","^GDAXI","^FCHI","000001.SS","399001.SZ"])
-    SLIST = STOCKLIST[["sno"]]
+
+    snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype+"/")))
+    SLIST = pd.DataFrame(snolist, columns=["sno"])
+    #INDEXLIST = pd.Series(["^HSI","^DJI","^IXIC","^GSPC","^N225","^FTSE","^GDAXI","^FCHI","000001.SS","399001.SZ"])    
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 

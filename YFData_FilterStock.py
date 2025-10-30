@@ -178,10 +178,10 @@ if __name__ == '__main__':
     # YFSignal("S","T1_22&EMA1",DAYS,"T1_50")
     
     YFSignal("L","BOSS1~BOSSCL1","60")
-    YFSignal("M","BOSS1~BOSSCL1","60")
-    YFSignal("S","BOSS1~BOSSCL1","60")    
+    # YFSignal("M","BOSS1~BOSSCL1","60")
+    # YFSignal("S","BOSS1~BOSSCL1","60")    
 
-    # YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
     # YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
     # YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
 

@@ -328,7 +328,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
         df.loc[date_match, "medium_bullish"] = medium_bullish
         df.loc[date_match, "weak_bullish"] = weak_bullish        
     
-    df["BOSS2"] = (df["BOSS1"] & (df["bullish_ratio"]>=0.6))  
+    df["BOSS2"] = (df["BOSS1"] & (df["bullish_ratio"]>=0.7))  
     
     df.loc[df["BOSS2"], "buy_price"] = round(((df["HHHigh"] + df["LLLow"]) / 2),2)
     df.loc[df["BOSS2"], "tp1_price"] = df["HHHigh"]

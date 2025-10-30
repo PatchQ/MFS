@@ -4,7 +4,7 @@ from AA_GetIndustryList import getIndustryList
 from AA_GetStockListData import getStockListData
 from YFData_Collect import YFgetAll
 from YFData_Collect import YFgetDaily
-from YFData_Process import YFprocessData
+from YFData_Process_sklearn import YFprocessData
 from YFData_FilterStock import YFSignal
 from YFData_ProcessBOSS import YFProcessBOSS
 
@@ -20,22 +20,22 @@ if __name__ == '__main__':
     #getIndustryList()
 
     #get All number from AA
-    getStockListData()
+    #getStockListData()
 
     # #get All History Data from YF
-    YFgetAll("L")
-    YFgetAll("M")
-    YFgetAll("S")
+    #YFgetAll("L")
+    #YFgetAll("M")
+    #YFgetAll("S")
 
     #get Daily Data from YF
-    #YFgetDaily("L")
-    #YFgetDaily("M")
-    #YFgetDaily("S")
+    YFgetDaily("L")
+    YFgetDaily("M")
+    YFgetDaily("S")
 
     #process All Data
-    #YFprocessData("L")
-    #YFprocessData("M")
-    #YFprocessData("S")
+    YFprocessData("L")
+    YFprocessData("M")
+    YFprocessData("S")
 
     # #get Signal to excelfile
     # YFSignal("L","T1_22&EMA2",DAYS,"EMA1")
