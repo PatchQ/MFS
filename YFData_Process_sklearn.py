@@ -278,7 +278,7 @@ class RobustSwingPointAnalyzer:
         
         return swing_df
     
-    def fibonacci_retracement_confirmation(self, swing_df, retracement_levels=[0.382, 0.5, 0.618]):
+    def fibonacci_retracement_confirmation(self, swing_df, retracement_levels=[0.3, 0.5, 0.7]):
         """
         使用斐波那契回撤确认摆动点的重要性
         """
