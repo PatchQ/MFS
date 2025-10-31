@@ -140,13 +140,16 @@ def YFSignal(stype,signal,days=0,ruleout=""):
     SLIST = YFGetSLIST(stype,signal,days,ruleout)
     signaldf = YFFilter(SLIST, signaldf)
 
-    if "BOSSB~" in signal:
-        countBOSS(stype,signal,signaldf)
+    if len(signaldf)>0:
 
-    signaldf = signaldf.sort_values('SNO')
-    signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
+        if "BOSSTP1~" in signal:
+            countBOSS(stype,signal,signaldf)
 
-    print(f"{signal} - {stype} : {len(signaldf)}")
+        signaldf = signaldf.sort_values(by=['SNO','Date'],ascending=[True, True])
+        
+        signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
+
+    print(f"{signal} - {stype} : {len(signaldf)}")        
     print("Finish")
         
     
@@ -176,14 +179,22 @@ if __name__ == '__main__':
     # YFSignal("L","T1_22&EMA1",DAYS,"T1_50")
     # YFSignal("M","T1_22&EMA1",DAYS,"T1_50")
     # YFSignal("S","T1_22&EMA1",DAYS,"T1_50")
-    
-    YFSignal("L","BOSS1~BOSSCL1","60")
-    # YFSignal("M","BOSS1~BOSSCL1","60")
-    # YFSignal("S","BOSS1~BOSSCL1","60")    
 
-    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+    #YFSignal("L","T1_150&EMA2","250")
+
+    
+    # YFSignal("L","BOSS1~BOSSB~BOSSCL1~BOSSCL2","90")
+    # YFSignal("M","BOSS1~BOSSB~BOSSCL1~BOSSCL2","90")
+    # YFSignal("S","BOSS1~BOSSB~BOSSCL1~BOSSCL2","90")    
+
+    # YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
     # YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
     # YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+
+    YFSignal("L","T1_150&EMA2","250")
+    YFSignal("M","T1_150&EMA2","250")
+    YFSignal("S","T1_150&EMA2","250")
+
 
 
 

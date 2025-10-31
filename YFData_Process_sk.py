@@ -432,10 +432,11 @@ def calHHLL(df):
     swing_df = analyzer.calculate_confidence_score(swing_df)
     
     # 过滤高置信度的摆动点
-    #hc_swing_df = swing_df[swing_df['confidence_score'] >= 60]
-    
-    resultdf = swing_df.reset_index()
-    #resultdf = swing_df.reset_index().drop(['level_0','index'],axis=1)
+    if len(swing_df)>0:
+        swing_df = swing_df[swing_df['confidence_score'] >= 50]            
+        resultdf = swing_df.reset_index().drop(['level_0','index'],axis=1)
+    else:
+        resultdf = pd.DataFrame()
     
     # print(f"\n=== {sno} 摆动点分析结果 ===")
     # print(f"总摆动点: {len(swing_df)}")
@@ -522,15 +523,17 @@ def AnalyzeData(sno,stype):
     df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv",index_col=0)
     df = convertData(df)
 
-    #df = calEMA(df)
-    tempdf = calHHLL(df)    
-    df = checkLHHHLL(df, sno, stype, tempdf)        
+    #print(sno)
+    df = calEMA(df)
 
-    # df = calT1(df,22)
-    # df = calT1(df,50)
-        
-    df = df.reset_index()
-    df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
+    tempdf = calHHLL(df)
+    
+    if len(tempdf)>0:
+        df = checkLHHHLL(df, sno, stype, tempdf)        
+        df = calT1(df,150)
+        # df = calT1(df,50)            
+        df = df.reset_index()
+        df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
 
 
 def YFprocessData(stype):
@@ -547,9 +550,9 @@ def YFprocessData(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #YFprocessData("L")
+    YFprocessData("L")
     YFprocessData("M")
-    YFprocessData("S")
+    #YFprocessData("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

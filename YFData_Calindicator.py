@@ -312,6 +312,9 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     tempdf = tempdf.reset_index()
 
     df['bullish_ratio'] = 0.00
+    df['bullish_count'] = 0
+    df['strong_bullish'] = 0
+    
     
     for i in range(len(tempdf)):
         sdate = pd.to_datetime(tempdf["LLDate"].iloc[i])
@@ -328,7 +331,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
         df.loc[date_match, "medium_bullish"] = medium_bullish
         df.loc[date_match, "weak_bullish"] = weak_bullish        
     
-    df["BOSS2"] = (df["BOSS1"] & (df["bullish_ratio"]>=0.7))  
+    df["BOSS2"] = (df["BOSS1"] & (df["bullish_ratio"]>=0.7) & (df["strong_bullish"]>=3) & (df["bullish_count"]>=5))  
     
     df.loc[df["BOSS2"], "buy_price"] = round(((df["HHHigh"] + df["LLLow"]) / 2),2)
     df.loc[df["BOSS2"], "tp1_price"] = df["HHHigh"]
@@ -365,7 +368,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
         tp1_price = tempdf["tp1_price"].iloc[i]
         tp2_price = tempdf["tp2_price"].iloc[i]
 
-        buydate_mask = (df.index < hhdate+diffdate) & (df.index > hhdate) & (buy_price>=df["Low"]) #& df["EMA2"]
+        buydate_mask = (df.index < hhdate+diffdate) & (df.index > hhdate) & (buy_price>=df["Low"]) & df["EMA2"]
         buydates = df[buydate_mask].index
 
         if len(buydates)!=0:
