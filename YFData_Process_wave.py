@@ -25,13 +25,13 @@ class YFinanceWaveAnalyzer:
         self.data = None
         self.patterns = []
     
-    def fetch_data(self, symbol: str, period: str = "1y", interval: str = "1d") -> pd.DataFrame:
+    def fetch_data(self, stype: str, symbol: str, period: int = 250, interval: str = "1d") -> pd.DataFrame:
         """
         从yfinance获取股票数据
         """
         try:
             ticker = yf.Ticker(symbol)
-            self.data = ticker.history(period=period, interval=interval)
+            self.data = pd.read_csv(PATH+"/"+stype+"/"+symbol+".csv",index_col=0).tail(period) 
             
             # 确保数据包含必要的列
             required_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
@@ -91,7 +91,7 @@ class YFinanceWaveAnalyzer:
         """
         过滤掉太接近的极值点
         """
-        min_distance = 3  # 最小距离3个周期
+        min_distance = 10  # 最小距离3个周期
         
         # 过滤高点
         filtered_highs = []
@@ -125,7 +125,7 @@ class YFinanceWaveAnalyzer:
         """
         多时间窗口综合分析
         """
-        windows = [3, 5, 8]  # 使用更短的窗口来捕捉更多细节
+        windows = [5,8]  # 使用更短的窗口来捕捉更多细节
         all_highs, all_lows = [], []
         
         for window in windows:
@@ -139,8 +139,11 @@ class YFinanceWaveAnalyzer:
         low_counter = Counter(all_lows)
         
         # 保留被至少2个窗口确认的点
-        confirmed_highs = [idx for idx, count in high_counter.items() if count >= 2]
-        confirmed_lows = [idx for idx, count in low_counter.items() if count >= 2]
+        # confirmed_highs = [idx for idx, count in high_counter.items() if count >= 2]
+        # confirmed_lows = [idx for idx, count in low_counter.items() if count >= 2]
+
+        confirmed_highs = [idx for idx, count in high_counter.items() if count >= 1]
+        confirmed_lows = [idx for idx, count in low_counter.items() if count >= 1]
         
         # 按位置排序
         confirmed_highs.sort()
@@ -370,12 +373,12 @@ class YFinanceWaveAnalyzer:
         
         return min(confidence, 1.0)
     
-    def analyze_stock(self, symbol: str, period: str = "1y") -> Dict:
+    def analyze_stock(self, stype: str, symbol: str, period: int = 250) -> Dict:
         """
         综合分析股票波浪模式
         """
         # 获取数据
-        data = self.fetch_data(symbol, period)
+        data = self.fetch_data(stype, symbol, period)
         if data.empty:
             return {}
         
@@ -457,7 +460,12 @@ def demo_analysis():
     analyzer = YFinanceWaveAnalyzer()
     
     # 分析苹果股票
-    results = analyzer.analyze_stock("0011.HK", "5y")
+
+    stype = "L"
+    sno = "0011.HK"
+    period = 2000
+
+    results = analyzer.analyze_stock(stype, sno, period)
     
     if results:
         print(f"\n=== {results['symbol']} 波浪分析结果 ===")
