@@ -27,7 +27,7 @@ class AdvancedSwingAnalyzer:
         多时间框架共识分析，结合不同窗口大小
         """
         # 定义多个窗口大小
-        windows = [3, 5, 7, 10]
+        windows = [3,5]
         all_swing_points = []
         
         for window in windows:
@@ -237,7 +237,8 @@ class AdvancedSwingAnalyzer:
         
         # 条件3: 成交量确认（如果可用）
         if current_high['volume'] > 0:
-            avg_volume = np.mean([h['volume'] for h in highs.iloc[max(0, current_idx-5):current_idx+1]])
+            #avg_volume = np.mean([hs['volume'] for hs in highs.iloc[max(0, current_idx-5):current_idx+1]])
+            avg_volume = highs['volume'].iloc[max(0, current_idx-5):current_idx+1].mean()
             if current_high['volume'] < avg_volume * 0.8:
                 # LH形成时成交量通常萎缩
                 return True
@@ -275,7 +276,8 @@ class AdvancedSwingAnalyzer:
         
         # 条件3: 成交量确认（如果可用）
         if current_low['volume'] > 0:
-            avg_volume = np.mean([l['volume'] for l in lows.iloc[max(0, current_idx-5):current_idx+1]])
+            #avg_volume = np.mean([l['volume'] for l in lows.iloc[max(0, current_idx-5):current_idx+1]])
+            avg_volume = lows['volume'].iloc[max(0, current_idx-5):current_idx+1].mean()
             if current_low['volume'] > avg_volume * 1.2:
                 # HL形成时成交量通常放大
                 return True
@@ -405,9 +407,6 @@ class AdvancedSwingAnalyzer:
         return swings_df
     
     def find_lh_ll_hh_patterns(self, swings_df, max_gap=20):
-        """
-        专门寻找LH-LL-HH模式
-        """
         patterns = []
         
         # 转换为列表以便处理
@@ -421,8 +420,7 @@ class AdvancedSwingAnalyzer:
             
             if point2 is None or point3 is None:
                 break
-            
-            # 检查LH-LL-HH模式
+                        
             if (point1['classification'] == 'LH' and
                 point2['classification'] == 'LL' and
                 point3['classification'] == 'HH'):
@@ -447,8 +445,7 @@ class AdvancedSwingAnalyzer:
                         'time_gap2': time_gap2,
                         'total_bars': point3['index'] - point1['index']
                     })
-                    
-                    # 跳过已匹配的点
+
                     i += 3
                 else:
                     i += 1
@@ -457,7 +454,7 @@ class AdvancedSwingAnalyzer:
         
         return patterns
     
-    def comprehensive_analysis(self, high_series, low_series, close_series, volume_series=None):
+    def comprehensive_analysis(self, high_series, low_series, close_series, volume_series):
         """
         综合分析流程
         """
@@ -487,12 +484,10 @@ def analyze_stock_for_patterns(sno, stype):
     """
     # 下载数据
     df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv",index_col=0)
-    stock_data = convertData(df)    
-    
-    if stock_data.empty:
-        print(f"无法获取 {sno} 的数据")
-        return None, None, None
-    
+    stock_data = convertData(df)
+    stock_data.index = pd.to_datetime(stock_data.index,utc=True).tz_convert('Asia/Shanghai')         
+    stock_data = extendData(stock_data)      
+
     # 创建分析器
     analyzer = AdvancedSwingAnalyzer()
     
@@ -510,149 +505,13 @@ def analyze_stock_for_patterns(sno, stype):
     
     # 显示模式详情
     for i, pattern in enumerate(patterns):
-        print(f"\n模式 {i+1}:")
-        print(f"  LH: {pattern['lh_date'].strftime('%Y-%m-%d')} (价格: {pattern['lh_price']:.2f})")
-        print(f"  LL: {pattern['ll_date'].strftime('%Y-%m-%d')} (价格: {pattern['ll_price']:.2f})")
-        print(f"  HH: {pattern['hh_date'].strftime('%Y-%m-%d')} (价格: {pattern['hh_price']:.2f})")
-        print(f"  时间跨度: {pattern['total_bars']} 根K线")
+        print(f"\nMode {i+1}:")
+        print(f"  LH: {pd.to_datetime(pattern['lh_date']).strftime('%Y-%m-%d')} (price: {pattern['lh_price']:.2f})")
+        print(f"  LL: {pd.to_datetime(pattern['ll_date']).strftime('%Y-%m-%d')} (price: {pattern['ll_price']:.2f})")
+        print(f"  HH: {pd.to_datetime(pattern['hh_date']).strftime('%Y-%m-%d')} (price: {pattern['hh_price']:.2f})")
+        print(f"  Time Period: {pattern['total_bars']} Bars")
     
     return swings_df, patterns, stock_data
-
-def visualize_patterns(ticker, stock_data, swings_df, patterns):
-    """
-    可视化LH-LL-HH模式
-    """
-    import matplotlib.pyplot as plt
-    import mplfinance as mpf
-    
-    # 准备额外图表元素
-    add_plots = []
-    
-    # 标记LH点
-    lh_points = swings_df[swings_df['classification'] == 'LH']
-    if not lh_points.empty:
-        lh_series = pd.Series(index=stock_data.index, dtype=float)
-        for _, row in lh_points.iterrows():
-            if row['date'] in stock_data.index:
-                lh_series[row['date']] = row['price']
-        lh_plot = mpf.make_addplot(lh_series, type='scatter', markersize=100,
-                                  marker='v', color='orange', label='LH')
-        add_plots.append(lh_plot)
-    
-    # 标记LL点
-    ll_points = swings_df[swings_df['classification'] == 'LL']
-    if not ll_points.empty:
-        ll_series = pd.Series(index=stock_data.index, dtype=float)
-        for _, row in ll_points.iterrows():
-            if row['date'] in stock_data.index:
-                ll_series[row['date']] = row['price']
-        ll_plot = mpf.make_addplot(ll_series, type='scatter', markersize=100,
-                                  marker='^', color='red', label='LL')
-        add_plots.append(ll_plot)
-    
-    # 标记HH点
-    hh_points = swings_df[swings_df['classification'] == 'HH']
-    if not hh_points.empty:
-        hh_series = pd.Series(index=stock_data.index, dtype=float)
-        for _, row in hh_points.iterrows():
-            if row['date'] in stock_data.index:
-                hh_series[row['date']] = row['price']
-        hh_plot = mpf.make_addplot(hh_series, type='scatter', markersize=100,
-                                  marker='v', color='green', label='HH')
-        add_plots.append(hh_plot)
-    
-    # 标记HL点
-    hl_points = swings_df[swings_df['classification'] == 'HL']
-    if not hl_points.empty:
-        hl_series = pd.Series(index=stock_data.index, dtype=float)
-        for _, row in hl_points.iterrows():
-            if row['date'] in stock_data.index:
-                hl_series[row['date']] = row['price']
-        hl_plot = mpf.make_addplot(hl_series, type='scatter', markersize=80,
-                                  marker='^', color='blue', label='HL')
-        add_plots.append(hl_plot)
-    
-    # 为每个LH-LL-HH模式添加连接线
-    for i, pattern in enumerate(patterns):
-        # 创建模式线
-        pattern_dates = [pattern['lh_date'], pattern['ll_date'], pattern['hh_date']]
-        pattern_prices = [pattern['lh_price'], pattern['ll_price'], pattern['hh_price']]
-        
-        pattern_series = pd.Series(pattern_prices, index=pattern_dates)
-        pattern_plot = mpf.make_addplot(pattern_series, type='line', 
-                                       color='purple', linestyle='--', 
-                                       alpha=0.7, label=f'Pattern {i+1}')
-        add_plots.append(pattern_plot)
-    
-    # 设置图表样式
-    mc = mpf.make_marketcolors(
-        up='red',
-        down='green',
-        edge='black',
-        wick='black',
-        volume='in'
-    )
-    
-    style = mpf.make_mpf_style(marketcolors=mc, gridstyle='--', gridcolor='lightgray')
-    
-    # 绘制图表
-    title = f'{ticker} LH-LL-HH模式识别 (找到 {len(patterns)} 个模式)'
-    
-    fig, axes = mpf.plot(
-        stock_data[['Open', 'High', 'Low', 'Close', 'Volume']],
-        type='candle',
-        style=style,
-        addplot=add_plots,
-        title=title,
-        ylabel='价格',
-        volume=True,
-        figsize=(15, 10),
-        returnfig=True
-    )
-    
-    plt.tight_layout()
-    plt.show()
-
-# 批量分析函数
-def batch_analyze_patterns(ticker_list, period="1y"):
-    """
-    批量分析多只股票的LH-LL-HH模式
-    """
-    results = {}
-    
-    for ticker in ticker_list:
-        print(f"\n分析 {ticker}...")
-        try:
-            swings_df, patterns, stock_data = analyze_stock_for_patterns(ticker, period)
-            
-            if patterns:
-                results[ticker] = {
-                    'patterns_found': len(patterns),
-                    'total_swings': len(swings_df),
-                    'lh_count': len(swings_df[swings_df['classification'] == 'LH']),
-                    'll_count': len(swings_df[swings_df['classification'] == 'LL']),
-                    'hh_count': len(swings_df[swings_df['classification'] == 'HH']),
-                    'hl_count': len(swings_df[swings_df['classification'] == 'HL']),
-                    'patterns': patterns
-                }
-                
-                # 可视化这只股票
-                visualize_patterns(ticker, stock_data, swings_df, patterns)
-            else:
-                print(f"  {ticker}: 未找到LH-LL-HH模式")
-                
-        except Exception as e:
-            print(f"  分析 {ticker} 时出错: {e}")
-    
-    # 创建比较表格
-    if results:
-        comparison_df = pd.DataFrame(results).T
-        comparison_df = comparison_df.sort_values('patterns_found', ascending=False)
-        
-        print("\n=== 股票比较结果 ===")
-        print(comparison_df[['patterns_found', 'total_swings', 'lh_count', 'll_count', 'hh_count', 'hl_count']])
-    
-    return results
 
 
 def AnalyzeData(sno,stype):
@@ -697,10 +556,7 @@ if __name__ == '__main__':
     swings_df, patterns, stock_data = analyze_stock_for_patterns(sno, "L")
     
     if patterns:
-        visualize_patterns(sno, stock_data, swings_df, patterns)
-        
-        # 保存结果
-        swings_df.to_csv(f"{sno}_swing_analysis.csv", index=False)
+        swings_df.to_csv(f"Data\{sno}_swing_analysis.csv", index=False)
         print(f"\n结果已保存到: {sno}_swing_analysis.csv")
 
     finish = t.perf_counter()

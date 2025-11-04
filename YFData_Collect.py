@@ -48,12 +48,12 @@ def getDataDaily(sno,stype):
         if isinstance(last_date, str):
             last_date = datetime.strptime(last_date, '%Y-%m-%d').date()
 
-    start_date = last_date + timedelta(days=1)
+    start_date = last_date - timedelta(days=1)
     today = datetime.now().date()
 
-    if start_date > today:
-        print(f"{sno} 已是最新資料，無需更新")
-        return
+    # if start_date > today:
+    #     print(f"{sno} 已是最新資料，無需更新")
+    #     return
         
     new_data = getYFDaily(sno, start_date.strftime('%Y-%m-%d'))
     
