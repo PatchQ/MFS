@@ -68,7 +68,7 @@ def YFFilter(SLIST,signaldf):
         return signaldf
     
 
-def countBOSS(stype,signal,df):
+def countBOSS(stype,signal,df,sdate,edate):
     groups = {}
     
     # 遍历DataFrame的每一行
@@ -111,18 +111,19 @@ def countBOSS(stype,signal,df):
     for key, events in groups.items():
         stock, date = key
 
-        if events == seq1:
-            stock_counts_dict[stock]['TP12'] += 1
-        elif (events == seq2) or (events == seq2_1):
-            stock_counts_dict[stock]['TP1'] += 1
-        elif (events == seq3) or (events == seq3_1):
-            stock_counts_dict[stock]['TP2'] += 1
-        elif events == seq4:
-            stock_counts_dict[stock]['TP1C'] += 1
-        elif (events == seq5) or (events == seq5_1):
-            stock_counts_dict[stock]['CL1'] += 1
-        elif events == seq6:
-            stock_counts_dict[stock]['BY1'] += 1
+        if ((date>=sdate) and (date<=edate)):
+            if events == seq1:
+                stock_counts_dict[stock]['TP12'] += 1
+            elif (events == seq2) or (events == seq2_1):
+                stock_counts_dict[stock]['TP1'] += 1
+            elif (events == seq3) or (events == seq3_1):
+                stock_counts_dict[stock]['TP2'] += 1
+            elif events == seq4:
+                stock_counts_dict[stock]['TP1C'] += 1
+            elif (events == seq5) or (events == seq5_1):
+                stock_counts_dict[stock]['CL1'] += 1
+            elif events == seq6:
+                stock_counts_dict[stock]['BY1'] += 1
 
     # 将字典转换为DataFrame
     stock_counts_df = pd.DataFrame.from_dict(stock_counts_dict, orient='index')
@@ -133,7 +134,7 @@ def countBOSS(stype,signal,df):
     stock_counts_df.to_csv("Data/"+stype+"_"+signal+"_Stat_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
 
 
-def YFSignal(stype,signal,days=0,ruleout=""):
+def YFSignal(stype,signal,days,sdate,edate,ruleout=""):
     
     signaldf = pd.DataFrame()
     
@@ -142,8 +143,8 @@ def YFSignal(stype,signal,days=0,ruleout=""):
 
     if len(signaldf)>0:
 
-        if "BOSSTP1~" in signal:
-            countBOSS(stype,signal,signaldf)
+        if int(days)>100:
+            countBOSS(stype,signal,signaldf,sdate,edate)
 
         signaldf = signaldf.sort_values(by=['SNO','Date'],ascending=[True, True])
         
@@ -164,8 +165,12 @@ if __name__ == '__main__':
     # DAYS = "2018-01-01~2020-12-31"
     # DAYS = "2021-01-01~2023-12-31"
     # DAYS = "2024-01-01~2025-12-31"
-    #DAYS = "2009-01-01~2025-12-31"
+    # DAYS = "2009-01-01~2025-12-31"
     DAYS = "10000"
+    SDATE = "2021/01/01"
+    EDATE = "2023/12/31"
+    SDATE = "1900/01/01"
+    EDATE = "2025/12/31"
     start = t.perf_counter()
     
     # YFSignal("L","T1_22&EMA2",DAYS,"EMA1")
@@ -183,17 +188,17 @@ if __name__ == '__main__':
     #YFSignal("L","T1_150&EMA2","250")
 
     
-    # YFSignal("L","BOSS1~BOSSB~BOSSCL1~BOSSCL2","90")
-    # YFSignal("M","BOSS1~BOSSB~BOSSCL1~BOSSCL2","90")
-    # YFSignal("S","BOSS1~BOSSB~BOSSCL1~BOSSCL2","90")    
+    YFSignal("L","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","60",SDATE,EDATE)
+    YFSignal("M","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","60",SDATE,EDATE)
+    YFSignal("S","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","60",SDATE,EDATE)    
 
-    # YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
-    # YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
-    # YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+    # YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    # YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    # YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
 
-    YFSignal("L","T1_150&EMA2","250")
-    YFSignal("M","T1_150&EMA2","250")
-    YFSignal("S","T1_150&EMA2","250")
+    # YFSignal("L","T1_150&EMA2","250")
+    # YFSignal("M","T1_150&EMA2","250")
+    # YFSignal("S","T1_150&EMA2","250")
 
 
 

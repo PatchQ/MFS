@@ -278,7 +278,7 @@ class RobustSwingPointAnalyzer:
         
         return swing_df
     
-    def fibonacci_retracement_confirmation(self, swing_df, retracement_levels=[0.3, 0.5, 0.7]):
+    def fibonacci_retracement_confirmation(self, swing_df, retracement_levels=[0.618, 0.705, 0.786]):
         """
         使用斐波那契回撤确认摆动点的重要性
         """
@@ -433,7 +433,7 @@ def calHHLL(df):
     
     # 过滤高置信度的摆动点
     if len(swing_df)>0:
-        swing_df = swing_df[swing_df['confidence_score'] >= 50]            
+        swing_df = swing_df[swing_df['confidence_score'] >= 40]            
         resultdf = swing_df.reset_index().drop(['level_0','index'],axis=1)
     else:
         resultdf = pd.DataFrame()
@@ -552,7 +552,7 @@ if __name__ == '__main__':
 
     YFprocessData("L")
     YFprocessData("M")
-    #YFprocessData("S")
+    YFprocessData("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

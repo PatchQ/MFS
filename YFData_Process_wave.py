@@ -125,7 +125,7 @@ class YFinanceWaveAnalyzer:
         """
         多时间窗口综合分析
         """
-        windows = [5,8]  # 使用更短的窗口来捕捉更多细节
+        windows = [5,8,10]  # 使用更短的窗口来捕捉更多细节
         all_highs, all_lows = [], []
         
         for window in windows:
@@ -463,7 +463,7 @@ def demo_analysis():
 
     stype = "L"
     sno = "0011.HK"
-    period = 2000
+    period = 1500
 
     results = analyzer.analyze_stock(stype, sno, period)
     
@@ -481,7 +481,8 @@ def demo_analysis():
             print(f"  时间范围: {pattern['start_date']} 到 {pattern['end_date']}")
         
         # 绘制图表
-        analyzer.plot_analysis(results)
+        #analyzer.plot_analysis(results)
+
 
 if __name__ == "__main__":
     demo_analysis()
