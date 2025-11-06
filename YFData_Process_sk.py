@@ -550,9 +550,9 @@ def YFprocessData(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    YFprocessData("L")
+    #YFprocessData("L")
     YFprocessData("M")
-    YFprocessData("S")
+    #YFprocessData("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

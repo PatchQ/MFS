@@ -380,12 +380,12 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
             df.loc[lastbuydate,'BOSSB'] = True
             #print("BUYDate : "+lastbuydate.strftime("%Y-%m-%d"))
 
-            #tp1date_mask = (df.index < lastbuydate+diffdate) & (df.index >= lastbuydate) & (df["High"]>=tp1_price*0.995)
-            tp1date_mask = (df.index >= lastbuydate) & (df["High"]>=tp1_price*0.995)
+            tp1date_mask = (df.index < lastbuydate+diffdate) & (df.index >= lastbuydate) & (df["High"]>=tp1_price*0.995)
+            #tp1date_mask = (df.index >= lastbuydate) & (df["High"]>=tp1_price*0.995)
             tp1dates = df[tp1date_mask].index
-
-            #cl1date_mask = (df.index < lastbuydate+diffdate) & (df.index >= lastbuydate) & (cl_price>=df["Low"])
-            cl1date_mask = (df.index >= lastbuydate) & (df["Close"]<cl_price)
+            
+            cl1date_mask = (df.index < lastbuydate+diffdate) & (df.index >= lastbuydate) & (df["Close"]<cl_price)
+            #cl1date_mask = (df.index >= lastbuydate) & (df["Close"]<cl_price)
             cl1dates = df[cl1date_mask].index            
 
             if len(tp1dates)!=0:
@@ -417,13 +417,13 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
                 df.loc[lasttp1date,'BOSS_STATUS'] = "TP1-"+startbossdate
                 df.loc[lasttp1date,'BOSSTP1'] = True
                 #print("TP1 : "+lasttp1date.strftime("%Y-%m-%d"))     
-
-                #tp2date_mask = (df.index < lasttp1date+diffdate) & (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
-                tp2date_mask = (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
+                
+                tp2date_mask = (df.index < lasttp1date+diffdate) & (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
+                #tp2date_mask = (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
                 tp2dates = df[tp2date_mask].index        
-            
-                #cl2date_mask = (df.index < lasttp1date+diffdate) & (df.index >= lasttp1date) & (cl_price>=df["Low"])
-                cl2date_mask = (df.index >= lasttp1date) & (df["Close"]<cl_price) 
+                            
+                cl2date_mask = (df.index < lasttp1date+diffdate) & (df.index >= lasttp1date) & (df["Close"]<cl_price)
+                #cl2date_mask = (df.index >= lasttp1date) & (df["Close"]<cl_price)
                 cl2dates = df[cl2date_mask].index
 
                 if len(tp2dates)!=0:
