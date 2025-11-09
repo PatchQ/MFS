@@ -189,11 +189,11 @@ def calEMA(df):
 
     try:
         # Volatility indicators
-        df['EMA10'] = df['Adj Close'].ewm(span=10, min_periods=5, adjust=False).mean()
-        df['EMA22'] = df['Adj Close'].ewm(span=22, min_periods=11, adjust=False).mean()     
-        df['EMA50'] = df['Adj Close'].ewm(span=50, min_periods=25, adjust=False).mean()     
-        df['EMA100'] = df['Adj Close'].ewm(span=100, min_periods=50, adjust=False).mean()             
-        df['EMA250'] = df['Adj Close'].ewm(span=250, min_periods=125, adjust=False).mean()
+        df['EMA10'] = df['Close'].ewm(span=10, min_periods=5, adjust=False).mean()
+        df['EMA22'] = df['Close'].ewm(span=22, min_periods=11, adjust=False).mean()     
+        df['EMA50'] = df['Close'].ewm(span=50, min_periods=25, adjust=False).mean()     
+        df['EMA100'] = df['Close'].ewm(span=100, min_periods=50, adjust=False).mean()             
+        df['EMA250'] = df['Close'].ewm(span=250, min_periods=125, adjust=False).mean()
 
         df['EMA1'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))        
         df['EMA2'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]))        
@@ -262,10 +262,12 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     df['HHDate'] = ""
     df['HHHigh'] = 0
     df['22DLow'] = 0
+    df['33DLow'] = 0
     df['BOSS_STATUS'] = ""
     df['BOSSB'] = False
     df['BOSSTP1'] = False
     df['BOSSTP2'] = False
+    df['BOSSTP3'] = False
     df['BOSSCL1'] = False
     df['BOSSCL2'] = False
     
@@ -295,18 +297,18 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
 
             etempdate = pd.to_datetime(swing_analysis["LLDate"].iloc[i])
             stempdate = etempdate - timedelta(days=22)
-
             df.loc[date_match, "22DLow"] = df.loc[(df.index>=stempdate) & (df.index<etempdate), "Low"].min()
+            stempdate = etempdate - timedelta(days=33)
+            df.loc[date_match, "33DLow"] = df.loc[(df.index>=stempdate) & (df.index<etempdate), "Low"].min()
             
 
     swing_analysis["BOSS1"] = ((swing_analysis['PATTERN']=="LHLLHH") & (swing_analysis['HHClose']>swing_analysis['price']))
     #swing_analysis.to_csv(OUTPATH+"/HHLL/HL_"+sno+".csv",index=False)
 
-    BOSSRule1 = df['PATTERN']=="LHLLHH"
-    BOSSRule2 = df['HHClose']>df['High']        
-    BOSSRule3 = df['LLLow']<df['22DLow'] 
-
-    df["BOSS1"] = (BOSSRule1 & BOSSRule2 & BOSSRule3)    
+    BOSS1Rule1 = df['PATTERN']=="LHLLHH"
+    BOSS1Rule2 = df['HHClose']>df['High']        
+    
+    df["BOSS1"] = (BOSS1Rule1 & BOSS1Rule2)    
     
     tempdf = df.loc[df["BOSS1"]]
     tempdf = tempdf.reset_index()
@@ -331,11 +333,17 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
         df.loc[date_match, "medium_bullish"] = medium_bullish
         df.loc[date_match, "weak_bullish"] = weak_bullish        
     
-    df["BOSS2"] = (df["BOSS1"] & (df["bullish_ratio"]>=0.6) & (df["strong_bullish"]>=2) & (df["bullish_count"]>=4))  
+    BOSS2Rule1 = df['LLLow']<df['33DLow'] 
+    BOSS2Rule2 = df["bullish_ratio"]>=0.6
+    BOSS2Rule3 = df["strong_bullish"]>=2
+    BOSS2Rule4 = df["bullish_count"]>=4
+
+    df["BOSS2"] = (df["BOSS1"] & BOSS2Rule1 & BOSS2Rule2 & BOSS2Rule3 & BOSS2Rule4)  
     
     df.loc[df["BOSS2"], "buy_price"] = round(((df["HHHigh"] + df["LLLow"]) / 2),2)
     df.loc[df["BOSS2"], "tp1_price"] = df["HHHigh"]
     df.loc[df["BOSS2"], "tp2_price"] = df["buy_price"] + (df["HHHigh"] - df["buy_price"]) * 2 
+    df.loc[df["BOSS2"], "tp3_price"] = df["buy_price"] + (df["HHHigh"] - df["buy_price"]) * 3 
     df.loc[df["BOSS2"], "BOSS_STATUS"] = "SB1-"+df.loc[df["BOSS2"]].index.strftime("%Y/%m/%d")
 
     tempdf = df.loc[df["BOSS2"]]    
@@ -348,8 +356,10 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
         lasttp1date = pd.to_datetime("1900-01-01") 
         lastcl2date = pd.to_datetime("1900-01-01") 
         lasttp2date = pd.to_datetime("1900-01-01") 
+        lasttp3date = pd.to_datetime("1900-01-01") 
         tp1 = False
         tp2 = False
+        tp3 = False
         cl1 = False
         cl2 = False
         buy = False        
@@ -367,6 +377,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
         cl_price = tempdf["LLLow"].iloc[i]
         tp1_price = tempdf["tp1_price"].iloc[i]
         tp2_price = tempdf["tp2_price"].iloc[i]
+        tp3_price = tempdf["tp3_price"].iloc[i]
 
         buydate_mask = (df.index < hhdate+diffdate) & (df.index > hhdate) & (buy_price>=df["Low"]) & df["EMA2"]
         buydates = df[buydate_mask].index
@@ -449,11 +460,24 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
                     else:
                         df.loc[lastcl2date,'BOSS_STATUS'] = "CL2-"+startbossdate
                         df.loc[lastcl2date,'BOSSCL2'] = True
-                        #print("CL2 : "+lastcl2date.strftime("%Y-%m-%d")+ " : "+startbossdate)               
-                else:
-                    if tp2:
-                        df.loc[lasttp2date,'BOSS_STATUS'] = "TP2-"+startbossdate
-                        df.loc[lasttp2date,'BOSSTP2'] = True
-                        #print("TP2 : "+lasttp2date.strftime("%Y-%m-%d")+ " : "+startbossdate)
+                        #print("CL2 : "+lastcl2date.strftime("%Y-%m-%d")+ " : "+startbossdate)                               
+                
+                if tp2:
+                    df.loc[lasttp2date,'BOSS_STATUS'] = "TP2-"+startbossdate
+                    df.loc[lasttp2date,'BOSSTP2'] = True
+                    #print("TP2 : "+lasttp2date.strftime("%Y-%m-%d")+ " : "+startbossdate)
+
+                    tp3date_mask = (df.index < lasttp2date+diffdate) & (df.index >= lasttp2date) & (df["High"]>=tp3_price*0.99)
+                    #tp2date_mask = (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
+                    tp3dates = df[tp3date_mask].index        
+
+                    if len(tp3dates)!=0:
+                        tp3 = True                
+                        lasttp3date = tp3dates[0]
+
+                    if tp3:
+                        df.loc[lasttp3date,'BOSS_STATUS'] = "TP3-"+startbossdate
+                        df.loc[lasttp3date,'BOSSTP3'] = True
+
 
     return df

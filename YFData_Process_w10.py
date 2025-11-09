@@ -301,7 +301,7 @@ def YFprocessData(stype):
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
-    SLIST = SLIST[7:8]
+    SLIST = SLIST[:]
 
     with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))

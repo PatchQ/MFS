@@ -90,22 +90,34 @@ def countBOSS(stype,signal,df,sdate,edate):
 
     
     # 定义目标序列
-    seq1 = ['BY1', 'TP1', 'TP2']
-    seq2 = ['BY1', 'TP1']
-    seq2_1 = ['TP1']
+    seq1 = ['BY1', 'TP1', 'TP2', 'TP3']
 
-    seq3 = ['BY1', 'TP2']
-    seq3_1 = ['TP2']
+    seq2 = ['BY1', 'TP1', 'TP2']
+
+    seq3 = ['BY1', 'TP1']
+    seq3_1 = ['TP1']
+
+    seq4 = ['BY1', 'TP2']
+    seq4_1 = ['TP1', 'TP2']
+    seq4_2 = ['TP2']
+
+    seq5 = ['BY1', 'TP3']
+    seq5_1 = ['BY1', 'TP1', 'TP3']
+    seq5_2 = ['BY1', 'TP2', 'TP3']
+    seq5_3 = ['TP1','TP3']
+    seq5_4 = ['TP2','TP3']
+    seq5_5 = ['TP3']
+
+    seq6 = ['BY1', 'TP1', 'CL2']
+    seq6_1 = ['TP1', 'CL2']
     
-    seq4 = ['BY1', 'TP1', 'CL2']
+    seq7 = ['BY1', 'CL1']
+    seq7_1 = ['CL1']    
 
-    seq5 = ['BY1', 'CL1']
-    seq5_1 = ['CL1']
-
-    seq6 = ['BY1']
+    seq8 = ['BY1']
 
     # 使用defaultdict来存储每只股票的计数
-    stock_counts_dict = defaultdict(lambda: {'TP12': 0, 'TP1': 0, 'TP2': 0, 'TP1C': 0, 'CL1': 0, 'BY1': 0})
+    stock_counts_dict = defaultdict(lambda: {'TP123': 0, 'TP12': 0, 'TP1': 0, 'TP2': 0, 'TP3': 0, 'TP1C': 0, 'CL1': 0, 'BY1': 0})
     
    # 遍历每个组
     for key, events in groups.items():
@@ -113,22 +125,26 @@ def countBOSS(stype,signal,df,sdate,edate):
 
         if ((date>=sdate) and (date<=edate)):
             if events == seq1:
+                stock_counts_dict[stock]['TP123'] += 1
+            elif events == seq2:
                 stock_counts_dict[stock]['TP12'] += 1
-            elif (events == seq2) or (events == seq2_1):
-                stock_counts_dict[stock]['TP1'] += 1
             elif (events == seq3) or (events == seq3_1):
+                stock_counts_dict[stock]['TP1'] += 1
+            elif (events == seq4) or (events == seq4_1) or (events == seq4_2):
                 stock_counts_dict[stock]['TP2'] += 1
-            elif events == seq4:
+            elif (events == seq5) or (events == seq5_1) or (events == seq5_2) or (events == seq5_3) or (events == seq5_4) or (events == seq5_5):
+                stock_counts_dict[stock]['TP3'] += 1
+            elif (events == seq6) or (events == seq6_1):
                 stock_counts_dict[stock]['TP1C'] += 1
-            elif (events == seq5) or (events == seq5_1):
+            elif (events == seq7) or (events == seq7_1):
                 stock_counts_dict[stock]['CL1'] += 1
-            elif events == seq6:
+            elif events == seq8:
                 stock_counts_dict[stock]['BY1'] += 1
 
     # 将字典转换为DataFrame
     stock_counts_df = pd.DataFrame.from_dict(stock_counts_dict, orient='index')
     stock_counts_df = stock_counts_df.reset_index()
-    stock_counts_df.columns = ['sno', 'TP12', 'TP1', 'TP2', 'TP1C', 'CL1', 'BY1']
+    stock_counts_df.columns = ['sno', 'TP123', 'TP12', 'TP1', 'TP2', 'TP3', 'TP1C', 'CL1', 'BY1']
     stock_counts_df = stock_counts_df.sort_values('sno')
 
     stock_counts_df.to_csv("Data/"+stype+"_"+signal+"_Stat_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
@@ -170,7 +186,7 @@ if __name__ == '__main__':
     SDATE = "2021/01/01"
     EDATE = "2023/12/31"
     SDATE = "1900/01/01"
-    EDATE = "2024/12/31"
+    EDATE = "2025/12/31"
     start = t.perf_counter()
     
     # YFSignal("L","T1_22&EMA2",DAYS,"EMA1")
@@ -188,17 +204,17 @@ if __name__ == '__main__':
     #YFSignal("L","T1_150&EMA2","250")
 
     
-    # YFSignal("L","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","60",SDATE,EDATE)
-    # YFSignal("M","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","60",SDATE,EDATE)
-    # YFSignal("S","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","60",SDATE,EDATE)    
+    # YFSignal("L","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","30",SDATE,EDATE)
+    # YFSignal("M","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","30",SDATE,EDATE)
+    # YFSignal("S","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","30",SDATE,EDATE)    
 
     YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
-    YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
-    # YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    #YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
 
-    # YFSignal("L","T1_150&EMA2","250")
-    # YFSignal("M","T1_150&EMA2","250")
-    # YFSignal("S","T1_150&EMA2","250")
+    # YFSignal("L","T1_150&EMA2","250",SDATE,EDATE)
+    # YFSignal("M","T1_150&EMA2","250",SDATE,EDATE)
+    # YFSignal("S","T1_150&EMA2","250",SDATE,EDATE)
 
 
 

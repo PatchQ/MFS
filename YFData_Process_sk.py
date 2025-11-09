@@ -530,7 +530,7 @@ def AnalyzeData(sno,stype):
     
     if len(tempdf)>0:
         df = checkLHHHLL(df, sno, stype, tempdf)        
-        df = calT1(df,150)
+        df = calT1(df,100)
         # df = calT1(df,50)            
         df = df.reset_index()
         df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
@@ -541,7 +541,7 @@ def YFprocessData(stype):
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
-    SLIST = SLIST[:]
+    SLIST = SLIST[7:8]
 
     with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
@@ -550,8 +550,8 @@ def YFprocessData(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #YFprocessData("L")
-    YFprocessData("M")
+    YFprocessData("L")
+    #YFprocessData("M")
     #YFprocessData("S")
 
     finish = t.perf_counter()
