@@ -90,28 +90,28 @@ def countBOSS(stype,signal,df,sdate,edate):
 
     
     # 定义目标序列
-    seq1 = ['BY1', 'TP1', 'TP2', 'TP3']
+    seq1 = ['BY1','TP1','TP2','TP3']
 
-    seq2 = ['BY1', 'TP1', 'TP2']
+    seq2 = ['BY1','TP1','TP2']
 
-    seq3 = ['BY1', 'TP1']
+    seq3 = ['BY1','TP1']
     seq3_1 = ['TP1']
 
-    seq4 = ['BY1', 'TP2']
-    seq4_1 = ['TP1', 'TP2']
+    seq4 = ['BY1','TP2']
+    seq4_1 = ['TP1','TP2']
     seq4_2 = ['TP2']
 
-    seq5 = ['BY1', 'TP3']
-    seq5_1 = ['BY1', 'TP1', 'TP3']
-    seq5_2 = ['BY1', 'TP2', 'TP3']
+    seq5 = ['BY1','TP3']
+    seq5_1 = ['BY1','TP1','TP3']
+    seq5_2 = ['BY1','TP2','TP3']
     seq5_3 = ['TP1','TP3']
     seq5_4 = ['TP2','TP3']
     seq5_5 = ['TP3']
 
-    seq6 = ['BY1', 'TP1', 'CL2']
-    seq6_1 = ['TP1', 'CL2']
+    seq6 = ['BY1','TP1','CL2']
+    seq6_1 = ['TP1','CL2']
     
-    seq7 = ['BY1', 'CL1']
+    seq7 = ['BY1','CL1']
     seq7_1 = ['CL1']    
 
     seq8 = ['BY1']
@@ -208,9 +208,9 @@ if __name__ == '__main__':
     # YFSignal("M","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","30",SDATE,EDATE)
     # YFSignal("S","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","30",SDATE,EDATE)    
 
-    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
-    #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
-    #YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    #YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
 
     # YFSignal("L","T1_150&EMA2","250",SDATE,EDATE)
     # YFSignal("M","T1_150&EMA2","250",SDATE,EDATE)

@@ -185,18 +185,42 @@ def calRSI_SMA(df,period):
     return rsi
 
 
+def calEMA_TV(close_prices, period=50):
+    """
+    完全匹配 TradingView 的 EMA 計算
+    """
+    # 轉換為列表以便處理
+    prices = close_prices.tolist()
+    ema_values = []
+    
+    # 計算平滑係數
+    k = 2.0 / (period + 1)
+    
+    # 第一個 EMA 是前 period 個價格的 SMA
+    first_sma = sum(prices[:period]) / period
+    ema_values.append(first_sma)
+    
+    # 計算後續的 EMA 值
+    for price in prices[period:]:
+        ema = (price * k) + (ema_values[-1] * (1 - k))
+        ema_values.append(ema)
+    
+    # 創建完整長度的序列，前面用 NaN 填充
+    full_ema = [None] * (period - 1) + ema_values
+    return full_ema
+
+
 def calEMA(df):
 
     try:
-        # Volatility indicators
-        df['EMA10'] = df['Close'].ewm(span=10, min_periods=5, adjust=False).mean()
-        df['EMA22'] = df['Close'].ewm(span=22, min_periods=11, adjust=False).mean()     
-        df['EMA50'] = df['Close'].ewm(span=50, min_periods=25, adjust=False).mean()     
-        df['EMA100'] = df['Close'].ewm(span=100, min_periods=50, adjust=False).mean()             
-        df['EMA250'] = df['Close'].ewm(span=250, min_periods=125, adjust=False).mean()
+        df['EMA10'] = df['Close'].ewm(span=10, min_periods=10, adjust=False).mean()
+        df['EMA22'] = df['Close'].ewm(span=22, min_periods=22, adjust=False).mean()     
+        df['EMA50'] = df['Close'].ewm(span=50, min_periods=50, adjust=False).mean()     
+        df['EMA100'] = df['Close'].ewm(span=100, min_periods=100, adjust=False).mean()             
+        df['EMA250'] = df['Close'].ewm(span=250, min_periods=250, adjust=False).mean()
 
         df['EMA1'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))        
-        df['EMA2'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]))        
+        df['EMA2'] = (df["EMA10"] > df["EMA22"])
         
         return df        
 
@@ -333,8 +357,8 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
         df.loc[date_match, "medium_bullish"] = medium_bullish
         df.loc[date_match, "weak_bullish"] = weak_bullish        
     
-    BOSS2Rule1 = df['LLLow']<df['33DLow'] 
-    BOSS2Rule2 = df["bullish_ratio"]>=0.6
+    BOSS2Rule1 = df['LLLow']<=df['22DLow'] 
+    BOSS2Rule2 = df["bullish_ratio"]>=0.7
     BOSS2Rule3 = df["strong_bullish"]>=2
     BOSS2Rule4 = df["bullish_count"]>=4
 

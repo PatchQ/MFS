@@ -122,7 +122,7 @@ class RobustSwingPointAnalyzer:
         
         return clustered_points
     
-    def adaptive_swing_detection(self, high_series, low_series, close_series, 
+    def adaptive_swing_detection(self, base_window, high_series, low_series, close_series, 
                                volatility_lookback=22, adaptive_factor=1.5):
         """
         自适应摆动点检测，根据市场波动率调整窗口大小
@@ -130,11 +130,10 @@ class RobustSwingPointAnalyzer:
         # 计算波动率
         volatility = close_series.pct_change().rolling(volatility_lookback).std()
         
-        # 根据波动率动态调整窗口大小
-        base_window = 4
+        # 根据波动率动态调整窗口大小        
         adaptive_window = (base_window * (1 + adaptive_factor * volatility)).fillna(base_window)
         adaptive_window = adaptive_window.astype(int).clip(3, 10)  # 限制窗口范围
-        
+                
         # 使用自适应窗口检测摆动点
         all_highs = []
         all_lows = []
@@ -143,7 +142,7 @@ class RobustSwingPointAnalyzer:
             if i < max(adaptive_window):
                 continue
                 
-            current_window = adaptive_window.iloc[i]
+            current_window = adaptive_window.iloc[i]            
             
             # 检查是否为局部高点
             if (high_series.iloc[i] == high_series.iloc[i-current_window:i+1].max() and
@@ -244,7 +243,7 @@ class RobustSwingPointAnalyzer:
         
         return pd.DataFrame(classified_points)
     
-    def trend_confirmation(self, swing_df, close_series, ma_short=20, ma_long=50):
+    def trend_confirmation(self, swing_df, close_series, ma_short=22, ma_long=50):
         """
         使用移动平均线确认趋势方向
         """
@@ -324,7 +323,7 @@ class RobustSwingPointAnalyzer:
         
         return swing_df
     
-    def comprehensive_swing_analysis(self, high_series, low_series, close_series, volume_series=None):
+    def comprehensive_swing_analysis(self, base_window, high_series, low_series, close_series, volume_series=None):
         """
         综合摆动点分析，结合多种方法提高准确性
         """
@@ -333,13 +332,13 @@ class RobustSwingPointAnalyzer:
         # 方法1: 多窗口共识检测
         #print("1. 多窗口共识检测...")
         # consensus_highs, consensus_lows = self.multi_window_swing_detection(
-        #     high_series, low_series, close_series, windows=[2, 7]
+        #      high_series, low_series, close_series, windows=[5,7,10]
         # )
         
         # 方法2: 自适应窗口检测
         #print("2. 自适应窗口检测...")
         adaptive_highs, adaptive_lows = self.adaptive_swing_detection(
-            high_series, low_series, close_series
+            base_window, high_series, low_series, close_series
         )
         
         # 合并所有检测结果
@@ -361,7 +360,7 @@ class RobustSwingPointAnalyzer:
             clustered_highs, clustered_lows, close_series, 
             volume_series=volume_series
         )
-        
+       
         # 趋势确认
         #print("5. 趋势确认...")
         swing_df = self.trend_confirmation(swing_df, close_series)
@@ -421,12 +420,15 @@ def calHHLL(df):
     analyzer = RobustSwingPointAnalyzer()
     
     # 执行综合分析
-    swing_df = analyzer.comprehensive_swing_analysis(
-        stock_data['High'],
-        stock_data['Low'],
-        stock_data['Close'],
-        stock_data['Volume']
-    )
+    swing_df = analyzer.comprehensive_swing_analysis(4,stock_data['High'],stock_data['Low'],
+                        stock_data['Close'],stock_data['Volume'])
+    
+    # swing_df2 = analyzer.comprehensive_swing_analysis(5,stock_data['High'],stock_data['Low'],
+    #                     stock_data['Close'],stock_data['Volume'])
+
+
+    # swing_df = pd.concat([swing_df1,swing_df2],ignore_index=True)
+    # swing_df = swing_df.sort_values('date').drop_duplicates(subset=['date'], keep='last')
     
     # 计算置信度
     swing_df = analyzer.calculate_confidence_score(swing_df)

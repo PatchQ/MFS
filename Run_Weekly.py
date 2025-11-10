@@ -25,9 +25,9 @@ if __name__ == '__main__':
     YFgetAll("S")
 
     #process All Data
-    YFprocessData("L")
-    YFprocessData("M")
-    YFprocessData("S")
+    # YFprocessData("L")
+    # YFprocessData("M")
+    # YFprocessData("S")
 
     # #get Signal to excelfile
     # YFSignal("L","T1_150&EMA2","250")
