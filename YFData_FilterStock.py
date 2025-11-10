@@ -147,6 +147,8 @@ def countBOSS(stype,signal,df,sdate,edate):
     stock_counts_df.columns = ['sno', 'TP123', 'TP12', 'TP1', 'TP2', 'TP3', 'TP1C', 'CL1', 'BY1']
     stock_counts_df = stock_counts_df.sort_values('sno')
 
+
+
     stock_counts_df.to_csv("Data/"+stype+"_"+signal+"_Stat_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
 
 
@@ -185,8 +187,8 @@ if __name__ == '__main__':
     DAYS = "10000"
     SDATE = "2021/01/01"
     EDATE = "2023/12/31"
-    SDATE = "1900/01/01"
-    EDATE = "2025/12/31"
+    SDATE = "2024/01/01"
+    EDATE = "2024/12/31"
     start = t.perf_counter()
     
     # YFSignal("L","T1_22&EMA2",DAYS,"EMA1")
@@ -209,8 +211,8 @@ if __name__ == '__main__':
     # YFSignal("S","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","30",SDATE,EDATE)    
 
     YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
-    #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
-    #YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
 
     # YFSignal("L","T1_150&EMA2","250",SDATE,EDATE)
     # YFSignal("M","T1_150&EMA2","250",SDATE,EDATE)

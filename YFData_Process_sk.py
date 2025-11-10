@@ -277,7 +277,7 @@ class RobustSwingPointAnalyzer:
         
         return swing_df
     
-    def fibonacci_retracement_confirmation(self, swing_df, retracement_levels=[0.618, 0.705, 0.786]):
+    def fibonacci_retracement_confirmation(self, swing_df, retracement_levels=[0.382, 0.5, 0.618, 0.705, 0.786]):
         """
         使用斐波那契回撤确认摆动点的重要性
         """
@@ -420,14 +420,14 @@ def calHHLL(df):
     analyzer = RobustSwingPointAnalyzer()
     
     # 执行综合分析
-    swing_df = analyzer.comprehensive_swing_analysis(4,stock_data['High'],stock_data['Low'],
+    swing_df1 = analyzer.comprehensive_swing_analysis(4,stock_data['High'],stock_data['Low'],
                         stock_data['Close'],stock_data['Volume'])
     
-    # swing_df2 = analyzer.comprehensive_swing_analysis(5,stock_data['High'],stock_data['Low'],
-    #                     stock_data['Close'],stock_data['Volume'])
+    swing_df2 = analyzer.comprehensive_swing_analysis(5,stock_data['High'],stock_data['Low'],
+                         stock_data['Close'],stock_data['Volume'])
 
 
-    # swing_df = pd.concat([swing_df1,swing_df2],ignore_index=True)
+    swing_df = pd.concat([swing_df1,swing_df2])
     # swing_df = swing_df.sort_values('date').drop_duplicates(subset=['date'], keep='last')
     
     # 计算置信度
@@ -543,7 +543,7 @@ def YFprocessData(stype):
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
-    SLIST = SLIST[7:8]
+    SLIST = SLIST[:]
 
     with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
@@ -553,8 +553,8 @@ if __name__ == '__main__':
     start = t.perf_counter()
 
     YFprocessData("L")
-    #YFprocessData("M")
-    #YFprocessData("S")
+    YFprocessData("M")
+    YFprocessData("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
