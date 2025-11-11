@@ -277,9 +277,9 @@ class RobustSwingPointAnalyzer:
         
         return swing_df
     
-    def fibonacci_retracement_confirmation(self, swing_df, retracement_levels=[0.382, 0.5, 0.618, 0.705, 0.786]):
+    def fibonacci_retracement_confirmation(self, swing_df, retracement_levels=[0.5, 0.7]):
         """
-        使用斐波那契回撤确认摆动点的重要性
+        使用斐波那契回撤确认摆动点的重要性 retracement_levels=[0.382, 0.5, 0.618, 0.705, 0.786]
         """
         if len(swing_df) < 2:
             return swing_df
@@ -420,104 +420,27 @@ def calHHLL(df):
     analyzer = RobustSwingPointAnalyzer()
     
     # 执行综合分析
-    swing_df1 = analyzer.comprehensive_swing_analysis(4,stock_data['High'],stock_data['Low'],
-                        stock_data['Close'],stock_data['Volume'])
+    # swing_df1 = analyzer.comprehensive_swing_analysis(4,stock_data['High'],stock_data['Low'],
+    #                     stock_data['Close'],stock_data['Volume'])
     
     swing_df2 = analyzer.comprehensive_swing_analysis(5,stock_data['High'],stock_data['Low'],
                          stock_data['Close'],stock_data['Volume'])
 
 
-    swing_df = pd.concat([swing_df1,swing_df2])
+    #swing_df = pd.concat([swing_df1,swing_df2])
     # swing_df = swing_df.sort_values('date').drop_duplicates(subset=['date'], keep='last')
     
     # 计算置信度
-    swing_df = analyzer.calculate_confidence_score(swing_df)
+    swing_df = analyzer.calculate_confidence_score(swing_df2)
     
     # 过滤高置信度的摆动点
     if len(swing_df)>0:
         swing_df = swing_df[swing_df['confidence_score'] >= 40]            
         resultdf = swing_df.reset_index().drop(['level_0','index'],axis=1)
     else:
-        resultdf = pd.DataFrame()
-    
-    # print(f"\n=== {sno} 摆动点分析结果 ===")
-    # print(f"总摆动点: {len(swing_df)}")
-    # print(f"高置信度摆动点: {len(high_confidence_swings)}")
-    
-    # # 统计各类摆动点
-    # if not swing_df.empty:
-    #     pattern_counts = swing_df['classification'].value_counts()
-    #     print("\n摆动点分类统计:")
-    #     for pattern, count in pattern_counts.items():
-    #         confidence_avg = swing_df[swing_df['classification'] == pattern]['confidence_score'].mean()
-    #         print(f"  {pattern}: {count}个 (平均置信度: {confidence_avg:.1f}%)")
-
+        resultdf = pd.DataFrame()    
     
     return resultdf
-
-# 可视化函数
-def visualize_robust_analysis(sno, stock_data, swing_df, high_confidence_swings):
-    # 准备额外图表元素
-    add_plots = []
-    
-    # 标记所有摆动点
-    def create_swing_series(swing_df, pattern, ohlc_index, color, marker, label):
-        marker_series = pd.Series(index=ohlc_index, dtype=float)
-        for _, row in swing_df[swing_df['classification'] == pattern].iterrows():
-            if row['date'] in ohlc_index:
-                marker_series[row['date']] = row['price']
-        return marker_series
-    
-    # 高置信度HH (深绿色)
-    hh_confident = high_confidence_swings[high_confidence_swings['classification'] == 'HH']
-    if not hh_confident.empty:
-        hh_series = create_swing_series(hh_confident, 'HH', stock_data.index, 
-                                       'darkgreen', 'v', 'HH(高置信度)')
-        hh_plot = mpf.make_addplot(hh_series, type='scatter', markersize=100,
-                                  marker='v', color='darkgreen', label='HH(高置信度)')
-        add_plots.append(hh_plot)
-    
-    # 普通HH (浅绿色)
-    hh_normal = swing_df[(swing_df['classification'] == 'HH') & 
-                        (swing_df['confidence_score'] < 60)]
-    if not hh_normal.empty:
-        hh_series_normal = create_swing_series(hh_normal, 'HH', stock_data.index,
-                                              'lightgreen', 'v', 'HH')
-        hh_plot_normal = mpf.make_addplot(hh_series_normal, type='scatter', markersize=60,
-                                         marker='v', color='lightgreen', label='HH')
-        add_plots.append(hh_plot_normal)
-    
-    # 类似地添加其他类型的摆动点...
-    # LL, HL, LH, -H, -L
-    
-    # 设置图表样式
-    mc = mpf.make_marketcolors(
-        up='red',
-        down='green',
-        edge='black',
-        wick='black',
-        volume='in'
-    )
-    
-    style = mpf.make_mpf_style(marketcolors=mc, gridstyle='--', gridcolor='lightgray')
-    
-    # 绘制图表
-    title = f'{sno} 稳健摆动点分析'
-    
-    fig, axes = mpf.plot(
-        stock_data[['Open', 'High', 'Low', 'Close', 'Volume']],
-        type='candle',
-        style=style,
-        addplot=add_plots,
-        title=title,
-        ylabel='價格',
-        volume=True,
-        figsize=(15, 10),
-        returnfig=True
-    )
-    
-    plt.tight_layout()
-    plt.show()
 
 
 def AnalyzeData(sno,stype):

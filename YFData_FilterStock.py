@@ -141,18 +141,24 @@ def countBOSS(stype,signal,df,sdate,edate):
             elif events == seq8:
                 stock_counts_dict[stock]['BY1'] += 1
 
-    # 将字典转换为DataFrame
+    # 将字典转换为DataFrame    
     stock_counts_df = pd.DataFrame.from_dict(stock_counts_dict, orient='index')
-    stock_counts_df = stock_counts_df.reset_index()
-    stock_counts_df.columns = ['sno', 'TP123', 'TP12', 'TP1', 'TP2', 'TP3', 'TP1C', 'CL1', 'BY1']
-    stock_counts_df = stock_counts_df.sort_values('sno')
+
+    if len(stock_counts_df)>0:
+        stock_counts_df = stock_counts_df.reset_index()
+        stock_counts_df.columns = ['sno', 'TP123', 'TP12', 'TP1', 'TP2', 'TP3', 'TP1C', 'CL1', 'BY1']
+        stock_counts_df = stock_counts_df.sort_values('sno')
+
+        stock_counts_df["TOTAL"] = stock_counts_df.sum(axis=1,numeric_only=True)
+        stock_counts_df.loc['SUM'] = stock_counts_df.sum(numeric_only=True)
+        stock_counts_df["WR"] = round(((stock_counts_df[['TP123','TP12','TP1','TP2','TP3']].sum(axis=1) / stock_counts_df["TOTAL"]) * 100),2)    
+
+        print(stock_counts_df.iloc[:,-1].tail(1))
+
+        stock_counts_df.to_csv("Data/"+stype+"_"+signal+"_Stat_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
 
 
-
-    stock_counts_df.to_csv("Data/"+stype+"_"+signal+"_Stat_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
-
-
-def YFSignal(stype,signal,days,sdate,edate,ruleout=""):
+def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout=""):
     
     signaldf = pd.DataFrame()
     
@@ -161,65 +167,45 @@ def YFSignal(stype,signal,days,sdate,edate,ruleout=""):
 
     if len(signaldf)>0:
 
-        if int(days)>100:
+        if int(days)>10000:
             countBOSS(stype,signal,signaldf,sdate,edate)
 
         signaldf = signaldf.sort_values(by=['SNO','Date'],ascending=[True, True])
         
         signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
 
-    print(f"{signal} - {stype} : {len(signaldf)}")        
+    print(f"{signal} - {stype} : {len(signaldf)}")
     print("Finish")
         
     
 
 if __name__ == '__main__':
 
-    # DAYS = "2000-01-01~2007-10-31"
-    # DAYS = "2007-11-01~2008-12-31"
-    # DAYS = "2009-01-01~2009-12-31"
-    # DAYS = "2010-01-01~2015-12-31"
-    # DAYS = "2016-01-01~2017-12-31"
-    # DAYS = "2018-01-01~2020-12-31"
-    # DAYS = "2021-01-01~2023-12-31"
-    # DAYS = "2024-01-01~2025-12-31"
-    # DAYS = "2009-01-01~2025-12-31"
-    DAYS = "10000"
-    SDATE = "2021/01/01"
-    EDATE = "2023/12/31"
-    SDATE = "2024/01/01"
-    EDATE = "2024/12/31"
+    #SDATE, EDATE = "2000/01/01", "2007/10/31"
+    #SDATE, EDATE = "2007/11/01", "2008/12/31"
+    #SDATE, EDATE = "2009/01/01", "2009/12/31"
+    #SDATE, EDATE = "2010/01/01", "2015/12/31" 
+    #SDATE, EDATE = "2016/01/01", "2017/12/31" 
+    #SDATE, EDATE = "2018/01/01", "2020/12/31" 
+    #SDATE, EDATE = "2021/01/01", "2023/12/31" 
+    SDATE, EDATE = "2024/01/01", "2025/12/31" 
+       
+    #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
+
+    DAYS = "20000"
     start = t.perf_counter()
-    
-    # YFSignal("L","T1_22&EMA2",DAYS,"EMA1")
-    # YFSignal("M","T1_22&EMA2",DAYS,"EMA1")
-    # YFSignal("S","T1_22&EMA2",DAYS,"EMA1")    
+       
+    YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","5")
+    YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","5")
+    YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","5")    
 
-    # YFSignal("L","T1_50&EMA1",DAYS)
-    # YFSignal("M","T1_50&EMA1",DAYS)
-    # YFSignal("S","T1_50&EMA1",DAYS)        
+    YFSignal("L","T1_100","5")
+    YFSignal("M","T1_100","5")
+    YFSignal("S","T1_100","5")
 
-    # YFSignal("L","T1_22&EMA1",DAYS,"T1_50")
-    # YFSignal("M","T1_22&EMA1",DAYS,"T1_50")
-    # YFSignal("S","T1_22&EMA1",DAYS,"T1_50")
-
-    #YFSignal("L","T1_150&EMA2","250")
-
-    
-    # YFSignal("L","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","30",SDATE,EDATE)
-    # YFSignal("M","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","30",SDATE,EDATE)
-    # YFSignal("S","BOSS1~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","30",SDATE,EDATE)    
-
-    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
-    YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
-    YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
-
-    # YFSignal("L","T1_150&EMA2","250",SDATE,EDATE)
-    # YFSignal("M","T1_150&EMA2","250",SDATE,EDATE)
-    # YFSignal("S","T1_150&EMA2","250",SDATE,EDATE)
-
-
-
+    # YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    # YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    # YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
 
     #YFSignal("HHLL","BOSS2",30)
     
