@@ -21,7 +21,7 @@ BREAKOUT_RATE (float): 突破檢查閾值
 MIN_PEAKS (int): 峰值之間的最小天數
 """
 
-PERIOD="6mo"
+PERIOD="1y"
 RESISTANCE_RATE=0.004
 BREAKOUT_RATE=0.004
 MIN_PEAKS=10

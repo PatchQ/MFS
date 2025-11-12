@@ -16,8 +16,8 @@ EDATE = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
 def getData(sno,stype):
 
     session = requests.Session(impersonate="chrome")
-    ticker = yf.Ticker(sno+"", session=session)    
-    outputlist = ticker.history(period="max",auto_adjust=True)
+    ticker = yf.Ticker(sno+"", session=session)        
+    outputlist = ticker.history(period="max",auto_adjust=False)
     outputlist.index = pd.to_datetime(pd.to_datetime(outputlist.index).strftime('%Y%m%d'))
     outputlist = outputlist[outputlist['Volume'] > 0]
     outputlist.insert(0,"sno", sno)    

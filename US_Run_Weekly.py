@@ -1,34 +1,21 @@
 import time as t
-
 import YFData_Process_sk 
-from AA_GetIndustryList import getIndustryList
-from AA_GetStockListData import getStockListData
-from YFData_Collect import YFgetAll
 from YFData_Process_sk import YFprocessData
 from YFData_FilterStock import YFSignal
 
-YFData_Process_sk.PATH = "../SData/YFData/"
-YFData_Process_sk.OUTPATH = "../SData/P_YFData/" 
+YFData_Process_sk.PATH = "../SData/USData/"
+YFData_Process_sk.OUTPATH = "../SData/P_USData/" 
 
 if __name__ == '__main__':
 
     start = t.perf_counter()
     
-    #get IndustryList from AA
-    getIndustryList()
-
-    #get All number from AA
-    getStockListData()
-
-    # #get All History Data from YF
-    YFgetAll("L")
-    YFgetAll("M")
-    YFgetAll("S")
-
     #process All Data
-    # YFprocessData("L")
-    # YFprocessData("M")
-    # YFprocessData("S")
+    YFprocessData("XASE")
+    YFprocessData("XNMS")
+    YFprocessData("XNCM")
+    YFprocessData("XNGS")
+    YFprocessData("XNYS")
 
     # #get Signal to excelfile
     # YFSignal("L","T1_150&EMA2","250")
