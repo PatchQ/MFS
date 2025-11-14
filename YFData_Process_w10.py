@@ -296,7 +296,7 @@ def AnalyzeData(sno,stype):
     df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
 
 
-def YFprocessData(stype):
+def YFprocessData2(stype):
 
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
@@ -310,9 +310,9 @@ def YFprocessData(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    YFprocessData("L")
-    YFprocessData("M")
-    YFprocessData("S")
+    YFprocessData2("L")
+    YFprocessData2("M")
+    YFprocessData2("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

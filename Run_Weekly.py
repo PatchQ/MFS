@@ -9,6 +9,7 @@ from YFData_FilterStock import YFSignal
 
 YFData_Process_sk.PATH = "../SData/YFData/"
 YFData_Process_sk.OUTPATH = "../SData/P_YFData/" 
+DAYS = "5"
 
 if __name__ == '__main__':
 
@@ -21,23 +22,23 @@ if __name__ == '__main__':
     getStockListData()
 
     # #get All History Data from YF
-    YFgetAll("L")
-    YFgetAll("M")
-    YFgetAll("S")
+    YFgetAll("L","2y")
+    YFgetAll("M","2y")
+    YFgetAll("S","2y")
 
     #process All Data
-    # YFprocessData("L")
-    # YFprocessData("M")
-    # YFprocessData("S")
+    YFprocessData("L")
+    YFprocessData("M")
+    YFprocessData("S")
 
     # #get Signal to excelfile
-    # YFSignal("L","T1_150&EMA2","250")
-    # YFSignal("M","T1_150&EMA2","250")
-    # YFSignal("S","T1_150&EMA2","250")
+    YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+    YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+    YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)    
 
-    # YFSignal("L","BOSS1~BOSSCL1","30")
-    # YFSignal("M","BOSS1~BOSSCL1","30")
-    # YFSignal("S","BOSS1~BOSSCL1","30")       
+    YFSignal("L","T1_100",DAYS)
+    YFSignal("M","T1_100",DAYS)
+    YFSignal("S","T1_100",DAYS)
     
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

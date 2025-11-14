@@ -28,9 +28,9 @@ def getYFDaily(sno, sdate):
         print(f"Get {sno} Data Error: {str(e)}")
         return None
 
-def getYFAll(sno,stype):        
+def getYFAll(sno,stype,period):        
     ticker = yf.Ticker(sno)
-    outputlist = ticker.history(period="max",auto_adjust=False)
+    outputlist = ticker.history(period=period,auto_adjust=False)
     outputlist.index = pd.to_datetime(pd.to_datetime(outputlist.index).strftime('%Y%m%d'))
     outputlist = outputlist[outputlist['Volume'] > 0]
     outputlist.insert(0,"sno", sno)    
@@ -66,15 +66,16 @@ def getDataDaily(sno,stype):
     updated_data.to_csv(PATH+"/"+stype+"/"+sno+".csv", index=False)
         
 
-def YFgetAll(stype):
+def YFgetAll(stype,period):
     STOCKLIST = pd.read_csv("Data/stocklist_"+stype+".csv",dtype=str)
     #INDEXLIST = pd.Series(["^HSI","^DJI","^IXIC","^GSPC","^N225","^FTSE","^GDAXI","^FCHI","000001.SS","399001.SZ"])
     SLIST = STOCKLIST[["sno"]]
     SLIST = SLIST.assign(stype=stype+"")
+    SLIST = SLIST.assign(period=period+"")
     SLIST = SLIST[:]
 
     with cf.ProcessPoolExecutor(max_workers=5) as executor:
-        list(tqdm(executor.map(getYFAll,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
+        list(tqdm(executor.map(getYFAll,SLIST["sno"],SLIST["stype"],SLIST["period"],chunksize=1),total=len(SLIST)))
 
 def YFgetDaily(stype):
 
