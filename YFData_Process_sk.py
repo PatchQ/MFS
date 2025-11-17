@@ -410,7 +410,7 @@ class RobustSwingPointAnalyzer:
         return swing_df
 
 # 使用示例
-def calHHLL(df):
+def calHHLL(df,window):
 
     stock_data = df.copy()    
     stock_data.index = pd.to_datetime(stock_data.index,utc=True).tz_convert('Asia/Shanghai')         
@@ -420,18 +420,18 @@ def calHHLL(df):
     analyzer = RobustSwingPointAnalyzer()
     
     # 执行综合分析
-    # swing_df1 = analyzer.comprehensive_swing_analysis(4,stock_data['High'],stock_data['Low'],
-    #                     stock_data['Close'],stock_data['Volume'])
-    
-    swing_df2 = analyzer.comprehensive_swing_analysis(5,stock_data['High'],stock_data['Low'],
+    swing_df = analyzer.comprehensive_swing_analysis(window,stock_data['High'],stock_data['Low'],
                          stock_data['Close'],stock_data['Volume'])
+    
+    # swing_df2 = analyzer.comprehensive_swing_analysis(5,stock_data['High'],stock_data['Low'],
+    #                      stock_data['Close'],stock_data['Volume'])
 
 
     #swing_df = pd.concat([swing_df1,swing_df2])
-    # swing_df = swing_df.sort_values('date').drop_duplicates(subset=['date'], keep='last')
+    swing_df = swing_df.sort_values('date').drop_duplicates(subset=['date'], keep='last')
     
     # 计算置信度
-    swing_df = analyzer.calculate_confidence_score(swing_df2)
+    swing_df = analyzer.calculate_confidence_score(swing_df)
     
     # 过滤高置信度的摆动点
     if len(swing_df)>0:
@@ -451,9 +451,13 @@ def AnalyzeData(sno,stype):
     #print(sno)
     df = calEMA(df)
 
-    tempdf = calHHLL(df)
+    tempdf1 = calHHLL(df,3)
+    tempdf2 = calHHLL(df,5)
+    
+    tempdf = pd.concat([tempdf1,tempdf2])
     
     if len(tempdf)>0:
+        tempdf = tempdf.sort_values('date').drop_duplicates(subset=['date'], keep='last')
         df = checkLHHHLL(df, sno, stype, tempdf)        
         df = calT1(df,100)
         # df = calT1(df,50)            

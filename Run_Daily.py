@@ -15,11 +15,11 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
 
-    DAYS = "5"
+    DAYS = "60"
     #get Daily Data from YF
-    # YFgetDaily("L")
-    # YFgetDaily("M")
-    # YFgetDaily("S")
+    YFgetDaily("L")
+    YFgetDaily("M")
+    YFgetDaily("S")
 
     #process All Data
     YFprocessData("L")

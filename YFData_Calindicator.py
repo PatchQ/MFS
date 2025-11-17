@@ -359,7 +359,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     
     BOSS2Rule1 = df['LLLow']<=df['22DLow'] 
     BOSS2Rule2 = df["bullish_ratio"]>=0.7
-    BOSS2Rule3 = df["strong_bullish"]>=2
+    BOSS2Rule3 = df["strong_bullish"]>=1
     BOSS2Rule4 = df["bullish_count"]>=4
 
     df["BOSS2"] = (df["BOSS1"] & BOSS2Rule1 & BOSS2Rule2 & BOSS2Rule3 & BOSS2Rule4)  
