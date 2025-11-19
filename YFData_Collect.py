@@ -31,6 +31,8 @@ def getYFDaily(sno, sdate):
 def getYFAll(sno,stype,period):        
     ticker = yf.Ticker(sno)
     outputlist = ticker.history(period=period,auto_adjust=False)
+    #outputlist = ticker.history(start="2023-01-01",end="2025-12-31",auto_adjust=False)
+    
     outputlist.index = pd.to_datetime(pd.to_datetime(outputlist.index).strftime('%Y%m%d'))
     outputlist = outputlist[outputlist['Volume'] > 0]
     outputlist.insert(0,"sno", sno)    
@@ -66,7 +68,7 @@ def getDataDaily(sno,stype):
     updated_data.to_csv(PATH+"/"+stype+"/"+sno+".csv", index=False)
         
 
-def YFgetAll(stype,period):
+def YFgetAll(stype,period="max"):
     STOCKLIST = pd.read_csv("Data/stocklist_"+stype+".csv",dtype=str)
     #INDEXLIST = pd.Series(["^HSI","^DJI","^IXIC","^GSPC","^N225","^FTSE","^GDAXI","^FCHI","000001.SS","399001.SZ"])
     SLIST = STOCKLIST[["sno"]]
@@ -92,13 +94,13 @@ def YFgetDaily(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #YFgetAll("L")
-    #YFgetAll("M")
-    #YFgetAll("S")    
+    YFgetAll("L")
+    YFgetAll("M")
+    # YFgetAll("S")    
 
-    YFgetDaily("L")
-    YFgetDaily("M")
-    YFgetDaily("S")
+    # YFgetDaily("L")
+    # YFgetDaily("M")
+    # YFgetDaily("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

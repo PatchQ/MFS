@@ -15,20 +15,20 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
 
-    DAYS = "60"
+    DAYS = "5"
     #get Daily Data from YF
     YFgetDaily("L")
     YFgetDaily("M")
-    YFgetDaily("S")
+    #YFgetDaily("S")
 
     #process All Data
     YFprocessData("L")
     YFprocessData("M")
-    YFprocessData("S")
+    #YFprocessData("S")
 
     YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
     YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
-    YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)    
+    #YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)    
 
     # YFprocessDataW10("L")
     # YFprocessDataW10("M")

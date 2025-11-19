@@ -421,14 +421,7 @@ def calHHLL(df,window):
     
     # 执行综合分析
     swing_df = analyzer.comprehensive_swing_analysis(window,stock_data['High'],stock_data['Low'],
-                         stock_data['Close'],stock_data['Volume'])
-    
-    # swing_df2 = analyzer.comprehensive_swing_analysis(5,stock_data['High'],stock_data['Low'],
-    #                      stock_data['Close'],stock_data['Volume'])
-
-
-    #swing_df = pd.concat([swing_df1,swing_df2])
-    swing_df = swing_df.sort_values('date').drop_duplicates(subset=['date'], keep='last')
+                         stock_data['Close'],stock_data['Volume'])    
     
     # 计算置信度
     swing_df = analyzer.calculate_confidence_score(swing_df)
@@ -479,9 +472,9 @@ def YFprocessData(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    YFprocessData("L")
+    YFprocessData("L")    
     YFprocessData("M")
-    YFprocessData("S")
+    #YFprocessData("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

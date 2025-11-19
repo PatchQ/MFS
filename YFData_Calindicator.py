@@ -38,8 +38,10 @@ def extendData(df, extension_days=10):
 def calCandleStick(df):
 
     bullish_ratio = 0
-    total_candles = len(df)
-    bullish_condition = df['Close'] >= df['Open']    
+    total_candles = len(df) -1
+    prev_close = df['Close'].shift(1)
+
+    bullish_condition = (df['Close'] >= df['Open']) & (df['Close'] >= prev_close)
     bullish_count = bullish_condition.sum()
     
     if bullish_count!=0:
@@ -49,8 +51,10 @@ def calCandleStick(df):
 
 def calCandleStickBody(df):
 
-    bullish_condition = df['Close'] >= df['Open']
+    prev_close = df['Close'].shift(1)
+    bullish_condition = (df['Close'] >= df['Open']) & (df['Close'] >= prev_close)    
     bullish_df = df[bullish_condition].copy()
+
     strong_bullish = 0
     medium_bullish = 0
     weak_bullish = 0
@@ -345,10 +349,11 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     for i in range(len(tempdf)):
         sdate = pd.to_datetime(tempdf["LLDate"].iloc[i])
         edate = pd.to_datetime(tempdf["HHDate"].iloc[i])
-        fdf = df.loc[(df.index>sdate) & (df.index<=edate)]
+        fdf = df.loc[(df.index>=sdate) & (df.index<=edate)]
 
         bullish_count, bullish_ratio = calCandleStick(fdf)
-        strong_bullish, medium_bullish, weak_bullish = calCandleStickBody(fdf)        
+        strong_bullish, medium_bullish, weak_bullish = calCandleStickBody(fdf)
+         
 
         date_match = (df.index == tempdf["Date"].iloc[i])
         df.loc[date_match, "bullish_count"] = bullish_count
