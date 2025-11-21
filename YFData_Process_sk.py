@@ -246,7 +246,7 @@ class RobustSwingPointAnalyzer:
     def trend_confirmation(self, swing_df, close_series, ma_short=22, ma_long=50):
         """
         使用移动平均线确认趋势方向
-        """
+        """        
         if swing_df.empty:
             return swing_df
         

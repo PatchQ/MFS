@@ -171,6 +171,7 @@ def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout="")
             countBOSS(stype,signal,signaldf,sdate,edate)
 
         signaldf = signaldf.sort_values(by=['SNO','Date'],ascending=[True, True])
+        print(signaldf[['Date','sno','BOSS_STATUS']])
         
         signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
 
@@ -194,7 +195,7 @@ if __name__ == '__main__':
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
     DAYS = "20000"
-    DAYS = "60"
+    DAYS = "1"
     start = t.perf_counter()
 
     YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS)
