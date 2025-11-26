@@ -6,7 +6,7 @@ import yfinance as yf
 from AA_GetIndustryList import getIndustryList
 from AA_GetStockListData import getStockListData
 from YFData_Collect import YFgetAll
-from YFData_Process import YFprocessData
+from YFData_Process_sk import YFprocessData
 from YFData_FilterStock import YFSignal
 
 PATH = "../SData/YFData/"
