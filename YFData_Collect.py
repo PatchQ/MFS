@@ -94,13 +94,11 @@ def YFgetDaily(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    YFgetAll("L")
-    YFgetAll("M")
-    # YFgetAll("S")    
+    #YFgetAll("L")
+    #YFgetAll("M")
 
-    # YFgetDaily("L")
-    # YFgetDaily("M")
-    # YFgetDaily("S")
+    YFgetAll("L","2y")
+    YFgetAll("M","2y")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
