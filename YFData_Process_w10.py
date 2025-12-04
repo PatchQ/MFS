@@ -310,7 +310,7 @@ def YFprocessData2(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #YFprocessData2("L")
+    YFprocessData2("L")
     YFprocessData2("M")
     #YFprocessData2("S")
 
