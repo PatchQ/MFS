@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta
 import warnings
 
@@ -223,8 +224,9 @@ def calEMA(df):
         df['EMA100'] = df['Close'].ewm(span=100, min_periods=100, adjust=False).mean()             
         df['EMA250'] = df['Close'].ewm(span=250, min_periods=250, adjust=False).mean()
 
-        df['EMA1'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))        
-        df['EMA2'] = (df["EMA10"] > df["EMA22"])
+        df['EMA1'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))
+        df['EMA2'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]))
+        df['EMA3'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]))
         
         return df        
 
@@ -232,6 +234,7 @@ def calEMA(df):
         print(f"Indicator error: {str(e)}")
         df['EMA1'] = False
         df['EMA2'] = False
+        df['EMA3'] = False
         return df
     
 
@@ -292,6 +295,9 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     df['22DLow'] = 0
     df['33DLow'] = 0
     df['BOSS_STATUS'] = ""
+    df['HHEMA1'] = False
+    df['HHEMA2'] = False
+    df['HHEMA3'] = False
     df['BOSSB'] = False
     df['BOSSTP1'] = False
     df['BOSSTP2'] = False
@@ -314,7 +320,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
 
             sadate = pd.to_datetime(swing_analysis['date'].iloc[i])
 
-            date_match = (df.index == sadate)
+            date_match = (df.index == sadate)            
             df.loc[date_match, "classification"] = swing_analysis["classification"].iloc[i]
             df.loc[date_match, "LLLow"] = swing_analysis["LLLow"].iloc[i]
             df.loc[date_match, "LLDate"] = swing_analysis["LLDate"].iloc[i]
@@ -322,6 +328,15 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
             df.loc[date_match, "HHDate"] = swing_analysis["HHDate"].iloc[i]
             df.loc[date_match, "HHHigh"] = swing_analysis["HHHigh"].iloc[i]
             df.loc[date_match, "PATTERN"] = swing_analysis["PATTERN"].iloc[i]
+
+            hhdate = pd.to_datetime(swing_analysis["HHDate"].iloc[i])
+            
+            ema_values = df.loc[df.index == hhdate, "EMA1"]
+            df.loc[date_match, "HHEMA1"] = ema_values.iloc[0] if len(ema_values) > 0 else np.nan
+            ema_values = df.loc[df.index == hhdate, "EMA2"]
+            df.loc[date_match, "HHEMA2"] = ema_values.iloc[0] if len(ema_values) > 0 else np.nan
+            ema_values = df.loc[df.index == hhdate, "EMA3"]
+            df.loc[date_match, "HHEMA3"] = ema_values.iloc[0] if len(ema_values) > 0 else np.nan
 
             etempdate = pd.to_datetime(swing_analysis["LLDate"].iloc[i])
             stempdate = etempdate - timedelta(days=22)
@@ -334,9 +349,9 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     #swing_analysis.to_csv(OUTPATH+"/HHLL/HL_"+sno+".csv",index=False)
 
     BOSS1Rule1 = df['PATTERN']=="LHLLHH"
-    BOSS1Rule2 = df['HHClose']>df['High']        
+    BOSS1Rule2 = df['HHClose']>df['High']            
     
-    df["BOSS1"] = (BOSS1Rule1 & BOSS1Rule2)    
+    df["BOSS1"] = (BOSS1Rule1 & BOSS1Rule2 & df["HHEMA1"])    
     
     tempdf = df.loc[df["BOSS1"]]
     tempdf = tempdf.reset_index()

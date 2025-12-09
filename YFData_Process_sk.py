@@ -452,8 +452,7 @@ def AnalyzeData(sno,stype):
     if len(tempdf)>0:
         tempdf = tempdf.sort_values('date').drop_duplicates(subset=['date'], keep='last')
         df = checkLHHHLL(df, sno, stype, tempdf)        
-        df = calT1(df,100)
-        # df = calT1(df,50)            
+        df = calT1(df,50)        
         df = df.reset_index()
         df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
 
