@@ -1,15 +1,12 @@
 import time as t
 
-from AA_GetIndustryList import getIndustryList
-from AA_GetStockListData import getStockListData
-from YFData_Collect import YFgetAll
-from YFData_Collect import YFgetDaily
-from YFData_Process_sk import YFprocessData
-from YFData_FilterStock import YFSignal
-from YFData_ProcessBOSS import YFProcessBOSS
+from Util.LW_Collect import YFgetDaily
+from Util.LW_ProcessBOSS import YFprocessData
+from Util.LW_FilterStock import YFSignal
+import Util.LW_ProcessBOSS
 
-PATH = "../SData/YFData/"
-OUTPATH = "../SData/P_YFData/" 
+Util.LW_ProcessBOSS.PATH = "../SData/YFData/"
+Util.LW_ProcessBOSS.OUTPATH = "../SData/P_YFData/" 
 
 if __name__ == '__main__':
 
