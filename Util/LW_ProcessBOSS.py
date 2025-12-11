@@ -132,7 +132,7 @@ class RobustSwingPointAnalyzer:
         
         # 根据波动率动态调整窗口大小        
         adaptive_window = (base_window * (1 + adaptive_factor * volatility)).fillna(base_window)
-        adaptive_window = adaptive_window.astype(int).clip(3, 10)  # 限制窗口范围
+        adaptive_window = adaptive_window.astype(int).clip(2, 10)  # 限制窗口范围
                 
         # 使用自适应窗口检测摆动点
         all_highs = []
@@ -347,7 +347,6 @@ class RobustSwingPointAnalyzer:
 
         all_highs = adaptive_highs
         all_lows = adaptive_lows
-                
         
         # 聚类接近的点
         #print("3. 聚类接近的摆动点...")
@@ -448,7 +447,7 @@ def AnalyzeData(sno,stype):
     tempdf2 = calHHLL(df,5)
     
     tempdf = pd.concat([tempdf1,tempdf2])
-    
+
     if len(tempdf)>0:
         tempdf = tempdf.sort_values('date').drop_duplicates(subset=['date'], keep='last')
         df = checkLHHHLL(df, sno, stype, tempdf)        

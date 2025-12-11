@@ -283,7 +283,7 @@ def AnalyzeData(sno,stype):
     df = convertData(df)
 
     df = calEMA(df)
-    window = 7
+    window = 10
     merge_threshold = 0.015
 
     tempdf = calHHLL(df, window, merge_threshold)    
@@ -301,7 +301,7 @@ def YFprocessData2(stype):
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
-    SLIST = SLIST[99:100]
+    SLIST = SLIST[7:8]
 
     with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
@@ -311,7 +311,7 @@ if __name__ == '__main__':
     start = t.perf_counter()
 
     YFprocessData2("L")
-    YFprocessData2("M")
+    #YFprocessData2("M")
     #YFprocessData2("S")
 
     finish = t.perf_counter()

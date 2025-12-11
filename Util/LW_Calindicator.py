@@ -349,9 +349,9 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     #swing_analysis.to_csv(OUTPATH+"/HHLL/HL_"+sno+".csv",index=False)
 
     BOSS1Rule1 = df['PATTERN']=="LHLLHH"
-    BOSS1Rule2 = df['HHClose']>df['High']            
+    BOSS1Rule2 = df['HHClose']>df['High']                  
     
-    df["BOSS1"] = (BOSS1Rule1 & BOSS1Rule2 & df["HHEMA1"])    
+    df["BOSS1"] = (BOSS1Rule1 & BOSS1Rule2) # & df["HHEMA3"])    
     
     tempdf = df.loc[df["BOSS1"]]
     tempdf = tempdf.reset_index()
