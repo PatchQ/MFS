@@ -5,13 +5,15 @@ import matplotlib.pyplot as plt
 import mplfinance as mpf
 import concurrent.futures as cf
 import os
+import sys
 from tqdm import tqdm
 import time as t
 from datetime import datetime, timedelta
 from scipy.signal import argrelextrema
 from sklearn.cluster import DBSCAN
 
-from LW_Calindicator import *
+
+from Util.LW_Calindicator import *
 
 PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/" 

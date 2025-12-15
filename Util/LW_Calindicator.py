@@ -274,7 +274,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     df.index = pd.to_datetime(df.index)
 
     swing_analysis = swing_analysis.reset_index()
-    swing_analysis['date'] = swing_analysis['date'].dt.strftime("%Y-%m-%d")
+    swing_analysis['Date'] = swing_analysis['Date'].dt.strftime("%Y-%m-%d")
 
     swing_analysis['PATTERN'] = ""
     swing_analysis['LLLow'] = 0
@@ -309,19 +309,19 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         for i in range(len(swing_analysis) - 2):
-            templist = list(swing_analysis['classification'].iloc[i:i+3])
+            templist = list(swing_analysis['Classification'].iloc[i:i+3])
             swing_analysis['PATTERN'].iloc[i] = ''.join(templist)
 
-            swing_analysis['LLLow'].iloc[i] = swing_analysis['price'].iloc[i+1]
-            swing_analysis['LLDate'].iloc[i] = swing_analysis['date'].iloc[i+1]
-            swing_analysis['HHClose'].iloc[i] = swing_analysis['close'].iloc[i+2]            
-            swing_analysis['HHDate'].iloc[i] = swing_analysis['date'].iloc[i+2]
-            swing_analysis['HHHigh'].iloc[i] = swing_analysis['price'].iloc[i+2]
+            swing_analysis['LLLow'].iloc[i] = swing_analysis['Price'].iloc[i+1]
+            swing_analysis['LLDate'].iloc[i] = swing_analysis['Date'].iloc[i+1]
+            swing_analysis['HHClose'].iloc[i] = swing_analysis['Close'].iloc[i+2]            
+            swing_analysis['HHDate'].iloc[i] = swing_analysis['Date'].iloc[i+2]
+            swing_analysis['HHHigh'].iloc[i] = swing_analysis['Price'].iloc[i+2]
 
-            sadate = pd.to_datetime(swing_analysis['date'].iloc[i])
+            sadate = pd.to_datetime(swing_analysis['Date'].iloc[i])
 
             date_match = (df.index == sadate)            
-            df.loc[date_match, "classification"] = swing_analysis["classification"].iloc[i]
+            df.loc[date_match, "classification"] = swing_analysis["Classification"].iloc[i]
             df.loc[date_match, "LLLow"] = swing_analysis["LLLow"].iloc[i]
             df.loc[date_match, "LLDate"] = swing_analysis["LLDate"].iloc[i]
             df.loc[date_match, "HHClose"] = swing_analysis["HHClose"].iloc[i]
@@ -345,7 +345,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
             df.loc[date_match, "33DLow"] = df.loc[(df.index>=stempdate) & (df.index<etempdate), "Low"].min()
             
 
-    swing_analysis["BOSS1"] = ((swing_analysis['PATTERN']=="LHLLHH") & (swing_analysis['HHClose']>swing_analysis['price']))
+    swing_analysis["BOSS1"] = ((swing_analysis['PATTERN']=="LHLLHH") & (swing_analysis['HHClose']>swing_analysis['Price']))
     #swing_analysis.to_csv(OUTPATH+"/HHLL/HL_"+sno+".csv",index=False)
 
     BOSS1Rule1 = df['PATTERN']=="LHLLHH"
@@ -353,8 +353,9 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     
     df["BOSS1"] = (BOSS1Rule1 & BOSS1Rule2) # & df["HHEMA3"])    
     
-    tempdf = df.loc[df["BOSS1"]]
-    tempdf = tempdf.reset_index()
+    tempdf = df.loc[df["BOSS1"]]    
+    #tempdf = tempdf.reset_index()
+
 
     df['bullish_ratio'] = 0.00
     df['bullish_count'] = 0
@@ -370,7 +371,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
         strong_bullish, medium_bullish, weak_bullish = calCandleStickBody(fdf)
          
 
-        date_match = (df.index == tempdf["Date"].iloc[i])
+        date_match = (df.index == tempdf.index[i])
         df.loc[date_match, "bullish_count"] = bullish_count
         df.loc[date_match, "bullish_ratio"] = bullish_ratio
         df.loc[date_match, "strong_bullish"] = strong_bullish
@@ -391,7 +392,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
     df.loc[df["BOSS2"], "BOSS_STATUS"] = "SB1-"+df.loc[df["BOSS2"]].index.strftime("%Y/%m/%d")
 
     tempdf = df.loc[df["BOSS2"]]    
-    tempdf = tempdf.reset_index()
+    #tempdf = tempdf.reset_index()
 
     for i in range(len(tempdf)):
 
@@ -408,9 +409,10 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
         cl2 = False
         buy = False        
 
-        diffdate = timedelta(days=60)
+        diffdate1 = timedelta(days=30)
+        diffdate2 = timedelta(days=60)
         hhdate = pd.to_datetime(tempdf["HHDate"].iloc[i])
-        startbossdate = tempdf['Date'].iloc[i].strftime("%Y/%m/%d")        
+        startbossdate = tempdf.index[i].strftime("%Y/%m/%d")        
 
         # if (i==len(tempdf)-1):            
         #     nextbossdate = (datetime.now() + timedelta(days=180))            
@@ -424,14 +426,14 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
         tp2_price = tempdf["tp2_price"].iloc[i]
         tp3_price = tempdf["tp3_price"].iloc[i]
 
-        buydate_mask = (df.index < hhdate+diffdate) & (df.index > hhdate) & (buy_price>=df["Low"])
+        buydate_mask = (df.index <= hhdate+diffdate1) & (df.index > hhdate) & (buy_price>=df["Low"]*0.995)
         buydates = df[buydate_mask].index
 
         if len(buydates)!=0:
             buy = True            
             lastbuydate = buydates[0]
         
-        highdate_mask = (df.index < lastbuydate) & (df.index > hhdate) & (df["High"]>hh_price)
+        highdate_mask = (df.index <= lastbuydate) & (df.index > hhdate) & (df["High"]>hh_price)
         highdates = df[highdate_mask].index
 
         if len(highdates)!=0:
@@ -442,11 +444,11 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
             df.loc[lastbuydate,'BOSSB'] = True
             #print("BUYDate : "+lastbuydate.strftime("%Y-%m-%d"))
 
-            tp1date_mask = (df.index < lastbuydate+diffdate) & (df.index >= lastbuydate) & (df["High"]>=tp1_price*0.995)
+            tp1date_mask = (df.index < lastbuydate+diffdate2) & (df.index >= lastbuydate) & (df["High"]>=tp1_price*0.995)
             #tp1date_mask = (df.index >= lastbuydate) & (df["High"]>=tp1_price*0.995)
             tp1dates = df[tp1date_mask].index
             
-            cl1date_mask = (df.index < lastbuydate+diffdate) & (df.index >= lastbuydate) & (df["Close"]<cl_price)
+            cl1date_mask = (df.index < lastbuydate+diffdate2) & (df.index >= lastbuydate) & (df["Close"]<cl_price)
             #cl1date_mask = (df.index >= lastbuydate) & (df["Close"]<cl_price)
             cl1dates = df[cl1date_mask].index            
 
@@ -480,11 +482,11 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
                 df.loc[lasttp1date,'BOSSTP1'] = True
                 #print("TP1 : "+lasttp1date.strftime("%Y-%m-%d"))     
                 
-                tp2date_mask = (df.index < lasttp1date+diffdate) & (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
+                tp2date_mask = (df.index < lasttp1date+diffdate2) & (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
                 #tp2date_mask = (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
                 tp2dates = df[tp2date_mask].index        
                             
-                cl2date_mask = (df.index < lasttp1date+diffdate) & (df.index >= lasttp1date) & (df["Close"]<cl_price)
+                cl2date_mask = (df.index < lasttp1date+diffdate2) & (df.index >= lasttp1date) & (df["Close"]<cl_price)
                 #cl2date_mask = (df.index >= lasttp1date) & (df["Close"]<cl_price)
                 cl2dates = df[cl2date_mask].index
 
@@ -518,7 +520,7 @@ def checkLHHHLL(df, sno, stype, swing_analysis):
                     df.loc[lasttp2date,'BOSSTP2'] = True
                     #print("TP2 : "+lasttp2date.strftime("%Y-%m-%d")+ " : "+startbossdate)
 
-                    tp3date_mask = (df.index < lasttp2date+diffdate) & (df.index >= lasttp2date) & (df["High"]>=tp3_price*0.99)
+                    tp3date_mask = (df.index < lasttp2date+diffdate2) & (df.index >= lasttp2date) & (df["High"]>=tp3_price*0.99)
                     #tp2date_mask = (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
                     tp3dates = df[tp3date_mask].index        
 

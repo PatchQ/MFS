@@ -95,10 +95,10 @@ if __name__ == '__main__':
     start = t.perf_counter()
 
     #YFgetAll("L")
-    #YFgetAll("M")
+    YFgetAll("M")
 
-    YFgetAll("L","2y")
-    YFgetAll("M","2y")
+    #YFgetAll("L","2y")
+    #YFgetAll("M","2y")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

@@ -1,23 +1,17 @@
-import os
-import sys
 import pandas as pd
 import numpy as np
-import time as t
 import yfinance as yf
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 import concurrent.futures as cf
-
-
+import os
 from tqdm import tqdm
+import time as t
 from datetime import datetime, timedelta
 from scipy.signal import argrelextrema
 from sklearn.cluster import DBSCAN
 
 from LW_Calindicator import *
-
-util_path = os.path.join(os.path.dirname(__file__), 'Util')
-sys.path.append(util_path)
 
 PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/" 
@@ -28,23 +22,41 @@ import numpy as np
 from datetime import datetime, timedelta
 
 class SwingPointAnalyzer:
-    def __init__(self, sno, stype):
-        self.sno = sno
-        self.stype = stype
+    def __init__(self, symbol, period="6mo", interval="1d"):
+        """
+        初始化分析器
+        
+        Parameters:
+        -----------
+        symbol : str
+            股票代號 (如: "2330.TW")
+        period : str
+            資料期間 (如: "6mo", "1y", "2y")
+        interval : str
+            資料間隔 (如: "1d", "1h", "1wk")
+        """
+        self.symbol = symbol
+        self.period = period
+        self.interval = interval
         self.df = None
         self.swing_points = []  # 儲存擺動點 (index, price, type)
         self.HH_HL_LH_LL = []   # 儲存 HH, HL, LH, LL 點
         
     def fetch_data(self):
-        self.df = pd.read_csv(PATH+"/"+self.stype+"/"+self.sno+".csv",index_col=0)         
-        self.df.index = pd.to_datetime(self.df.index)        
-        self.df = extendData(self.df)               
-        self.df = convertData(self.df)
-
-        if len(self.df)>0:
+        """從 yfinance 下載股票數據"""
+        try:
+            ticker = yf.Ticker(self.symbol)
+            self.df = ticker.history(period=self.period, interval=self.interval)
+            
+            if self.df.empty:
+                print(f"無法下載 {self.symbol} 的數據")
+                return False
+            
+            print(f"下載完成: {self.symbol}, 資料筆數: {len(self.df)}")
             return True
-        else:
-            print(f"沒有{self.sno}資料")
+            
+        except Exception as e:
+            print(f"下載數據時發生錯誤: {e}")
             return False
     
     def calculate_daily_volatility(self, window=20):
@@ -67,15 +79,8 @@ class SwingPointAnalyzer:
         self.df['Avg_Range'] = self.simple_robust_average()
         #self.df['Avg_Range'] = self.df['Daily_Range'].rolling(window=window).mean()
         
-        def calculate_threshold(row):
-            if row['Close'] <= 50:
-                return row['Avg_Range'] * 1.5
-            else:
-                return row['Avg_Range'] * 2
-
         # 計算轉彎閾值 (平均波幅 x 1.5-2)
-        #self.df['Turn_Threshold'] = self.df['Avg_Range'] * 2
-        self.df['Turn_Threshold'] = self.df.apply(calculate_threshold, axis=1)
+        self.df['Turn_Threshold'] = self.df['Avg_Range'] * 1.5
         
         return self.df['Avg_Range'].iloc[-1]  # 返回最新的平均波幅
     
@@ -153,6 +158,8 @@ class SwingPointAnalyzer:
             current_high = self.df['High'].iloc[i]
             current_low = self.df['Low'].iloc[i]
             threshold = self.df['Turn_Threshold'].iloc[i]
+
+            print(str(current_price)+" : "+str(threshold))            
             
             # 初始化第一個擺動點
             if last_extreme is None:
@@ -282,7 +289,7 @@ class SwingPointAnalyzer:
         swing_points = self._filter_swing_points_by_structure(swing_points)
         
         self.swing_points = swing_points
-        #print(f"找到 {len(swing_points)} 個擺動點")
+        print(f"找到 {len(swing_points)} 個擺動點")
         return swing_points
 
     def _adjust_swings_in_downtrend(self, swing_points, current_idx, current_price):
@@ -429,7 +436,6 @@ class SwingPointAnalyzer:
                 'Index': idx,
                 'Date': self.df.index[idx],
                 'Price': price,
-                'Close': self.df['Close'].iloc[idx],
                 'Type': point_type,
                 'Classification': classification
             })
@@ -439,8 +445,8 @@ class SwingPointAnalyzer:
         # 統計各種類型的數量
         classifications = [point['Classification'] for point in HH_HL_LH_LL]
         stats = pd.Series(classifications).value_counts()
-        #print("分類統計:")
-        #print(stats)
+        print("分類統計:")
+        print(stats)
         
         return HH_HL_LH_LL
     
@@ -511,7 +517,7 @@ class SwingPointAnalyzer:
                     [p.get_label() for p in ax2.collections] else ""
                 )
         
-        ax2.set_title(f'{self.sno} - HH/HL/LH/LL 分類')
+        ax2.set_title(f'{self.symbol} - HH/HL/LH/LL 分類')
         ax2.set_xlabel('日期')
         ax2.set_ylabel('價格')
         ax2.legend()
@@ -526,7 +532,9 @@ class SwingPointAnalyzer:
             return None
         
         summary = {
-            '股票代號': self.sno,
+            '股票代號': self.symbol,
+            '數據期間': self.period,
+            '數據間隔': self.interval,
             '總擺動點數': len(self.swing_points),
             'HH數量': len([p for p in self.HH_HL_LH_LL if p['Classification'] == 'HH']),
             'HL數量': len([p for p in self.HH_HL_LH_LL if p['Classification'] == 'HL']),
@@ -548,22 +556,54 @@ class SwingPointAnalyzer:
         return summary
 
 # 使用範例
-def main():    
-    analyzer = SwingPointAnalyzer(sno="1302.HK", stype="M")
+def main():
+    # 創建分析器
+    analyzer = SwingPointAnalyzer(
+        symbol="0011.HK",  # 台積電
+        period="2y",      # 6個月數據
+        interval="1d"      # 日線數據
+    )
+    
+    # 下載數據
+    if not analyzer.fetch_data():
+        return
+    
+    # 計算波幅
+    avg_volatility = analyzer.calculate_daily_volatility(window=60)
+    print(f"平均每日波幅: {avg_volatility:.2f}")
+    
+    # 找出擺動點
+    swing_points = analyzer.find_swing_points(window=60)
+    
+    # 識別 HH, HL, LH, LL
+    classifications = analyzer.identify_HH_HL_LH_LL()
+    
+    # 顯示結果
+    summary = analyzer.get_summary()
+    print("\n分析摘要:")
+    for key, value in summary.items():
+        print(f"{key}: {value}")
+    
+    # 可視化結果
+    analyzer.visualize_results()
+    
+    # 輸出詳細的 HH/HL/LH/LL 點
+    print("\n詳細的擺動點分類:")
+    df_results = pd.DataFrame(classifications)
+    print(df_results.to_string(index=False))
+
+def main2():    
+    analyzer = SwingPointAnalyzer(symbol="1209.HK", period="2y", interval="1d")
     analyzer.fetch_data()
     analyzer.calculate_daily_volatility(window=20)
     swing_points = analyzer.find_swing_points(window=20)
     classifications = analyzer.identify_HH_HL_LH_LL()
     
 
-    summary = analyzer.get_summary()    
-
+    summary = analyzer.get_summary()
     print("\n分析摘要:")
     for key, value in summary.items():
         print(f"{key}: {value}")
-
-    # 可視化結果
-    analyzer.visualize_results()        
     
     # 輸出詳細的 HH/HL/LH/LL 點
     print("\n詳細的擺動點分類:")
@@ -572,6 +612,10 @@ def main():
 
     trend_structure = analyzer.identify_trend_structure(swing_points, lookback=10)
     print(f"當前趨勢結構: {trend_structure}")    
+
+
+if __name__ == "__main__":
+    main2()
 
 
 # # 使用示例
@@ -601,41 +645,45 @@ def main():
 #     return resultdf
 
 
-def AnalyzeData(sno,stype):
+# def AnalyzeData(sno,stype):
+       
+#     df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv",index_col=0)
+#     df = convertData(df)
 
-    analyzer = SwingPointAnalyzer(sno=sno, stype=stype)
-    analyzer.fetch_data()
-    analyzer.calculate_daily_volatility(window=20)
-    analyzer.find_swing_points(window=20)
-    classifications = analyzer.identify_HH_HL_LH_LL()        
+#     #print(sno)
+#     df = calEMA(df)
 
-    analyzer.df = calEMA(analyzer.df)
+#     #tempdf1 = calHHLL(df,3)
+#     tempdf = calHHLL(df,5)
+    
+#     #tempdf = pd.concat([tempdf1,tempdf2])
 
-    if classifications is not None:
-        if len(classifications)>0:        
-            analyzer.df = checkLHHHLL(analyzer.df, sno, stype, pd.DataFrame(classifications))                     
-            analyzer.df = analyzer.df.reset_index()
-            analyzer.df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
-
-
-def YFprocessData(stype):
-
-    snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
-    SLIST = pd.DataFrame(snolist, columns=["sno"])
-    SLIST = SLIST.assign(stype=stype+"")
-    SLIST = SLIST[:]
-
-    with cf.ProcessPoolExecutor(max_workers=5) as executor:
-        list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
+#     if len(tempdf)>0:
+#         tempdf = tempdf.sort_values('date').drop_duplicates(subset=['date'], keep='last')
+#         df = checkLHHHLL(df, sno, stype, tempdf)        
+#         df = calT1(df,50)        
+#         df = df.reset_index()
+#         df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
 
 
-if __name__ == '__main__':
-    start = t.perf_counter()
+# def YFprocessData(stype):
 
-    #YFprocessData("L")    
-    YFprocessData("M")
-    #YFprocessData("S")
+#     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
+#     SLIST = pd.DataFrame(snolist, columns=["sno"])
+#     SLIST = SLIST.assign(stype=stype+"")
+#     SLIST = SLIST[7:8]
 
-    finish = t.perf_counter()
-    print(f'It took {round(finish-start,2)} second(s) to finish.')
+#     with cf.ProcessPoolExecutor(max_workers=5) as executor:
+#         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
+
+
+# if __name__ == '__main__':
+#     start = t.perf_counter()
+
+#     YFprocessData("L")    
+#     #YFprocessData("M")
+#     #YFprocessData("S")
+
+#     finish = t.perf_counter()
+#     print(f'It took {round(finish-start,2)} second(s) to finish.')
     

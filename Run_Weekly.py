@@ -1,7 +1,7 @@
 import time as t
 
-from HK.AA_GetIndustryList import getIndustryList
-from HK.AA_GetStockListData import getStockListData
+from HKEX.AA_GetIndustryList import getIndustryList
+from HKEX.AA_GetStockListData import getStockListData
 from Util.LW_Collect import YFgetAll
 from Util.LW_ProcessBOSS import YFprocessData
 from Util.LW_FilterStock import YFSignal
@@ -23,24 +23,24 @@ if __name__ == '__main__':
     getStockListData()
 
     # #get All History Data from YF
-    # YFgetAll("L")
-    # YFgetAll("M")
-    # YFgetAll("S")
+    YFgetAll("L")
+    YFgetAll("M")
+    YFgetAll("S")
 
-    YFgetAll("L","2y")
-    YFgetAll("M","2y")
+    #YFgetAll("L","2y")
+    #YFgetAll("M","2y")
     # YFgetAll("S","2y")
 
 
     #process All Data
-    YFprocessData("L")
-    YFprocessData("M")
+    #YFprocessData("L")
+    #YFprocessData("M")
     # YFprocessData("S")
 
     #get Signal to excelfile
-    YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS)
-    YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS)
-    YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS)    
+    # YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS)
+    # YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS)
+    # YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS)    
 
     # YFSignal("L","T1_50",DAYS)
     # YFSignal("M","T1_50",DAYS)
