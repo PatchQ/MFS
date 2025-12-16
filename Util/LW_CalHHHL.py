@@ -1,42 +1,22 @@
-import os
-import sys
 import pandas as pd
 import numpy as np
 import time as t
-import yfinance as yf
-import matplotlib.pyplot as plt
-import mplfinance as mpf
-import concurrent.futures as cf
 
-
-from tqdm import tqdm
-from datetime import datetime, timedelta
-from scipy.signal import argrelextrema
-from sklearn.cluster import DBSCAN
-
-from LW_Calindicator import *
-
-util_path = os.path.join(os.path.dirname(__file__), 'Util')
-sys.path.append(util_path)
-
-PATH = "../SData/YFData/"
-OUTPATH = "../SData/P_YFData/" 
-
-import yfinance as yf
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
+try:
+    from LW_Calindicator import *
+    from LW_BossSkill import *
+except ImportError:
+    from UTIL.LW_Calindicator import *
+    from UTIL.LW_BossSkill import *
 
 class SwingPointAnalyzer:
-    def __init__(self, sno, stype):
-        self.sno = sno
-        self.stype = stype
-        self.df = None
+    def __init__(self, sno, stockdata):
+        self.sno = sno        
+        self.df = stockdata
         self.swing_points = []  # 儲存擺動點 (index, price, type)
         self.HH_HL_LH_LL = []   # 儲存 HH, HL, LH, LL 點
         
     def fetch_data(self):
-        self.df = pd.read_csv(PATH+"/"+self.stype+"/"+self.sno+".csv",index_col=0)         
         self.df.index = pd.to_datetime(self.df.index)        
         self.df = extendData(self.df)               
         self.df = convertData(self.df)
@@ -574,67 +554,10 @@ def main():
     print(f"當前趨勢結構: {trend_structure}")    
 
 
-# # 使用示例
-# def calHHLL(df,window):
-
-#     stock_data = df.copy()    
-#     stock_data.index = pd.to_datetime(stock_data.index,utc=True).tz_convert('Asia/Shanghai')         
-#     stock_data = extendData(stock_data)       
-        
-#     # 创建分析器
-#     analyzer = RobustSwingPointAnalyzer()
-    
-#     # 执行综合分析
-#     swing_df = analyzer.comprehensive_swing_analysis(window,stock_data['High'],stock_data['Low'],
-#                          stock_data['Close'],stock_data['Volume'])    
-    
-#     # 计算置信度
-#     swing_df = analyzer.calculate_confidence_score(swing_df)
-    
-#     # 过滤高置信度的摆动点
-#     if len(swing_df)>0:
-#         swing_df = swing_df[swing_df['confidence_score'] >= 40]            
-#         resultdf = swing_df.reset_index().drop(['level_0','index'],axis=1)
-#     else:
-#         resultdf = pd.DataFrame()    
-    
-#     return resultdf
-
-
-def AnalyzeData(sno,stype):
-
-    analyzer = SwingPointAnalyzer(sno=sno, stype=stype)
-    analyzer.fetch_data()
-    analyzer.calculate_daily_volatility(window=20)
-    analyzer.find_swing_points(window=20)
-    classifications = analyzer.identify_HH_HL_LH_LL()        
-
-    analyzer.df = calEMA(analyzer.df)
-
-    if classifications is not None:
-        if len(classifications)>0:        
-            analyzer.df = checkLHHHLL(analyzer.df, sno, stype, pd.DataFrame(classifications))                     
-            analyzer.df = analyzer.df.reset_index()
-            analyzer.df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
-
-
-def YFprocessData(stype):
-
-    snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
-    SLIST = pd.DataFrame(snolist, columns=["sno"])
-    SLIST = SLIST.assign(stype=stype+"")
-    SLIST = SLIST[:]
-
-    with cf.ProcessPoolExecutor(max_workers=5) as executor:
-        list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
-
-
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #YFprocessData("L")    
-    YFprocessData("M")
-    #YFprocessData("S")
+    main()
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
