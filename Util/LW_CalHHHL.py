@@ -15,17 +15,6 @@ class SwingPointAnalyzer:
         self.df = stockdata
         self.swing_points = []  # 儲存擺動點 (index, price, type)
         self.HH_HL_LH_LL = []   # 儲存 HH, HL, LH, LL 點
-        
-    def fetch_data(self):
-        self.df.index = pd.to_datetime(self.df.index)        
-        self.df = extendData(self.df)               
-        self.df = convertData(self.df)
-
-        if len(self.df)>0:
-            return True
-        else:
-            print(f"沒有{self.sno}資料")
-            return False
     
     def calculate_daily_volatility(self, window=20):
         """

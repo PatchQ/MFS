@@ -12,24 +12,24 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
 
-    DAYS = "5"
+    DAYS = "1"
     #get Daily Data from YF
     YFgetDaily("L")
     YFgetDaily("M")
-    YFgetDaily("S")
+    #YFgetDaily("S")
 
     #process All Data
     ProcessBOSS("L")
     ProcessBOSS("M")
-    ProcessBOSS("S")
+    #ProcessBOSS("S")
 
     YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
     YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
-    YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)    
+    #YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)    
 
-    YFSignal("L","T1_50",DAYS)
-    YFSignal("M","T1_50",DAYS)
-    YFSignal("S","T1_50",DAYS)
+    YFSignal("L","T1_50&EMA2",DAYS)
+    YFSignal("M","T1_50&EMA2",DAYS)
+    #YFSignal("S","T1_50&EMA2",DAYS)
     
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

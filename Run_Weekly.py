@@ -23,13 +23,13 @@ if __name__ == '__main__':
     getStockListData()
 
     # #get All History Data from YF
-    # YFgetAll("L")
-    # YFgetAll("M")
-    # YFgetAll("S")
+    YFgetAll("L")
+    YFgetAll("M")
+    YFgetAll("S")
 
-    YFgetAll("L","2y")
-    YFgetAll("M","2y")
-    YFgetAll("S","2y")
+    # YFgetAll("L","2y")
+    # YFgetAll("M","2y")
+    # YFgetAll("S","2y")
 
 
     #process All Data

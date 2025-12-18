@@ -61,6 +61,7 @@ def checkBoss(df, sno, stype, swing_analysis):
     df['HHClose'] = 0
     df['HHDate'] = ""
     df['HHHigh'] = 0
+    df['VOLATILITY'] = 0
     df['22DLow'] = 0
     df['33DLow'] = 0
     df['BOSS_STATUS'] = ""
@@ -97,6 +98,7 @@ def checkBoss(df, sno, stype, swing_analysis):
             df.loc[date_match, "HHDate"] = swing_analysis["HHDate"].iloc[i]
             df.loc[date_match, "HHHigh"] = swing_analysis["HHHigh"].iloc[i]
             df.loc[date_match, "PATTERN"] = swing_analysis["PATTERN"].iloc[i]
+            df.loc[date_match, "VOLATILITY"] = round(((swing_analysis["HHHigh"].iloc[i] - swing_analysis["LLLow"].iloc[i]) / swing_analysis["LLLow"].iloc[i]),2)
 
             hhdate = pd.to_datetime(swing_analysis["HHDate"].iloc[i])
             
@@ -114,13 +116,11 @@ def checkBoss(df, sno, stype, swing_analysis):
             df.loc[date_match, "33DLow"] = df.loc[(df.index>=stempdate) & (df.index<etempdate), "Low"].min()
             
 
-    swing_analysis["BOSS1"] = ((swing_analysis['PATTERN']=="LHLLHH") & (swing_analysis['HHClose']>swing_analysis['Price']))
-    #swing_analysis.to_csv(OUTPATH+"/HHLL/HL_"+sno+".csv",index=False)
-
     BOSS1Rule1 = df['PATTERN']=="LHLLHH"
-    BOSS1Rule2 = df['HHClose']>df['High']                  
+    BOSS1Rule2 = df['HHClose']>df['High']
+    BOSS1Rule3 = df['VOLATILITY']>=0.15
     
-    df["BOSS1"] = (BOSS1Rule1 & BOSS1Rule2) # & df["HHEMA3"])    
+    df["BOSS1"] = (BOSS1Rule1 & BOSS1Rule2 & BOSS1Rule3) # & df["HHEMA3"])    
     
     tempdf = df.loc[df["BOSS1"]]    
     #tempdf = tempdf.reset_index()

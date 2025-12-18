@@ -23,14 +23,20 @@ OUTPATH = "../SData/P_YFData/"
 def AnalyzeData(sno,stype):
 
     stockdata = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv",index_col=0) 
+    stockdata.index = pd.to_datetime(stockdata.index)        
+
     analyzer = SwingPointAnalyzer(sno=sno, stockdata=stockdata)
-    analyzer.fetch_data()
+
+    analyzer.df = calEMA(analyzer.df)
+    analyzer.df = calT1(analyzer.df,50)
+
+    analyzer.df = extendData(analyzer.df)
+    analyzer.df = convertData(analyzer.df)
+
     analyzer.calculate_daily_volatility(window=20)
     analyzer.find_swing_points(window=20)
     classifications = analyzer.identify_HH_HL_LH_LL()        
 
-    analyzer.df = calEMA(analyzer.df)
-    analyzer.df = calT1(analyzer.df,50)
 
     if classifications is not None:
         if len(classifications)>0:        
@@ -55,7 +61,7 @@ if __name__ == '__main__':
 
     ProcessBOSS("L")    
     ProcessBOSS("M")
-    ProcessBOSS("S")
+    #ProcessBOSS("S")
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
