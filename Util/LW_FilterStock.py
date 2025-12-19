@@ -195,27 +195,27 @@ if __name__ == '__main__':
     #SDATE, EDATE = "2022/11/01", "2023/01/31"  #up
     #SDATE, EDATE = "2023/02/01", "2024/01/31"  #down
     #SDATE, EDATE = "2024/02/01", "2025/12/31"  #up
-    #SDATE, EDATE = "2022/11/01", "2025/12/31"  
-    SDATE, EDATE = "2023/01/01", "2025/12/31"  
+    #SDATE, EDATE = "2021/01/01", "2025/12/31"  
+    SDATE, EDATE = "1999/01/01", "2025/12/31"  
     
        
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
     DAYS = "20000"
-    DAYS = "90"
+    #DAYS = "90"
     start = t.perf_counter()
 
-    #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
-    #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
     #YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
 
-    YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
-    YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+    #YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
+    #YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
     #YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)    
 
     #YFSignal("L","T1_50&EMA2",DAYS)
     #YFSignal("M","T1_50&EMA2",DAYS)
     #YFSignal("S","T1_50&EMA2",DAYS)   
-     
+
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')    

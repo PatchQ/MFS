@@ -25,7 +25,7 @@ if __name__ == '__main__':
     # #get All History Data from YF
     YFgetAll("L")
     YFgetAll("M")
-    YFgetAll("S")
+    #YFgetAll("S")
 
     # YFgetAll("L","2y")
     # YFgetAll("M","2y")
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     #process All Data
     ProcessBOSS("L")
     ProcessBOSS("M")
-    ProcessBOSS("S")
+    #ProcessBOSS("S")
 
     #get Signal to excelfile
     YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS)

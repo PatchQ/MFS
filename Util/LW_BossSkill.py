@@ -118,7 +118,7 @@ def checkBoss(df, sno, stype, swing_analysis):
 
     BOSS1Rule1 = df['PATTERN']=="LHLLHH"
     BOSS1Rule2 = df['HHClose']>df['High']
-    BOSS1Rule3 = df['VOLATILITY']>=0.15
+    BOSS1Rule3 = df['VOLATILITY']>=0.14
     
     df["BOSS1"] = (BOSS1Rule1 & BOSS1Rule2 & BOSS1Rule3) # & df["HHEMA3"])    
     
@@ -178,8 +178,8 @@ def checkBoss(df, sno, stype, swing_analysis):
         cl2 = False
         buy = False        
 
-        diffdate1 = timedelta(days=30)
-        diffdate2 = timedelta(days=60)
+        diffdate1 = timedelta(days=10)
+        diffdate2 = timedelta(days=30)
         hhdate = pd.to_datetime(tempdf["HHDate"].iloc[i])
         startbossdate = tempdf.index[i].strftime("%Y/%m/%d")        
 
