@@ -42,6 +42,7 @@ def AnalyzeData(sno,stype):
         if len(classifications)>0:        
             analyzer.df = checkBoss(analyzer.df, sno, stype, pd.DataFrame(classifications))                     
             analyzer.df = analyzer.df.reset_index()
+            analyzer.df = analyzer.df.sort_values(by=['index'],ascending=[True])
             analyzer.df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
 
 

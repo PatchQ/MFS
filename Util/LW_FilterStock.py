@@ -114,10 +114,14 @@ def countBOSS(stype,signal,df,sdate,edate):
     seq7 = ['BY1','CL1']
     seq7_1 = ['CL1']    
 
-    seq8 = ['BY1']
+    seq8 = ['BY1','TU1']
+
+    seq9 = ['BY1','TU2']
+
+    seq10 = ['BY1']
 
     # 使用defaultdict来存储每只股票的计数
-    stock_counts_dict = defaultdict(lambda: {'TP123': 0, 'TP12': 0, 'TP1': 0, 'TP2': 0, 'TP3': 0, 'TP1C': 0, 'CL1': 0, 'BY1': 0})
+    stock_counts_dict = defaultdict(lambda: {'TP123': 0, 'TP12': 0, 'TP1': 0, 'TP2': 0, 'TP3': 0, 'TP1C': 0, 'CL1': 0, 'TU1': 0, 'TU2': 0, 'BY1': 0})
     
    # 遍历每个组
     for key, events in groups.items():
@@ -139,6 +143,10 @@ def countBOSS(stype,signal,df,sdate,edate):
             elif (events == seq7) or (events == seq7_1):
                 stock_counts_dict[stock]['CL1'] += 1
             elif events == seq8:
+                stock_counts_dict[stock]['TU1'] += 1
+            elif events == seq9:
+                stock_counts_dict[stock]['TU2'] += 1
+            elif events == seq10:
                 stock_counts_dict[stock]['BY1'] += 1
 
     # 将字典转换为DataFrame    
@@ -146,12 +154,13 @@ def countBOSS(stype,signal,df,sdate,edate):
 
     if len(stock_counts_df)>0:
         stock_counts_df = stock_counts_df.reset_index()
-        stock_counts_df.columns = ['sno', 'TP123', 'TP12', 'TP1', 'TP2', 'TP3', 'TP1C', 'CL1', 'BY1']
+        stock_counts_df.columns = ['sno', 'TP123', 'TP12', 'TP1', 'TP2', 'TP3', 'TP1C', 'CL1', 'TU1', 'TU2', 'BY1']
         stock_counts_df = stock_counts_df.sort_values('sno')
 
-        stock_counts_df["TOTAL"] = stock_counts_df.sum(axis=1,numeric_only=True)
+        #stock_counts_df["TOTAL"] = stock_counts_df.sum(axis=1,numeric_only=True) 
+        stock_counts_df["TOTAL"] = stock_counts_df[['TP123','TP12','TP1','TP2','TP3','TP1C','CL1','TU2']].sum(axis=1,numeric_only=True) 
         stock_counts_df.loc['SUM'] = stock_counts_df.sum(numeric_only=True)
-        stock_counts_df["WR"] = round(((stock_counts_df[['TP123','TP12','TP1','TP2','TP3']].sum(axis=1) / stock_counts_df["TOTAL"]) * 100),2)    
+        stock_counts_df["WR"] = round(((stock_counts_df[['TP123','TP12','TP1','TP2','TP3','TP1C']].sum(axis=1) / stock_counts_df["TOTAL"]) * 100),2)    
 
         print(stock_counts_df.iloc[:,-1].tail(1))
 
@@ -172,7 +181,7 @@ def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout="")
 
         signaldf = signaldf.sort_values(by=['SNO','index'],ascending=[True, True])
 
-        if str(signal).startswith("BOSS2"):
+        if str(signal).startswith("BOSS2") or str(signal).startswith("BOSSB"):
             print(signaldf[['index','sno','BOSS_STATUS']])
         
         signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
@@ -202,16 +211,18 @@ if __name__ == '__main__':
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
     DAYS = "20000"
-    #DAYS = "90"
+    DAYS = "5"
+
     start = t.perf_counter()
 
-    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
-    YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
-    #YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS,SDATE,EDATE)
+    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
+    YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
+    YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
 
-    #YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
-    #YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)
-    #YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2",DAYS)    
+    DAYS = "60"
+    YFSignal("L","BOSS2",DAYS)
+    YFSignal("M","BOSS2",DAYS)
+    YFSignal("S","BOSS2",DAYS)
 
     #YFSignal("L","T1_50&EMA2",DAYS)
     #YFSignal("M","T1_50&EMA2",DAYS)

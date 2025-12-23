@@ -74,6 +74,8 @@ def checkBoss(df, sno, stype, swing_analysis):
     df['BOSSTP3'] = False
     df['BOSSCL1'] = False
     df['BOSSCL2'] = False
+    df['BOSSTU1'] = False
+    df['BOSSTU2'] = False
     
 
     with warnings.catch_warnings():
@@ -148,7 +150,7 @@ def checkBoss(df, sno, stype, swing_analysis):
         df.loc[date_match, "weak_bullish"] = weak_bullish        
     
     BOSS2Rule1 = df['LLLow']<=df['22DLow'] 
-    BOSS2Rule2 = df["bullish_ratio"]>=0.7
+    BOSS2Rule2 = df["bullish_ratio"]>=0.65
     BOSS2Rule3 = df["strong_bullish"]>=1
     BOSS2Rule4 = df["bullish_count"]>=4
 
@@ -176,17 +178,7 @@ def checkBoss(df, sno, stype, swing_analysis):
         tp3 = False
         cl1 = False
         cl2 = False
-        buy = False        
-
-        diffdate1 = timedelta(days=10)
-        diffdate2 = timedelta(days=30)
-        hhdate = pd.to_datetime(tempdf["HHDate"].iloc[i])
-        startbossdate = tempdf.index[i].strftime("%Y/%m/%d")        
-
-        # if (i==len(tempdf)-1):            
-        #     nextbossdate = (datetime.now() + timedelta(days=180))            
-        # else:      
-        #     nextbossdate = pd.to_datetime(tempdf['Date'].iloc[i+1])
+        buy = False    
 
         buy_price = tempdf["buy_price"].iloc[i]
         cl_price = tempdf["LLLow"].iloc[i]
@@ -195,7 +187,17 @@ def checkBoss(df, sno, stype, swing_analysis):
         tp2_price = tempdf["tp2_price"].iloc[i]
         tp3_price = tempdf["tp3_price"].iloc[i]
 
-        buydate_mask = (df.index <= hhdate+diffdate1) & (df.index > hhdate) & (buy_price>=df["Low"]*0.995)
+        hhdate = pd.to_datetime(tempdf["HHDate"].iloc[i])
+
+        try:
+            buydeadline = df[df.index >= hhdate].index[10]
+        except IndexError:            
+            buydeadline = df[df.index >= hhdate].index[-1]
+
+        startbossdate = tempdf.index[i].strftime("%Y/%m/%d")               
+
+
+        buydate_mask = (df.index < buydeadline) & (df.index > hhdate) & (buy_price>=df["Low"]*0.995)
         buydates = df[buydate_mask].index
 
         if len(buydates)!=0:
@@ -212,12 +214,16 @@ def checkBoss(df, sno, stype, swing_analysis):
             df.loc[lastbuydate,'BOSS_STATUS'] = "BY1-"+startbossdate
             df.loc[lastbuydate,'BOSSB'] = True
             #print("BUYDate : "+lastbuydate.strftime("%Y-%m-%d"))
+            try:
+                tp1deadline = df[df.index>=lastbuydate].index[30]
+            except IndexError:            
+                tp1deadline = df[df.index>=lastbuydate].index[-1]
 
-            tp1date_mask = (df.index < lastbuydate+diffdate2) & (df.index >= lastbuydate) & (df["High"]>=tp1_price*0.995)
+            tp1date_mask = (df.index < tp1deadline) & (df.index >= lastbuydate) & (df["High"]>=tp1_price*0.995)
             #tp1date_mask = (df.index >= lastbuydate) & (df["High"]>=tp1_price*0.995)
             tp1dates = df[tp1date_mask].index
             
-            cl1date_mask = (df.index < lastbuydate+diffdate2) & (df.index >= lastbuydate) & (df["Close"]<cl_price)
+            cl1date_mask = (df.index < tp1deadline) & (df.index >= lastbuydate) & (df["Close"]<cl_price)
             #cl1date_mask = (df.index >= lastbuydate) & (df["Close"]<cl_price)
             cl1dates = df[cl1date_mask].index            
 
@@ -227,7 +233,16 @@ def checkBoss(df, sno, stype, swing_analysis):
 
             if len(cl1dates)!=0:                
                 cl1=True
-                lastcl1date = cl1dates[0]                
+                lastcl1date = cl1dates[0]
+
+            if (tp1deadline < pd.Timestamp(datetime.now().date())):
+                if (cl1==False and tp1==False):                    
+                    if (round(((df.loc[tp1deadline,'Low'] - buy_price) / buy_price),2)>=0.01):
+                        df.loc[tp1deadline,'BOSSTU1'] = True       
+                        df.loc[tp1deadline,'BOSS_STATUS'] = "TU1-"+startbossdate                               
+                    else:
+                        df.loc[tp1deadline,'BOSSTU2'] = True                    
+                        df.loc[tp1deadline,'BOSS_STATUS'] = "TU2-"+startbossdate                  
 
             if cl1:
                 if tp1:
@@ -250,12 +265,17 @@ def checkBoss(df, sno, stype, swing_analysis):
                 df.loc[lasttp1date,'BOSS_STATUS'] = "TP1-"+startbossdate
                 df.loc[lasttp1date,'BOSSTP1'] = True
                 #print("TP1 : "+lasttp1date.strftime("%Y-%m-%d"))     
+
+                try:
+                    tp2deadline = df[df.index>=lasttp1date].index[30]
+                except IndexError:            
+                    tp2deadline = df[df.index>=lasttp1date].index[-1]
                 
-                tp2date_mask = (df.index < lasttp1date+diffdate2) & (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
+                tp2date_mask = (df.index < tp2deadline) & (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
                 #tp2date_mask = (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
                 tp2dates = df[tp2date_mask].index        
                             
-                cl2date_mask = (df.index < lasttp1date+diffdate2) & (df.index >= lasttp1date) & (df["Close"]<cl_price)
+                cl2date_mask = (df.index < tp2deadline) & (df.index >= lasttp1date) & (df["Close"]<cl_price)
                 #cl2date_mask = (df.index >= lasttp1date) & (df["Close"]<cl_price)
                 cl2dates = df[cl2date_mask].index
 
@@ -288,8 +308,12 @@ def checkBoss(df, sno, stype, swing_analysis):
                     df.loc[lasttp2date,'BOSS_STATUS'] = "TP2-"+startbossdate
                     df.loc[lasttp2date,'BOSSTP2'] = True
                     #print("TP2 : "+lasttp2date.strftime("%Y-%m-%d")+ " : "+startbossdate)
+                    try:
+                        tp3deadline = df[df.index>=lasttp2date].index[30]
+                    except IndexError:            
+                        tp3deadline = df[df.index>=lasttp2date].index[-1]
 
-                    tp3date_mask = (df.index < lasttp2date+diffdate2) & (df.index >= lasttp2date) & (df["High"]>=tp3_price*0.99)
+                    tp3date_mask = (df.index < tp3deadline) & (df.index >= lasttp2date) & (df["High"]>=tp3_price*0.99)
                     #tp2date_mask = (df.index >= lasttp1date) & (df["High"]>=tp2_price*0.99)
                     tp3dates = df[tp3date_mask].index        
 

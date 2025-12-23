@@ -10,7 +10,7 @@ import UTIL.LW_ProcessBOSS
 UTIL.LW_ProcessBOSS.PATH = "../SData/YFData/"
 UTIL.LW_ProcessBOSS.OUTPATH = "../SData/P_YFData/" 
 
-DAYS = "60"
+DAYS = "5"
 
 if __name__ == '__main__':
 
@@ -23,24 +23,24 @@ if __name__ == '__main__':
     getStockListData()
 
     # #get All History Data from YF
-    YFgetAll("L")
-    YFgetAll("M")
+    #YFgetAll("L")
+    #YFgetAll("M")
     #YFgetAll("S")
 
-    # YFgetAll("L","2y")
-    # YFgetAll("M","2y")
-    # YFgetAll("S","2y")
+    YFgetAll("L","2y")
+    YFgetAll("M","2y")
+    YFgetAll("S","2y")
 
 
     #process All Data
     ProcessBOSS("L")
     ProcessBOSS("M")
-    #ProcessBOSS("S")
+    ProcessBOSS("S")
 
     #get Signal to excelfile
-    YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS)
-    YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS)
-    YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2",DAYS)    
+    YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1",DAYS)
+    YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1",DAYS)
+    YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1",DAYS)    
 
     # YFSignal("L","T1_50",DAYS)
     # YFSignal("M","T1_50",DAYS)
