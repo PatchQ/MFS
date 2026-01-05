@@ -40,7 +40,8 @@ def AnalyzeData(sno,stype):
 
     if classifications is not None:
         if len(classifications)>0:        
-            analyzer.df = checkBoss(analyzer.df, sno, stype, pd.DataFrame(classifications))                     
+            analyzer.df = checkBoss(analyzer.df, sno, stype, pd.DataFrame(classifications))
+            analyzer.df = checkWave(analyzer.df, sno, stype, pd.DataFrame(classifications))                     
             analyzer.df = analyzer.df.reset_index()
             analyzer.df = analyzer.df.sort_values(by=['index'],ascending=[True])
             analyzer.df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
@@ -60,7 +61,7 @@ def ProcessBOSS(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    ProcessBOSS("L")    
+    #ProcessBOSS("L")    
     ProcessBOSS("M")
     #ProcessBOSS("S")
 
