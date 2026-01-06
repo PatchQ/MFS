@@ -61,7 +61,7 @@ def ProcessBOSS(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #ProcessBOSS("L")    
+    ProcessBOSS("L")    
     ProcessBOSS("M")
     #ProcessBOSS("S")
 
