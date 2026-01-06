@@ -362,7 +362,7 @@ def checkWave(df, sno, stype, swing_analysis):
 
             swing_analysis['WLow'].iloc[i] = swing_analysis['Price'].iloc[i+2]
             swing_analysis['WLDate'].iloc[i] = swing_analysis['Date'].iloc[i+2]
-            swing_analysis['WHigh'].iloc[i] = swing_analysis['Pri-ce'].iloc[i+3]
+            swing_analysis['WHigh'].iloc[i] = swing_analysis['Price'].iloc[i+3]
             swing_analysis['WHDate'].iloc[i] = swing_analysis['Date'].iloc[i+3]
             
 
