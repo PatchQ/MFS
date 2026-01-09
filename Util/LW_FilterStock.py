@@ -183,6 +183,8 @@ def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout="")
 
         if str(signal).startswith("BOSS2") or str(signal).startswith("BOSSB"):
             print(signaldf[['index','sno','BOSS_STATUS']])
+        elif str(signal).startswith("HHHL"):
+            print(signaldf[['index','sno','HHHL']])
         
         signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
 
@@ -211,13 +213,13 @@ if __name__ == '__main__':
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
     DAYS = "20000"
-    DAYS = "60"
+    DAYS = "10"
 
     start = t.perf_counter()
 
     YFSignal("L","HHHL&EMA2",DAYS,SDATE,EDATE)
     YFSignal("M","HHHL&EMA2",DAYS,SDATE,EDATE)
-    YFSignal("S","HHHL&EMA2",DAYS,SDATE,EDATE)    
+    #YFSignal("S","HHHL&EMA2",DAYS,SDATE,EDATE)    
 
     # YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
     # YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
