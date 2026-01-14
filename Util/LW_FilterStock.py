@@ -213,12 +213,16 @@ if __name__ == '__main__':
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
     DAYS = "20000"
-    DAYS = "10"
+    DAYS = "60"
 
     start = t.perf_counter()
 
-    YFSignal("L","HHHL&EMA2",DAYS,SDATE,EDATE)
-    YFSignal("M","HHHL&EMA2",DAYS,SDATE,EDATE)
+    YFSignal("L","BOSSB~BOSSCL1",DAYS,SDATE,EDATE)
+    YFSignal("M","BOSSB~BOSSCL1",DAYS,SDATE,EDATE)
+
+
+    #YFSignal("L","HHHL&EMA2",DAYS,SDATE,EDATE)
+    #YFSignal("M","HHHL&EMA2",DAYS,SDATE,EDATE)
     #YFSignal("S","HHHL&EMA2",DAYS,SDATE,EDATE)    
 
     # YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
