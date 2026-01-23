@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
 
-    DAYS = "10"
+    DAYS = "20"
     #get Daily Data from YF
     YFgetDaily("L")
     YFgetDaily("M")
@@ -23,13 +23,16 @@ if __name__ == '__main__':
     ProcessBOSS("M")
     #ProcessBOSS("S")
 
-    YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS)
-    YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS)
+    YFSignal("L","BOSS2~BOSSB~BOSSCL1",DAYS)
+    YFSignal("M","BOSS2~BOSSB~BOSSCL1",DAYS)
+
+    #YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS)
+    #YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS)
     #YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS)
 
-    # YFSignal("L","HHHL",DAYS)
-    # YFSignal("M","HHHL",DAYS)
-    # YFSignal("S","HHHL",DAYS)
+    #YFSignal("L","HHHL",DAYS)
+    #YFSignal("M","HHHL",DAYS)
+    #YFSignal("S","HHHL",DAYS)
 
     #YFSignal("L","T1_50&EMA2",DAYS)
     #YFSignal("M","T1_50&EMA2",DAYS)

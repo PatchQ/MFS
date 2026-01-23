@@ -207,7 +207,7 @@ if __name__ == '__main__':
     #SDATE, EDATE = "2023/02/01", "2024/01/31"  #down
     #SDATE, EDATE = "2024/02/01", "2025/12/31"  #up
     #SDATE, EDATE = "2021/01/01", "2025/12/31"  
-    SDATE, EDATE = "1999/01/01", "2026/01/31"  
+    SDATE, EDATE = "1999/01/01", "2026/12/31"  
     
        
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
@@ -217,8 +217,8 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
 
-    YFSignal("L","BOSSB~BOSSCL1",DAYS,SDATE,EDATE)
-    YFSignal("M","BOSSB~BOSSCL1",DAYS,SDATE,EDATE)
+    YFSignal("L","BOSS2~BOSSB~BOSSCL1",DAYS,SDATE,EDATE)
+    YFSignal("M","BOSS2~BOSSB~BOSSCL1",DAYS,SDATE,EDATE)
 
 
     #YFSignal("L","HHHL&EMA2",DAYS,SDATE,EDATE)

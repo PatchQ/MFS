@@ -291,9 +291,6 @@ def ProcessVCP(sno):
         df['Reason'] = f"Analysis error: {str(e)}"
         df.to_excel(OUTPATH+"P_"+sno+".xlsx",index=False)
 
-    
-
-
 
 
 
