@@ -152,7 +152,7 @@ def checkBoss(df, sno, stype, swing_analysis):
     BOSS2Rule1 = df['LLLow']<=df['22DLow'] 
     BOSS2Rule2 = df["bullish_ratio"]>=0.65
     BOSS2Rule3 = df["strong_bullish"]>=1
-    BOSS2Rule4 = df["bullish_count"]>=4
+    BOSS2Rule4 = df["bullish_count"]>=4    
 
     df["BOSS2"] = (df["BOSS1"] & BOSS2Rule1 & BOSS2Rule2 & BOSS2Rule3 & BOSS2Rule4)  
     
@@ -197,7 +197,7 @@ def checkBoss(df, sno, stype, swing_analysis):
         startbossdate = tempdf.index[i].strftime("%Y/%m/%d")               
 
 
-        buydate_mask = (df.index < buydeadline) & (df.index > hhdate) & (buy_price>=df["Low"]*0.995)
+        buydate_mask = (df.index < buydeadline) & (df.index > hhdate) & (buy_price>=df["Low"]*0.995) #& df["EMA3"]
         buydates = df[buydate_mask].index
 
         if len(buydates)!=0:

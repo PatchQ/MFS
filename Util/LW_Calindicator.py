@@ -111,11 +111,11 @@ def calADX(df, period):
     # 确定有效的方向移动
     # +DM 的条件：上涨幅度大于下跌幅度 AND 上涨幅度 > 0
     plus_dm_condition = (up_move > down_move) & (up_move > 0)
-    plus_dm[plus_dm_condition] = up_move[plus_dm_condition]
+    plus_dm[plus_dm_condition] = up_move[plus_dm_condition].astype(plus_dm.dtype)
     
     # -DM 的条件：下跌幅度大于上涨幅度 AND 下跌幅度 > 0
     minus_dm_condition = (down_move > up_move) & (down_move > 0)
-    minus_dm[minus_dm_condition] = down_move[minus_dm_condition]
+    minus_dm[minus_dm_condition] = down_move[minus_dm_condition].astype(minus_dm.dtype)
     
     # 2. 平滑TR, +DM, -DM (通常使用Wilder的平滑方法，即EMA的一种变体)
     # 在Pandas中，`ema(alpha=1/period)` 等价于Wilder的平滑
