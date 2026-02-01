@@ -33,12 +33,12 @@ if __name__ == '__main__':
 
 
     #process All Data
-    ProcessBOSS("L")
-    ProcessBOSS("M")
+    #ProcessBOSS("L")
+    #ProcessBOSS("M")
     #ProcessBOSS("S")
 
     #get Signal to excelfile
-    YFSignal("L","BOSS2~BOSSB~BOSSCL1",DAYS)
+    ##YFSignal("L","BOSS2~BOSSB~BOSSCL1",DAYS)
     YFSignal("M","BOSS2~BOSSB~BOSSCL1",DAYS)
 
     #YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS)

@@ -217,8 +217,8 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
 
-    YFSignal("L","VCP",DAYS)
-    YFSignal("M","VCP",DAYS)
+    YFSignal("L","Passed_All",DAYS)
+    YFSignal("M","Passed_All",DAYS)
 
     #YFSignal("L","BOSS2~BOSSB~BOSSCL1",DAYS,SDATE,EDATE)
     #YFSignal("M","BOSS2~BOSSB~BOSSCL1",DAYS,SDATE,EDATE)

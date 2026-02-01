@@ -59,13 +59,12 @@ def CalIndicator(df):
     model = IsolationForest(contamination=0.1, random_state=42)
     df['Anomaly_Score'] = model.fit_predict(clean_data)
 
-    return df.dropna()       
+    return df     
 
 
 def AnalyzeData(sno,stype):
 
-    tempdf = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv",index_col=0) 
-    df = tempdf.tail(300).copy()
+    df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv",index_col=0)     
     df = CalIndicator(df)
 
     try:
@@ -77,12 +76,10 @@ def AnalyzeData(sno,stype):
         # 1. Uptrend Requirement:
         #30%+ price increase  價格上漲30%以上
         #Price above 50-day MA  價格高於 50 日均線
-        price_increase = (df['Close'].iloc[-1] - df['Close'].iloc[0]) / df['Close'].iloc[0]
+        #price_increase = (df['Close'].iloc[-1] - df['Close'].iloc[0]) / df['Close'].iloc[0]
+        df['Price_Increase'] = (df['Close'] - df['Close'].shift(50)) / df['Close'].shift(50)
 
-        df['Price_Increase'] = f"{price_increase*100:.1f}%"
-
-        if price_increase < 0.3 or df['Close'].iloc[-1] < df['EMA50'].iloc[-1]:
-
+        if df['Price_Increase'] < 0.3 or df['Close'] < df['EMA50']:
             df['Uptrend'] = False
         else:
             df['Uptrend'] = True
@@ -177,7 +174,7 @@ def ProcessVCP(stype):
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
-    SLIST = SLIST[:]
+    SLIST = SLIST[3:4]
 
     with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
@@ -187,7 +184,7 @@ if __name__ == '__main__':
     start = t.perf_counter()
 
     ProcessVCP("L")    
-    ProcessVCP("M")
+    #ProcessVCP("M")
     #ProcessBOSS("S")
 
     finish = t.perf_counter()
