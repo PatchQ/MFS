@@ -212,9 +212,9 @@ def calEMA(df):
         df['EMA100'] = df['Close'].ewm(span=100, min_periods=100, adjust=False).mean()             
         df['EMA250'] = df['Close'].ewm(span=250, min_periods=250, adjust=False).mean()
 
-        df['EMA1'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))
-        df['EMA2'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]))
-        df['EMA3'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]))
+        df['EMA1'] = ((df["Close"] > df["EMA10"]) & (df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))
+        df['EMA2'] = ((df["Close"] > df["EMA10"]) & (df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]))
+        df['EMA3'] = ((df["Close"] > df["EMA10"]) & (df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]))
         
         return df        
 

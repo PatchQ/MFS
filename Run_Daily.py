@@ -26,17 +26,19 @@ if __name__ == '__main__':
     YFSignal("L","BOSS2~BOSSB~BOSSCL1",DAYS)
     YFSignal("M","BOSS2~BOSSB~BOSSCL1",DAYS)
 
+    
+    YFSignal("L","HHHL&EMA1",DAYS)
+    YFSignal("M","HHHL&EMA1",DAYS)
+
+
+    YFSignal("L","EMA1","1")
+    YFSignal("M","EMA1","1")
+
+
     #YFSignal("L","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS)
     #YFSignal("M","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS)
     #YFSignal("S","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS)
 
-    #YFSignal("L","HHHL",DAYS)
-    #YFSignal("M","HHHL",DAYS)
-    #YFSignal("S","HHHL",DAYS)
-
-    #YFSignal("L","T1_50&EMA2",DAYS)
-    #YFSignal("M","T1_50&EMA2",DAYS)
-    #YFSignal("S","T1_50&EMA2",DAYS)
-    
+   
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
