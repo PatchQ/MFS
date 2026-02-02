@@ -471,7 +471,7 @@ def AnalyzeData(sno,stype):
     #30%+ price increase  價格上漲30%以上
     #Price above 50-day MA  價格高於 50 日均線
     df['Price_Increase'] = df["Close"].pct_change(periods=30)
-    condition1 = (df['Price_Increase'] < 0.3) #| (df['Close'] < df['EMA50'])
+    condition1 = (df['Price_Increase'] > 0.3) #| (df['Close'] < df['EMA50'])
     conditions.append(condition1)
     df['Uptrend_Requirement'] = condition1
     
@@ -514,8 +514,9 @@ def AnalyzeData(sno,stype):
     # Final decision    
     df['VCP'] = all_conditions    
 
-    #df = df.reset_index()
-    df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
+    df = df.set_index('Date')
+    df.index.name = 'index'    
+    df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv")
 
 
 
