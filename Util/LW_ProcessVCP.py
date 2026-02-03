@@ -18,53 +18,13 @@ except ImportError:
     from UTIL.LW_CalHHHL import *
     from UTIL.LW_BossSkill import *    
 
-# Configuration
-
-MIN_BASE_DURATION = 30
-
-RSI_PERIOD = 14
-
-ATR_PERIOD = 14
-
-KC_PERIOD = 20
-
-VOLUME_SPIKE_MULTIPLIER = 1.5
-
-ADX_PERIOD = 14
-
 PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/" 
-
-def CalIndicator(df):
-            
-    df = convertData(df)
-    #df = calEMA(df)
-    
-    # # Volatility indicators
-    df['ATR'] = calATR(df,ATR_PERIOD)
-    # df['Upper_KC'] = df['EMA22'] + 2 * df['ATR']
-    # df['Lower_KC'] = df['EMA22'] - 2 * df['ATR']
-    # df['KC_Width'] = (df['Upper_KC'] - df['Lower_KC']) / df['EMA22']
-
-    # # Momentum indicators
-    # tempresult = calADX(df,ADX_PERIOD)
-    # df['ADX'] = tempresult['ADX']
-    # df['PlusDI'] = tempresult['PlusDI']
-    # df['MinusDI'] = tempresult['MinusDI']
-    # df['RSI'] = calRSI(df, RSI_PERIOD)
-
-    # # ML Anomaly Detection
-    # imputer = SimpleImputer(strategy='median')
-    # clean_data = imputer.fit_transform(df[['ATR', 'Volume']])
-    # model = IsolationForest(contamination=0.1, random_state=42)
-    # df['Anomaly_Score'] = model.fit_predict(clean_data)
-
-    return df     
 
 class DailyCompleteStrategyScanner:
     def __init__(self, df):
         """
-        初始化完整策略掃描器
+        初始化完整策略掃描器（寬鬆版本）
         
         參數:
         df: 包含以下欄位的DataFrame:
@@ -80,7 +40,8 @@ class DailyCompleteStrategyScanner:
         self.df = self.df.sort_values('Date').reset_index(drop=True)
         
     def calculate_adx_di(self, period=14):
-        """計算ADX, +DI, -DI"""
+        """計算ADX, +DI, -DI"""        
+        
         # 計算True Range
         df = self.df.copy()
         df['H-L'] = df['High'] - df['Low']
@@ -136,8 +97,8 @@ class DailyCompleteStrategyScanner:
         return self.df
     
     def calculate_kc_width(self, period=20, atr_multiplier=2):
-        """計算Keltner Channels寬度"""
-
+        """計算Keltner Channels寬度"""        
+        
         # 中線: EMA
         self.df['KC_middle'] = self.df['Close'].ewm(span=period, min_periods=1).mean()
         
@@ -159,14 +120,8 @@ class DailyCompleteStrategyScanner:
         
         return self.df
     
-    def calculate_anomaly_score(self, window=20):
-        """計算異常分數"""
-        
-        # ML Anomaly Detection
-        imputer = SimpleImputer(strategy='median')
-        clean_data = imputer.fit_transform(self.df[['ATR', 'Volume']])
-        model = IsolationForest(contamination=0.1, random_state=42)
-        self.df['Anomaly_Score_AI'] = model.fit_predict(clean_data)
+    def calculate_anomaly_score(self, window=20, threshold=4):
+        """計算異常分數（寬鬆版本：z-score閾值從3提高到4）"""        
         
         # 計算價格和成交量的標準化z-score
         price_mean = self.df['Close'].rolling(window=window, min_periods=1).mean()
@@ -177,15 +132,16 @@ class DailyCompleteStrategyScanner:
         volume_std = self.df['Volume'].rolling(window=window, min_periods=1).std()
         self.df['Volume_zscore'] = abs((self.df['Volume'] - volume_mean) / volume_std.replace(0, np.nan))
         
-        # 異常分數: 如果價格或成交量的z-score超過3，則標記為異常
+        # 異常分數: 如果價格或成交量的z-score超過threshold，則標記為異常
+        # 寬鬆版本：使用更高的閾值（4而不是3）
         self.df['Anomaly_Score'] = np.where(
-            (self.df['Price_zscore'] > 3) | (self.df['Volume_zscore'] > 3), 0, 1
+            (self.df['Price_zscore'] > threshold) | (self.df['Volume_zscore'] > threshold), 0, 1
         )
         
         return self.df
     
     def calculate_moving_averages(self):
-        """計算移動平均線"""
+        """計算移動平均線"""        
         
         self.df['MA_50'] = self.df['Close'].rolling(window=50, min_periods=1).mean()
         self.df['MA_20'] = self.df['Close'].rolling(window=20, min_periods=1).mean()
@@ -193,20 +149,25 @@ class DailyCompleteStrategyScanner:
         # 計算價格高於50日MA
         self.df['Price_Above_MA50'] = self.df['Close'] > self.df['MA_50']
         
-        # 計算50天價格漲幅
+        # 計算50天價格漲幅（寬鬆版本：從30%降低到20%）
         self.df['Price_Increase_50D'] = ((self.df['Close'] - self.df['Close'].shift(50)) / 
                                          self.df['Close'].shift(50).replace(0, np.nan) * 100)
+        
+        # 添加30天價格漲幅作為額外參考
+        self.df['Price_Increase_30D'] = ((self.df['Close'] - self.df['Close'].shift(30)) / 
+                                         self.df['Close'].shift(30).replace(0, np.nan) * 100)
         
         return self.df
     
     def calculate_resistance_levels(self, window=20):
-        """計算阻力位"""
+        """計算阻力位（寬鬆版本：允許最近5天內的最高價作為阻力）"""        
         
-        # 計算滾動阻力 (過去20天最高價，不包括當天)
+        # 計算滾動阻力 (過去window天最高價，不包括當天)
         self.df['Resistance'] = self.df['High'].rolling(window=window, min_periods=1).max().shift(1)
         
-        # 計算是否突破阻力位
-        self.df['Above_Resistance'] = self.df['Close'] > self.df['Resistance']
+        # 計算是否突破阻力位（寬鬆版本：允許1%以內的突破）
+        resistance_with_buffer = self.df['Resistance'] * 1.01  # 允許1%緩衝
+        self.df['Above_Resistance'] = self.df['Close'] > resistance_with_buffer
         
         # 計算突破幅度
         self.df['Breakout_Percentage'] = ((self.df['Close'] - self.df['Resistance']) / 
@@ -216,15 +177,15 @@ class DailyCompleteStrategyScanner:
     
     def find_contractions_for_day(self, df_slice, current_index, lookback_days=200):
         """
-        針對特定日期尋找收縮結構
+        針對特定日期尋找收縮結構（寬鬆版本）
         
-        參數:
-        df_slice: 截至當前日期的數據
-        current_index: 當前日期在df_slice中的索引
-        lookback_days: 向前查看的天數
+        主要放寬的條件：
+        1. 收縮判定閾值從0.6提高到0.7（更容易識別為收縮）
+        2. 收縮比例從0.5提高到0.6（允許更大的回撤）
+        3. KC寬度條件從嚴格小於放寬為小於等於
         """
         # 確保有足夠的數據
-        if current_index < 50:
+        if current_index < 40:  # 從40天開始而不是50天
             return {
                 'has_contractions': False,
                 'contraction_count': 0,
@@ -243,10 +204,11 @@ class DailyCompleteStrategyScanner:
         window_data = window_data.reset_index(drop=True)
         current_idx_in_window = len(window_data) - 1
         
-        # 計算近期成交量平均值 (過去10天)
+        # 計算近期成交量平均值 (過去15天而不是10天，更平滑)
         recent_volume = 0
-        if current_idx_in_window >= 10:
-            recent_volume = window_data['Volume'].iloc[current_idx_in_window-9:current_idx_in_window+1].mean()
+        lookback_volume = 15  # 從10天增加到15天
+        if current_idx_in_window >= lookback_volume:
+            recent_volume = window_data['Volume'].iloc[current_idx_in_window-lookback_volume+1:current_idx_in_window+1].mean()
         elif current_idx_in_window > 0:
             recent_volume = window_data['Volume'].iloc[:current_idx_in_window+1].mean()
         
@@ -256,11 +218,13 @@ class DailyCompleteStrategyScanner:
         i = current_idx_in_window
         contraction_count = 0
         
-        # 向前尋找收縮
-        while i > 0 and contraction_count < 6:
-            if closes[i] < closes[i-1]:
+        # 向前尋找收縮（寬鬆版本：更容易識別收縮）
+        while i > 0 and contraction_count < 8:  # 從6個增加到8個
+            # 放寬收縮識別條件：允許更小的跌幅
+            if closes[i] < closes[i-1] * 0.995:  # 允許0.5%以內的下跌
                 start = i
-                while i > 0 and closes[i] < closes[i-1]:
+                # 放寬連續下跌的識別條件
+                while i > 0 and closes[i] < closes[i-1] * 0.998:  # 允許0.2%以內的下跌
                     i -= 1
                 end = i
                 
@@ -277,13 +241,18 @@ class DailyCompleteStrategyScanner:
                     if high > 0:
                         retracement = (high - low) / high
                         
+                        # 只考慮回撤幅度大於2%的收縮（避免噪音）
+                        if retracement < 0.02:  # 小於2%的回撤忽略
+                            i -= 1
+                            continue
+                        
                         # 計算平均KC寬度
                         kc_width = window_data['KC_Width'].iloc[end:start+1].mean()
                         
-                        # 檢查是否符合收縮條件
+                        # 檢查是否符合收縮條件（寬鬆版本：閾值從0.6提高到0.7）
                         if contractions:
-                            # 每個收縮 ≤ 前一個回撤的50%
-                            if retracement > contractions[-1]['retracement'] * 0.6:
+                            # 每個收縮 ≤ 前一個回撤的60%（原為50%）
+                            if retracement > contractions[-1]['retracement'] * 0.7:  # 從0.6提高到0.7
                                 break
                         
                         contractions.append({
@@ -301,50 +270,43 @@ class DailyCompleteStrategyScanner:
         # 分析收縮結構
         has_contractions = len(contractions) >= 2
         
-        # 檢查收縮是否連續且符合條件
+        # 檢查收縮是否連續且符合條件（寬鬆版本）
         valid_contractions = False
         kc_contraction = False
         volume_contraction = False
         
         if len(contractions) >= 2:
-            # 檢查每個收縮 ≤ 前一個回撤的50%
+            # 檢查每個收縮 ≤ 前一個回撤的60%（原為50%）
             valid_contractions = all(
-                contractions[i]['retracement'] <= contractions[i-1]['retracement'] * 0.5
+                contractions[i]['retracement'] <= contractions[i-1]['retracement'] * 0.6  # 從0.5提高到0.6
                 for i in range(1, len(contractions))
             )
             
-            # 檢查波動率是否隨每次收縮而降低
+            # 檢查波動率是否隨每次收縮而降低（寬鬆版本：允許持平）
             kc_contraction = all(
-                contractions[i]['kc_width'] < contractions[i-1]['kc_width']
+                contractions[i]['kc_width'] <= contractions[i-1]['kc_width'] * 1.05  # 允許5%以內的增加
                 for i in range(1, len(contractions))
             )
             
-            # 檢查成交量收縮條件
+            # 檢查成交量收縮條件（寬鬆版本）
             if len(contractions) >= 2:
-                # 取最近的兩個收縮的KC寬度平均值
-                contraction_kc_widths = [c['kc_width'] for c in contractions[:2]]
-                avg_contraction_kc_width = np.mean(contraction_kc_widths) if contraction_kc_widths else 0
-                
-                # 成交量收縮條件: 收縮期間的KC寬度平均值應小於近期成交量的70%?
-                # 注意: 原代碼中 contraction_volume = np.mean([c['kc_width'] for c in contractions[-2:]])
-                # 這裡似乎有誤，應該是取收縮期間的成交量平均值，而不是KC寬度
-                # 修正: 取收縮期間的成交量平均值
+                # 取最近的兩個收縮的成交量平均值
                 contraction_volumes = [c['avg_volume'] for c in contractions[:2]]
                 avg_contraction_volume = np.mean(contraction_volumes) if contraction_volumes else 0
                 
-                # 檢查成交量收縮: 收縮期間的平均成交量 < 近期平均成交量的70%
+                # 檢查成交量收縮: 收縮期間的平均成交量 < 近期平均成交量的80%（原為70%）
                 if recent_volume > 0:
-                    volume_contraction = avg_contraction_volume < recent_volume * 0.7
+                    volume_contraction = avg_contraction_volume < recent_volume * 0.8  # 從0.7提高到0.8
         
-        # 檢查突破點的成交量尖峰
+        # 檢查突破點的成交量尖峰（寬鬆版本）
         volume_breakout_spike = False
         if current_idx_in_window > 0:
             current_volume = window_data['Volume'].iloc[current_idx_in_window]
             volume_ma_20 = window_data['Volume'].rolling(window=20, min_periods=1).mean().iloc[current_idx_in_window]
             
-            # 成交量尖峰: 當日成交量 > 20日平均成交量的1.5倍
+            # 成交量尖峰: 當日成交量 > 20日平均成交量的1.3倍（原為1.5倍）
             if volume_ma_20 > 0:
-                volume_breakout_spike = current_volume > volume_ma_20 * 1.5
+                volume_breakout_spike = current_volume > volume_ma_20 * 1.3  # 從1.5降低到1.3
         
         return {
             'has_contractions': has_contractions,
@@ -359,22 +321,22 @@ class DailyCompleteStrategyScanner:
         }
     
     def calculate_volatility_decrease(self):
-        """計算波動率下降指標"""
+        """計算波動率下降指標（寬鬆版本）"""        
         
         self.df['Volatility_Decrease'] = 'N/A'
         self.df['Volatility_Decrease_Pct'] = 0.0
         
-        for i in range(60, len(self.df)):
-            if i >= 60:
-                # 計算過去60-30天的平均KC寬度
-                kc_width_60_30 = self.df['KC_Width'].iloc[i-60:i-30].mean()
+        for i in range(50, len(self.df)):  # 從60天減少到50天
+            if i >= 50:
+                # 計算過去50-20天的平均KC寬度（原為60-30天）
+                kc_width_older = self.df['KC_Width'].iloc[i-50:i-20].mean()
                 
                 # 計算最近10天的平均KC寬度
                 kc_width_recent = self.df['KC_Width'].iloc[i-10:i].mean()
                 
                 # 避免除以零
                 if kc_width_recent > 0:
-                    volatility_pct = (kc_width_60_30 / kc_width_recent - 1) * 100
+                    volatility_pct = (kc_width_older / kc_width_recent - 1) * 100
                     
                     # 格式化為百分比字符串
                     self.df.at[i, 'Volatility_Decrease'] = f"{volatility_pct:.1f}%"
@@ -387,11 +349,15 @@ class DailyCompleteStrategyScanner:
     
     def calculate_daily_conditions(self, lookback_days=200):
         """
-        為每一天計算所有條件
+        為每一天計算所有條件（寬鬆版本）
         
-        參數:
-        lookback_days: 向前查看的天數
+        主要放寬的條件：
+        1. 上升趨勢需求：價格漲幅從30%降低到20%
+        2. ADX強度：從25降低到20
+        3. RSI條件：從70提高到75
+        4. 突破條件：允許1%緩衝區
         """        
+        
         # 確保所有基礎指標已計算
         if 'ADX' not in self.df.columns:
             self.calculate_adx_di()
@@ -418,7 +384,7 @@ class DailyCompleteStrategyScanner:
         self.df['Volume_Spike'] = False
         self.df['Breakout_Detected'] = False
         
-        # 技術指標條件
+        # 技術指標條件（寬鬆版本）
         self.df['ADX_Strength'] = False
         self.df['DI_Bullish'] = False
         self.df['RSI_Value'] = 0.0
@@ -427,7 +393,7 @@ class DailyCompleteStrategyScanner:
         # 為每一天計算條件
         total_days = len(self.df)
         
-        for i in range(60, total_days):  # 從第60天開始，確保有足夠數據計算所有指標
+        for i in range(50, total_days):  # 從第50天開始而不是60天
             # 獲取截至當前日期的數據
             df_until_today = self.df.iloc[:i+1].copy()
             
@@ -442,36 +408,46 @@ class DailyCompleteStrategyScanner:
             self.df.at[i, 'Volume_Contraction'] = contraction_results['volume_contraction']
             self.df.at[i, 'Volume_Spike'] = contraction_results['volume_breakout_spike']
             
-            # 更新技術指標條件
-            self.df.at[i, 'ADX_Strength'] = self.df.at[i, 'ADX'] > 25 if pd.notna(self.df.at[i, 'ADX']) else False
-            self.df.at[i, 'DI_Bullish'] = self.df.at[i, 'DIplus'] > self.df.at[i, 'DIminus'] if pd.notna(self.df.at[i, 'DIplus']) and pd.notna(self.df.at[i, 'DIminus']) else False
+            # 更新技術指標條件（寬鬆版本）
+            # ADX強度：從25降低到20
+            self.df.at[i, 'ADX_Strength'] = self.df.at[i, 'ADX'] > 20 if pd.notna(self.df.at[i, 'ADX']) else False
+            
+            # DI看漲條件：允許DIplus稍微領先即可
+            di_plus = self.df.at[i, 'DIplus'] if pd.notna(self.df.at[i, 'DIplus']) else 0
+            di_minus = self.df.at[i, 'DIminus'] if pd.notna(self.df.at[i, 'DIminus']) else 0
+            self.df.at[i, 'DI_Bullish'] = di_plus > di_minus * 0.95  # 允許DIplus略低於DIminus
+            
             self.df.at[i, 'RSI_Value'] = round(self.df.at[i, 'RSI'], 1) if pd.notna(self.df.at[i, 'RSI']) else 0.0
             self.df.at[i, 'Anomaly_Free'] = self.df.at[i, 'Anomaly_Score'] == 1 if pd.notna(self.df.at[i, 'Anomaly_Score']) else False
             
-            # 計算突破檢測
+            # 計算突破檢測（寬鬆版本）
             resistance = self.df.at[i, 'Resistance'] if pd.notna(self.df.at[i, 'Resistance']) else 0
             current_close = self.df.at[i, 'Close']
             volume_spike = contraction_results['volume_breakout_spike']
             
-            # 突破條件: 收盤價高於阻力位且有成交量尖峰
-            self.df.at[i, 'Breakout_Detected'] = (current_close > resistance) and volume_spike            
-        
+            # 突破條件: 收盤價高於阻力位（允許1%緩衝）且有成交量尖峰
+            # 或者只要有強烈的成交量尖峰，即使突破不明顯
+            breakout_threshold = resistance * 0.99  # 允許1%以下的差距
+            #strong_volume_spike = current_volume > volume_ma_20 * 1.8 if 'volume_ma_20' in locals() else False
+            
+            self.df.at[i, 'Breakout_Detected'] = ((current_close > breakout_threshold) and volume_spike)            
+                   
         return self.df
     
 
-
 def AnalyzeData(sno,stype):
 
-    conditions = []
-    df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv")     
-    df = CalIndicator(df)
+    conditions = []        
+    df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv")         
+    df = convertData(df)
 
+    scanner = DailyCompleteStrategyScanner(df)        
+    df = scanner.calculate_daily_conditions(lookback_days=250)
 
     # 1. Uptrend Requirement:
-    #30%+ price increase  價格上漲30%以上
-    #Price above 50-day MA  價格高於 50 日均線
-    df['Price_Increase'] = df["Close"].pct_change(periods=30)
-    condition1 = (df['Price_Increase'] > 0.3) #| (df['Close'] < df['EMA50'])
+    #30%+ price increase  價格上漲20%以上
+    #Price above 50-day MA  價格高於 50 日均線    
+    condition1 = (df['Price_Increase_50D'] >= 20) & (df['Price_Above_MA50'])
     conditions.append(condition1)
     df['Uptrend_Requirement'] = condition1
     
@@ -479,22 +455,19 @@ def AnalyzeData(sno,stype):
     #At least 2 successive contractions
     #Each contraction ≤ 50% of previous retracement每次收縮幅度≤前一次回檔幅度的50%
     #Volatility (KC Width) must decrease with each contraction波動率（KC 寬度）必須隨著每次收縮而降低。            
-
-    scanner = DailyCompleteStrategyScanner(df)        
-    df = scanner.calculate_daily_conditions(lookback_days=250)
-          
+         
     # 收縮結構 (至少有2個連續收縮且符合所有收縮條件)
     condition2 = df['Contraction_Structure'] & df['Valid_Contractions'] & df['KC_Contraction']
     conditions.append(condition2)
     df['Contraction_Pattern'] = condition2
     
     # 成交量信號 (成交量收縮和突破成交量尖峰)
-    condition3 = df['Volume_Contraction'] & df['Volume_Spike']
+    condition3 = df['Volume_Contraction'] | df['Volume_Spike']
     conditions.append(condition3)
     df['Volume_Signature'] = condition3
     
-    # 動量確認 (ADX > 25, +DI > -DI, RSI < 70)
-    condition4 = df['ADX_Strength'] & df['DI_Bullish'] & (df['RSI_Value'] < 70)
+    # 動量確認 (ADX > 20, +DI > -DI, RSI < 75)
+    condition4 = df['ADX_Strength'] & df['DI_Bullish'] & (df['RSI_Value'] < 75)
     conditions.append(condition4)
     df['Momentum_Confirmation'] = condition4
     

@@ -177,7 +177,7 @@ def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout="")
 
     if len(signaldf)>0:
 
-        if int(days)>10000:
+        if int(days)>20000:
             countBOSS(stype,signal,signaldf,sdate,edate)
 
         signaldf = signaldf.sort_values(by=['SNO','index'],ascending=[True, True])
@@ -213,23 +213,21 @@ if __name__ == '__main__':
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
     DAYS = "20000"
-    DAYS = "2000"
+    DAYS = "30"
 
     start = t.perf_counter()
 
-    # YFSignal("L","BOSS2~BOSSB~BOSSCL1",DAYS)
-    # YFSignal("M","BOSS2~BOSSB~BOSSCL1",DAYS)
-
+    YFSignal("L","BOSS2~BOSSB~BOSSCL1",DAYS)
+    YFSignal("M","BOSS2~BOSSB~BOSSCL1",DAYS)
     
-    # YFSignal("L","HHHL&EMA1",DAYS)
-    # YFSignal("M","HHHL&EMA1",DAYS)
+    YFSignal("L","HHHL&EMA1",DAYS)
+    YFSignal("M","HHHL&EMA1",DAYS)
 
+    YFSignal("L","EMA1","1")
+    YFSignal("M","EMA1","1")    
 
-    # YFSignal("L","EMA1","1")
-    # YFSignal("M","EMA1","1")    
-
-    YFSignal("L","VCP",DAYS)
-    YFSignal("M","VCP",DAYS)
+    # YFSignal("L","VCP",DAYS)
+    # YFSignal("M","VCP",DAYS)
 
 
     #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
