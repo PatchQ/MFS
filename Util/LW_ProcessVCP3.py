@@ -485,7 +485,7 @@ def ProcessVCP(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #ProcessVCP("L")
+    ProcessVCP("L")
     ProcessVCP("M")
     #ProcessBOSS("S")
 

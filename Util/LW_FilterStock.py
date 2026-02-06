@@ -11,6 +11,8 @@ from collections import defaultdict
 OUTPATH = "../SData/P_YFData/"
 #EDATE = "2025-09-30"
 EDATE = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+FILESTAMP = "_"+datetime.now().strftime("%Y%m%d")
+FILESTAMP = ""
 
 
 def filterStock(sno,stype,signal,days,ruleout):
@@ -165,7 +167,7 @@ def countBOSS(stype,signal,df,sdate,edate):
 
         print(stock_counts_df.iloc[:,-1].tail(1))
 
-        stock_counts_df.to_csv("Data/"+stype+"_"+signal+"_Stat_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
+        stock_counts_df.to_csv("Data/"+stype+"_"+signal+"_Stat"+FILESTAMP+".csv",index=False)
 
 
 def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout=""):
@@ -187,7 +189,7 @@ def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout="")
         elif str(signal).startswith("HHHL"):
             print(signaldf[['index','sno','HHHL']])
         
-        signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
+        signaldf.to_csv("Data/"+stype+"_"+signal+FILESTAMP+".csv",index=False)
 
     print(f"{signal} - {stype} : {len(signaldf)}")
     print("Finish")
@@ -213,7 +215,7 @@ if __name__ == '__main__':
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
     DAYS = "20000"
-    DAYS = "30"
+    DAYS = "60"
 
     start = t.perf_counter()
 
