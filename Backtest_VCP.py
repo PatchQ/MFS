@@ -6,7 +6,7 @@ from tqdm import tqdm
 from backtesting import Backtest, Strategy
 
 #get stock excel file from path
-stype="M"
+stype="L"
 
 #get stock excel file from path
 OUTPATH = "../SData/P_YFData/" 
@@ -50,7 +50,7 @@ for sno in tqdm(snolist):
     df.set_index("index" , inplace=True)
     df = df.set_index(pd.DatetimeIndex(pd.to_datetime(df.index)))
 
-    bt = Backtest(df, VCP,cash=100000,commission=.002)
+    bt = Backtest(df, VCP,cash=1000000,commission=.002)
     output = bt.run()
     
     # 收集主要指標

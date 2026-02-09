@@ -215,7 +215,7 @@ if __name__ == '__main__':
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
     DAYS = "20000"
-    DAYS = "60"
+    DAYS = "30"
 
     start = t.perf_counter()
 
