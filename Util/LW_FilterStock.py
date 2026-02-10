@@ -226,18 +226,18 @@ if __name__ == '__main__':
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
     DAYS = "20000"
-    DAYS = "30"
+    DAYS = "20"
 
     start = t.perf_counter()
 
-    YFSignal("L","BOSS2~BOSSB~BOSSCL1",DAYS)
-    YFSignal("M","BOSS2~BOSSB~BOSSCL1",DAYS)
+    #YFSignal("L","BOSS2~BOSSB~BOSSCL1",DAYS)
+    #YFSignal("M","BOSS2~BOSSB~BOSSCL1",DAYS)
     
-    YFSignal("L","HHHL&EMA1",DAYS)
-    YFSignal("M","HHHL&EMA1",DAYS)
+    YFSignal("L","HHHL&EMA1","10")
+    YFSignal("M","HHHL&EMA1","10")
 
-    YFSignal("L","VCP",DAYS)
-    YFSignal("M","VCP",DAYS)
+    YFSignal("L","VCP","10")
+    YFSignal("M","VCP","10")
 
     YFSignal("L","EMA1","1")
     YFSignal("M","EMA1","1")    

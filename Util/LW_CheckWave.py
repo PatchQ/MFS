@@ -29,14 +29,14 @@ def checkWave(df, sno, stype, swing_analysis):
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore") #HH-HL-HH-HL
-        for i in range(len(swing_analysis) - 4):
-            templist = list(swing_analysis['Classification'].iloc[i:i+5])
+        for i in range(len(swing_analysis)-1):
+            templist = list(swing_analysis['Classification'].iloc[i-4:i+1])
             swing_analysis['PATTERN'].iloc[i] = ''.join(templist)
 
-            swing_analysis['WLow'].iloc[i] = swing_analysis['Price'].iloc[i+2]
-            swing_analysis['WLDate'].iloc[i] = swing_analysis['Date'].iloc[i+2]
-            swing_analysis['WHigh'].iloc[i] = swing_analysis['Price'].iloc[i+3]
-            swing_analysis['WHDate'].iloc[i] = swing_analysis['Date'].iloc[i+3]
+            swing_analysis['WLow'].iloc[i] = swing_analysis['Price'].iloc[i-2]
+            swing_analysis['WLDate'].iloc[i] = swing_analysis['Date'].iloc[i-2]
+            swing_analysis['WHigh'].iloc[i] = swing_analysis['Price'].iloc[i-1]
+            swing_analysis['WHDate'].iloc[i] = swing_analysis['Date'].iloc[i-1]
             
 
             sadate = pd.to_datetime(swing_analysis['Date'].iloc[i])

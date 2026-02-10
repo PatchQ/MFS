@@ -14,10 +14,10 @@ if __name__ == '__main__':
     start = t.perf_counter()
     
     #get IndustryList from AA
-    #getIndustryList()
+    getIndustryList()
 
     #get All number from AA
-    #getStockListData()
+    getStockListData()
 
     # #get All History Data from YF
     #YFgetAll("L")
