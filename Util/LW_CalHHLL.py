@@ -1,17 +1,8 @@
 import pandas as pd
 import numpy as np
-import time as t
 
-try:
-    from LW_Calindicator import *
-    from LW_BossSkill import *
-except ImportError:
-    from UTIL.LW_Calindicator import *
-    from UTIL.LW_BossSkill import *
-
-class SwingPointAnalyzer:
-    def __init__(self, sno, stockdata):
-        self.sno = sno        
+class HHLL:
+    def __init__(self, stockdata):               
         self.df = stockdata
         self.swing_points = []  # 儲存擺動點 (index, price, type)
         self.HH_HL_LH_LL = []   # 儲存 HH, HL, LH, LL 點
@@ -480,7 +471,7 @@ class SwingPointAnalyzer:
                     [p.get_label() for p in ax2.collections] else ""
                 )
         
-        ax2.set_title(f'{self.sno} - HH/HL/LH/LL 分類')
+        ax2.set_title('HH/HL/LH/LL 分類')
         ax2.set_xlabel('日期')
         ax2.set_ylabel('價格')
         ax2.legend()
@@ -494,8 +485,7 @@ class SwingPointAnalyzer:
         if not self.HH_HL_LH_LL:
             return None
         
-        summary = {
-            '股票代號': self.sno,
+        summary = {            
             '總擺動點數': len(self.swing_points),
             'HH數量': len([p for p in self.HH_HL_LH_LL if p['Classification'] == 'HH']),
             'HL數量': len([p for p in self.HH_HL_LH_LL if p['Classification'] == 'HL']),
@@ -516,38 +506,11 @@ class SwingPointAnalyzer:
         
         return summary
 
-# 使用範例
-def main():    
-    analyzer = SwingPointAnalyzer(sno="1302.HK", stype="M")
-    analyzer.fetch_data()
+
+def calHHLL(df):
+
+    analyzer = HHLL(stockdata=df)
     analyzer.calculate_daily_volatility(window=20)
-    swing_points = analyzer.find_swing_points(window=20)
+    analyzer.find_swing_points(window=20)
     classifications = analyzer.identify_HH_HL_LH_LL()
-    
-
-    summary = analyzer.get_summary()    
-
-    print("\n分析摘要:")
-    for key, value in summary.items():
-        print(f"{key}: {value}")
-
-    # 可視化結果
-    analyzer.visualize_results()        
-    
-    # 輸出詳細的 HH/HL/LH/LL 點
-    print("\n詳細的擺動點分類:")
-    df_results = pd.DataFrame(classifications)
-    print(df_results.to_string(index=False))
-
-    trend_structure = analyzer.identify_trend_structure(swing_points, lookback=10)
-    print(f"當前趨勢結構: {trend_structure}")    
-
-
-if __name__ == '__main__':
-    start = t.perf_counter()
-
-    main()
-
-    finish = t.perf_counter()
-    print(f'It took {round(finish-start,2)} second(s) to finish.')
-    
+    return pd.DataFrame(classifications)

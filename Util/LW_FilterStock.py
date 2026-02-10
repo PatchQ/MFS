@@ -33,12 +33,21 @@ def filterStock(sno,stype,signal,days,ruleout):
         df = df.loc[(df.index>=datadate)] 
             
     if "~" in signal:
-        df = df.loc[df[signal.split('~')].any(axis=1)]    
+        if all(col in df.columns for col in signal.split('~')):
+            df = df.loc[df[signal.split('~')].any(axis=1)]
+        else:
+            df = pd.DataFrame()
     else:
-        df = df.loc[df[signal.split('&')].all(axis=1)]    
+        if all(col in df.columns for col in signal.split('&')):
+            df = df.loc[df[signal.split('&')].all(axis=1)]
+        else:
+            df = pd.DataFrame()
     
     if ruleout!="":
-        df = df.loc[df[ruleout.split('&')].all(axis=1)==False]
+        if all(col in df.columns for col in ruleout.split('&')):
+            df = df.loc[df[ruleout.split('&')].all(axis=1)==False]
+        else:
+            df = pd.DataFrame()                        
         
     df = df.reset_index()
 
@@ -188,6 +197,8 @@ def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout="")
             print(signaldf[['index','sno','BOSS_STATUS']])
         elif str(signal).startswith("HHHL"):
             print(signaldf[['index','sno','HHHL']])
+        elif str(signal).startswith("VCP"):
+            print(signaldf[['index','sno','VCP']])
         
         signaldf.to_csv("Data/"+stype+"_"+signal+FILESTAMP+".csv",index=False)
 
@@ -225,11 +236,12 @@ if __name__ == '__main__':
     YFSignal("L","HHHL&EMA1",DAYS)
     YFSignal("M","HHHL&EMA1",DAYS)
 
+    YFSignal("L","VCP",DAYS)
+    YFSignal("M","VCP",DAYS)
+
     YFSignal("L","EMA1","1")
     YFSignal("M","EMA1","1")    
 
-    # YFSignal("L","VCP",DAYS)
-    # YFSignal("M","VCP",DAYS)
 
 
     #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)

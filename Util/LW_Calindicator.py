@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 def convertData(df):
 
@@ -176,31 +177,6 @@ def calRSI_SMA(df,period):
     rsi = 100 - (100 / (1 + rs))
     
     return rsi
-
-
-def calEMA_TV(close_prices, period=50):
-    """
-    完全匹配 TradingView 的 EMA 計算
-    """
-    # 轉換為列表以便處理
-    prices = close_prices.tolist()
-    ema_values = []
-    
-    # 計算平滑係數
-    k = 2.0 / (period + 1)
-    
-    # 第一個 EMA 是前 period 個價格的 SMA
-    first_sma = sum(prices[:period]) / period
-    ema_values.append(first_sma)
-    
-    # 計算後續的 EMA 值
-    for price in prices[period:]:
-        ema = (price * k) + (ema_values[-1] * (1 - k))
-        ema_values.append(ema)
-    
-    # 創建完整長度的序列，前面用 NaN 填充
-    full_ema = [None] * (period - 1) + ema_values
-    return full_ema
 
 
 def calEMA(df):

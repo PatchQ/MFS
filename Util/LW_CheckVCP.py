@@ -9,19 +9,17 @@ from sklearn.impute import SimpleImputer
 
 try:
     from LW_Calindicator import *
-    from LW_CalHHHL import *
-    from LW_BossSkill import *
-
+    from LW_CheckWave import *
+    from LW_CheckBoss import *
 except ImportError:
-
     from UTIL.LW_Calindicator import *
-    from UTIL.LW_CalHHHL import *
-    from UTIL.LW_BossSkill import *    
+    from UTIL.LW_CheckWave import *
+    from UTIL.LW_CheckBoss import *    
 
 PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/" 
 
-class DailyCompleteStrategyScanner:
+class VCPScanner:
     def __init__(self, df):
         """
         初始化完整策略掃描器（寬鬆版本）
@@ -36,7 +34,7 @@ class DailyCompleteStrategyScanner:
             - Volume: 成交量
         """
         self.df = df.copy()
-        self.df['Date'] = pd.to_datetime(self.df['Date'])
+        self.df['Date'] = pd.to_datetime(self.df.index)
         self.df = self.df.sort_values('Date').reset_index(drop=True)
         
     def calculate_adx_di(self, period=14):
@@ -435,13 +433,13 @@ class DailyCompleteStrategyScanner:
         return self.df
     
 
-def AnalyzeData(sno,stype):
+def checkVCP(df):
 
     conditions = []        
-    df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv")         
-    df = convertData(df)
+    # df = pd.read_csv(PATH+"/"+stype+"/"+sno+".csv")         
+    # df = convertData(df)
 
-    scanner = DailyCompleteStrategyScanner(df)        
+    scanner = VCPScanner(df)        
     df = scanner.calculate_daily_conditions(lookback_days=250)
 
     # 1. Uptrend Requirement:
@@ -489,7 +487,10 @@ def AnalyzeData(sno,stype):
 
     df = df.set_index('Date')
     df.index.name = 'index'    
-    df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv")
+    # df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv")
+
+    return df
+
 
 
 
@@ -502,7 +503,7 @@ def ProcessVCP(stype):
     SLIST = SLIST[:]
 
     with cf.ProcessPoolExecutor(max_workers=5) as executor:
-        list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
+        list(tqdm(executor.map(checkVCP,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 
 if __name__ == '__main__':
