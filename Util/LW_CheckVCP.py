@@ -34,8 +34,10 @@ class VCPScanner:
             - Volume: 成交量
         """
         self.df = df.copy()
-        self.df['Date'] = pd.to_datetime(self.df.index)
-        self.df = self.df.sort_values('Date').reset_index(drop=True)
+
+        if len(self.df)!=0:
+            self.df['Date'] = pd.to_datetime(self.df.index)
+            self.df = self.df.sort_values('Date').reset_index(drop=True)
         
     def calculate_adx_di(self, period=14):
         """計算ADX, +DI, -DI"""        
@@ -485,8 +487,9 @@ def checkVCP(df):
     # Final decision    
     df['VCP'] = all_conditions    
 
-    df = df.set_index('Date')
-    df.index.name = 'index'    
+    if len(df)!=0:
+        df = df.set_index('Date')
+        df.index.name = 'index'    
     # df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv")
 
     return df

@@ -9,6 +9,8 @@ from collections import defaultdict
 
 #get stock csv file from path
 OUTPATH = "../SData/P_YFData/"
+#OUTPATH = "../SData/FP_YFData/"
+
 #EDATE = "2025-09-30"
 EDATE = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 FILESTAMP = "_"+datetime.now().strftime("%Y%m%d")
@@ -21,8 +23,7 @@ def filterStock(sno,stype,signal,days,ruleout):
     tempsno = tempsno.zfill(7)
 
     df = pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv",index_col=0)
-    df = df[:-10].copy()
-
+    #df = df[:-10].copy()
 
     if "~" in days:    
         sdate = days.split('~')[0]
@@ -188,7 +189,7 @@ def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout="")
 
     if len(signaldf)>0:
 
-        if int(days)>20000:
+        if int(days)>10000:
             countBOSS(stype,signal,signaldf,sdate,edate)
 
         signaldf = signaldf.sort_values(by=['SNO','index'],ascending=[True, True])
@@ -225,37 +226,28 @@ if __name__ == '__main__':
        
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
-    DAYS = "20000"
-    DAYS = "20"
+    DAYS = "20000"    
 
     start = t.perf_counter()
 
-    #YFSignal("L","BOSS2~BOSSB~BOSSCL1",DAYS)
-    #YFSignal("M","BOSS2~BOSSB~BOSSCL1",DAYS)
+    # YFSignal("L","BOSS2~BOSSB~BOSSCL1","20")
+    # YFSignal("M","BOSS2~BOSSB~BOSSCL1","20")
     
-    YFSignal("L","HHHL&EMA1","10")
-    YFSignal("M","HHHL&EMA1","10")
+    # YFSignal("L","HHHL&EMA1","10")
+    # YFSignal("M","HHHL&EMA1","10")
 
-    YFSignal("L","VCP","10")
-    YFSignal("M","VCP","10")
+    # YFSignal("L","VCP","10")
+    # YFSignal("M","VCP","10")
 
-    YFSignal("L","EMA1","1")
-    YFSignal("M","EMA1","1")    
-
-
-
-    #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
-    #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
-    # YFSignal("S","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
-
-    # DAYS = "60"
-    # YFSignal("L","BOSS2",DAYS)
-    # YFSignal("M","BOSS2",DAYS)
-    # YFSignal("S","BOSS2",DAYS)
+    # YFSignal("L","EMA1","1")
+    # YFSignal("M","EMA1","1")
 
     #YFSignal("L","T1_50&EMA2",DAYS)
-    #YFSignal("M","T1_50&EMA2",DAYS)
-    #YFSignal("S","T1_50&EMA2",DAYS)   
+    #YFSignal("M","T1_50&EMA2",DAYS)    
+
+
+    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
+    YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')    

@@ -21,7 +21,10 @@ except ImportError:
 
 
 PATH = "../SData/YFData/"
-OUTPATH = "../SData/P_YFData/" 
+OUTPATH = "../SData/P_YFData/"
+
+#PATH = "../SData/FYFData/"
+#OUTPATH = "../SData/FP_YFData/" 
 
 def AnalyzeStock(sno,stype):
 
@@ -53,6 +56,7 @@ def AnalyzeStock(sno,stype):
 
     df = df.reset_index()
     #df = df.sort_values(by=['index'],ascending=[True])
+    df = df[:-10].copy()
     df.to_csv(OUTPATH+"/"+stype+"/P_"+sno+".csv",index=False)
     
 

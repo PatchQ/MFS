@@ -7,8 +7,6 @@ from UTIL.LW_ProcessTA import ProcessTA
 from UTIL.LW_FilterStock import YFSignal
 
 
-DAYS = "20"
-
 if __name__ == '__main__':
 
     start = t.perf_counter()
@@ -33,14 +31,14 @@ if __name__ == '__main__':
     ProcessTA("L")
     ProcessTA("M")
 
-    YFSignal("L","BOSS2~BOSSB~BOSSCL1",DAYS)
-    YFSignal("M","BOSS2~BOSSB~BOSSCL1",DAYS)
+    YFSignal("L","BOSS2~BOSSB~BOSSCL1","20")
+    YFSignal("M","BOSS2~BOSSB~BOSSCL1","20")
     
-    YFSignal("L","HHHL&EMA1",DAYS)
-    YFSignal("M","HHHL&EMA1",DAYS)
+    YFSignal("L","HHHL&EMA1","10")
+    YFSignal("M","HHHL&EMA1","10")
 
-    YFSignal("L","VCP",DAYS)
-    YFSignal("M","VCP",DAYS)
+    YFSignal("L","VCP","10")
+    YFSignal("M","VCP","10")
 
     YFSignal("L","EMA1","1")
     YFSignal("M","EMA1","1")
