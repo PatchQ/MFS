@@ -19,11 +19,11 @@ if __name__ == '__main__':
     YFSignal("L","BOSS2~BOSSB~BOSSCL1","20")
     YFSignal("M","BOSS2~BOSSB~BOSSCL1","20")
     
-    YFSignal("L","HHHL&EMA1","10")
-    YFSignal("M","HHHL&EMA1","10")
+    YFSignal("L","HHHL","5")
+    YFSignal("M","HHHL","5")
 
-    YFSignal("L","VCP","10")
-    YFSignal("M","VCP","10")
+    YFSignal("L","VCP","5")
+    YFSignal("M","VCP","5")
 
     YFSignal("L","EMA1","1")
     YFSignal("M","EMA1","1")

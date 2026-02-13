@@ -16,8 +16,7 @@ from sklearn.metrics import confusion_matrix
 #get stock excel file from path
 dir_path = "../SData/YFData"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
-slist = slist[343:344]
-slist = ["0700.HK"]
+slist = slist[:]
 
 for sno in tqdm(slist):
     print(sno)

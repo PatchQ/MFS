@@ -26,7 +26,7 @@ def checkBoss(df, sno, stype, swing_analysis):
     swing_analysis['stype'] = stype
     
     df['classification'] = ""
-    df['PATTERN'] = ""
+    df['BOSS_PATTERN'] = ""
     df['LLLow'] = 0
     df['LLDate'] = ""
     df['HHClose'] = 0
@@ -70,7 +70,7 @@ def checkBoss(df, sno, stype, swing_analysis):
             df.loc[date_match, "HHClose"] = swing_analysis["HHClose"].iloc[i]
             df.loc[date_match, "HHDate"] = swing_analysis["HHDate"].iloc[i]
             df.loc[date_match, "HHHigh"] = swing_analysis["HHHigh"].iloc[i]
-            df.loc[date_match, "PATTERN"] = swing_analysis["PATTERN"].iloc[i]
+            df.loc[date_match, "BOSS_PATTERN"] = swing_analysis["PATTERN"].iloc[i]
             df.loc[date_match, "VOLATILITY"] = round(((swing_analysis["HHHigh"].iloc[i] - swing_analysis["LLLow"].iloc[i]) / swing_analysis["LLLow"].iloc[i]),2)
 
             hhdate = pd.to_datetime(swing_analysis["HHDate"].iloc[i])
@@ -89,7 +89,7 @@ def checkBoss(df, sno, stype, swing_analysis):
             df.loc[date_match, "33DLow"] = df.loc[(df.index>=stempdate) & (df.index<etempdate), "Low"].min()
             
 
-    BOSS1Rule1 = df['PATTERN']=="LHLLHH"
+    BOSS1Rule1 = (df['BOSS_PATTERN']=="LHLLHH") | (df['BOSS_PATTERN']=="HHLLHH")
     BOSS1Rule2 = df['HHClose']>df['High']
     BOSS1Rule3 = df['VOLATILITY']>=0.14
     
@@ -161,14 +161,14 @@ def checkBoss(df, sno, stype, swing_analysis):
         hhdate = pd.to_datetime(tempdf["HHDate"].iloc[i])
 
         try:
-            buydeadline = df[df.index >= hhdate].index[10]
+            buydeadline = df[df.index >= hhdate].index[22]
         except IndexError:            
             buydeadline = df[df.index >= hhdate].index[-1]
 
         startbossdate = tempdf.index[i].strftime("%Y/%m/%d")               
 
 
-        buydate_mask = (df.index < buydeadline) & (df.index > hhdate) & (buy_price>=df["Low"]*0.995) #& df["EMA3"]
+        buydate_mask = (df.index < buydeadline) & (df.index > hhdate) & (buy_price>=df["Low"]*0.995) & df["EMA2"]
         buydates = df[buydate_mask].index
 
         if len(buydates)!=0:

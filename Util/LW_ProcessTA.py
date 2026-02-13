@@ -23,8 +23,8 @@ except ImportError:
 PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/"
 
-#PATH = "../SData/FYFData/"
-#OUTPATH = "../SData/FP_YFData/" 
+# PATH = "../SData/FYFData/"
+# OUTPATH = "../SData/FP_YFData/" 
 
 def AnalyzeStock(sno,stype):
 
@@ -68,14 +68,14 @@ def ProcessTA(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    with cf.ProcessPoolExecutor(max_workers=5) as executor:
+    with cf.ProcessPoolExecutor(max_workers=10) as executor:
         list(tqdm(executor.map(AnalyzeStock,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    ProcessTA("L")    
+    #ProcessTA("L")    
     ProcessTA("M")    
 
     finish = t.perf_counter()

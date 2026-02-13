@@ -19,7 +19,7 @@ def checkWave(df, sno, stype, swing_analysis):
     swing_analysis['stype'] = stype
     
     df['classification'] = ""
-    df['PATTERN'] = ""
+    df['HHHL_PATTERN'] = ""
     df['WLow'] = 0
     df['WLDate'] = ""        
     df['WHigh'] = 0
@@ -47,11 +47,11 @@ def checkWave(df, sno, stype, swing_analysis):
             df.loc[date_match, "WLDate"] = swing_analysis["WLDate"].iloc[i]            
             df.loc[date_match, "WHigh"] = swing_analysis["WHigh"].iloc[i]
             df.loc[date_match, "WHDate"] = swing_analysis["WHDate"].iloc[i]        
-            df.loc[date_match, "PATTERN"] = swing_analysis["PATTERN"].iloc[i]
+            df.loc[date_match, "HHHL_PATTERN"] = swing_analysis["PATTERN"].iloc[i]
             #df.loc[date_match, "VOLATILITY"] = round(((swing_analysis["HHHigh"].iloc[i] - swing_analysis["HLLow"].iloc[i]) / swing_analysis["HLLow"].iloc[i]),2)            
 
-    WAVERule1 = df['PATTERN']=="LLHHHLHHHL"
-    WAVERule2 = df['PATTERN']=="HLHHHLHHHL"
+    WAVERule1 = df['HHHL_PATTERN']=="LLHHHLHHHL"
+    WAVERule2 = df['HHHL_PATTERN']=="HLHHHLHHHL"
     
     df["HHHL"] = (WAVERule1 | WAVERule2)
 

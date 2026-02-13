@@ -8,6 +8,11 @@ def convertData(df):
     df.dropna(subset=numeric_cols, how='all', inplace=True)
     df.ffill(inplace=True)
     df.bfill(inplace=True)
+
+    df['F10D'] = df['Close'].shift(-10)
+    df['F20D'] = df['Close'].shift(-20)
+    df['F30D'] = df['Close'].shift(-30)
+
     return df
 
 def extendData(df, extension_days=10):
@@ -189,8 +194,8 @@ def calEMA(df):
         df['EMA250'] = df['Close'].ewm(span=250, min_periods=250, adjust=False).mean()
 
         df['EMA1'] = ((df["Close"] > df["EMA10"]) & (df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))
-        df['EMA2'] = ((df["Close"] > df["EMA10"]) & (df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]))
-        df['EMA3'] = ((df["Close"] > df["EMA10"]) & (df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]))
+        df['EMA2'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]) & (df["EMA100"] > df["EMA250"]))
+        df['EMA3'] = ((df["EMA10"] > df["EMA22"]) & (df["EMA22"] > df["EMA50"]) & (df["EMA50"] > df["EMA100"]))
         
         return df        
 
