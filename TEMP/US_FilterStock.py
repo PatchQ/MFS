@@ -57,7 +57,7 @@ def YFGetSLIST(stype,signal,days=0,ruleout=""):
 
 def YFFilter(SLIST,signaldf):    
 
-    with cf.ProcessPoolExecutor(max_workers=12) as executor:
+    with cf.ProcessPoolExecutor(max_workers=5) as executor:
         for tempdf in tqdm(executor.map(filterStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["days"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
             tempdf = tempdf.dropna(axis=1, how="all")
             signaldf = pd.concat([tempdf, signaldf], ignore_index=True)

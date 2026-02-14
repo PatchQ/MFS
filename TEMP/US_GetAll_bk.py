@@ -43,7 +43,7 @@ def USgetAll():
     SLIST = STOCKLIST[["Ticker"]]    
     SLIST = SLIST[:]
 
-    with cf.ThreadPoolExecutor(max_workers=12) as executor:
+    with cf.ThreadPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(getData,SLIST["Ticker"],chunksize=1),total=len(SLIST)))
 
 

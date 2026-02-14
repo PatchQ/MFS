@@ -9,12 +9,8 @@ from sklearn.impute import SimpleImputer
 
 try:
     from LW_Calindicator import *
-    from LW_CheckWave import *
-    from LW_CheckBoss import *
 except ImportError:
-    from UTIL.LW_Calindicator import *
-    from UTIL.LW_CheckWave import *
-    from UTIL.LW_CheckBoss import *    
+    from TA.LW_Calindicator import *
 
 PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/" 

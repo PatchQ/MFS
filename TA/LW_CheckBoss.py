@@ -6,7 +6,7 @@ import warnings
 try:
     from LW_Calindicator import *    
 except ImportError:
-    from UTIL.LW_Calindicator import *    
+    from TA.LW_Calindicator import *    
 
 def checkBoss(df, sno, stype, swing_analysis):
 

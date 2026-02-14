@@ -4,20 +4,12 @@ import time as t
 import concurrent.futures as cf
 from tqdm import tqdm
 
-try:
-    from LW_CalHHLL import *
-    from LW_Calindicator import *
-    from LW_CheckWave import *
-    from LW_CheckBoss import *
-    from LW_CheckT1 import *
-    from LW_CheckVCP import *
-except ImportError:
-    from UTIL.LW_CalHHLL import *
-    from UTIL.LW_Calindicator import *
-    from UTIL.LW_CheckWave import *
-    from UTIL.LW_CheckBoss import *
-    from UTIL.LW_CheckT1 import *
-    from UTIL.LW_CheckVCP import *
+from TA.LW_CalHHLL import *
+from TA.LW_Calindicator import *
+from TA.LW_CheckWave import *
+from TA.LW_CheckBoss import *
+from TA.LW_CheckT1 import *
+from TA.LW_CheckVCP import *
 
 
 PATH = "../SData/YFData/"
@@ -68,7 +60,7 @@ def ProcessTA(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    with cf.ProcessPoolExecutor(max_workers=10) as executor:
+    with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeStock,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 

@@ -104,7 +104,7 @@ def processBT(signal, stype, max_holdbars, sl, tp, dd):
             )
 
             output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd)
-            #bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
+            bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
 
             if output['# Trades'] != 0:
                 # 收集主要指標
@@ -149,7 +149,7 @@ def processBT(signal, stype, max_holdbars, sl, tp, dd):
     print(f"平均策略表現綜合評分: {np.mean(resultdf['SQN']):.2f}")
     print(f"平均夏普比率: {np.mean(resultdf['sharpe_ratios']):.2f}")
     print(f"平均索提諾比率: {np.mean(resultdf['sortino_ratios']):.2f}")
-    print(f"平均卡爾瑪比率: {np.mean(resultdf['calmar_ratios']):.2f}")
+    print(f"平均卡爾瑪比率: {np.mean(resultdf['calmar_ratios']):.2f}") 
     print(f"平均交易次數: {np.mean(resultdf['trades_counts'])}")
     print(f"總交易次數: {sum(resultdf['trades_counts'])}")
     print(f"平均勝率: {np.mean(resultdf['win_rates']):.2f}%") 

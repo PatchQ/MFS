@@ -9,7 +9,7 @@ from collections import defaultdict
 
 #get stock csv file from path
 OUTPATH = "../SData/P_YFData/"
-OUTPATH = "../SData/FP_YFData/"
+#OUTPATH = "../SData/FP_YFData/"
 
 #EDATE = "2025-09-30"
 EDATE = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
@@ -70,7 +70,7 @@ def YFGetSLIST(stype,signal,days=0,ruleout=""):
 
 def YFFilter(SLIST,signaldf):    
 
-    with cf.ProcessPoolExecutor(max_workers=10) as executor:
+    with cf.ProcessPoolExecutor(max_workers=5) as executor:
         for tempdf in tqdm(executor.map(filterStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["days"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
             tempdf = tempdf.dropna(axis=1, how="all")
             signaldf = pd.concat([tempdf, signaldf], ignore_index=True)
@@ -230,23 +230,23 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
 
-    YFSignal("L","BOSS2~BOSSB~BOSSCL1","20")
-    YFSignal("M","BOSS2~BOSSB~BOSSCL1","20")
+    # YFSignal("L","BOSS2~BOSSB~BOSSCL1","60")
+    # YFSignal("M","BOSS2~BOSSB~BOSSCL1","60")
     
-    YFSignal("L","HHHL","5")
-    YFSignal("M","HHHL","5")
+    # YFSignal("L","HHHL","5")
+    # YFSignal("M","HHHL","5")
 
-    YFSignal("L","VCP","5")
-    YFSignal("M","VCP","5")
+    # YFSignal("L","VCP","5")
+    # YFSignal("M","VCP","5")
 
-    YFSignal("L","EMA2","1")
-    YFSignal("M","EMA2","1")
+    # YFSignal("L","EMA2","1")
+    # YFSignal("M","EMA2","1")
 
     #YFSignal("L","T1_50&EMA2",DAYS)
     #YFSignal("M","T1_50&EMA2",DAYS)    
 
-    #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
-    #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
+    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
+    YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')    

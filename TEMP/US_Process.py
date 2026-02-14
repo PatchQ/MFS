@@ -202,7 +202,7 @@ def YFprocessData(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    with cf.ProcessPoolExecutor(max_workers=12) as executor:
+    with cf.ProcessPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 
