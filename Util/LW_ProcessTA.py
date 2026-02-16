@@ -67,7 +67,7 @@ def ProcessTA(stype):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #ProcessTA("L")    
+    ProcessTA("L")    
     ProcessTA("M")    
 
     finish = t.perf_counter()

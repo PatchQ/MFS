@@ -128,6 +128,7 @@ def checkBoss(df, sno, stype, swing_analysis):
     df["BOSS2"] = (df["BOSS1"] & BOSS2Rule1 & BOSS2Rule2 & BOSS2Rule3 & BOSS2Rule4)  
     
     df.loc[df["BOSS2"], "buy_price"] = round(((df["HHHigh"] + df["LLLow"]) / 2),2)
+    df.loc[df["BOSS2"], "cl_price"] = df["LLLow"]
     df.loc[df["BOSS2"], "tp1_price"] = df["HHHigh"]
     df.loc[df["BOSS2"], "tp2_price"] = df["buy_price"] + (df["HHHigh"] - df["buy_price"]) * 2 
     df.loc[df["BOSS2"], "tp3_price"] = df["buy_price"] + (df["HHHigh"] - df["buy_price"]) * 3 
@@ -152,11 +153,11 @@ def checkBoss(df, sno, stype, swing_analysis):
         buy = False    
 
         buy_price = tempdf["buy_price"].iloc[i]
-        cl_price = tempdf["LLLow"].iloc[i]
-        hh_price = tempdf["HHHigh"].iloc[i]
+        cl_price = tempdf["cl_price"].iloc[i]        
         tp1_price = tempdf["tp1_price"].iloc[i]
         tp2_price = tempdf["tp2_price"].iloc[i]
         tp3_price = tempdf["tp3_price"].iloc[i]
+        hh_price = tp1_price
 
         hhdate = pd.to_datetime(tempdf["HHDate"].iloc[i])
 
@@ -184,6 +185,11 @@ def checkBoss(df, sno, stype, swing_analysis):
         if buy:
             df.loc[lastbuydate,'BOSS_STATUS'] = "BY1-"+startbossdate
             df.loc[lastbuydate,'BOSSB'] = True
+            df.loc[lastbuydate,'buy_price'] = buy_price
+            df.loc[lastbuydate,'cl_price'] = cl_price
+            df.loc[lastbuydate,'tp1_price'] = tp1_price
+            df.loc[lastbuydate,'tp2_price'] = tp2_price
+            df.loc[lastbuydate,'tp3_price'] = tp3_price
             #print("BUYDate : "+lastbuydate.strftime("%Y-%m-%d"))
             try:
                 tp1deadline = df[df.index>=lastbuydate].index[30]

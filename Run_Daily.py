@@ -16,8 +16,8 @@ if __name__ == '__main__':
     ProcessTA("L")
     ProcessTA("M")
 
-    YFSignal("L","BOSS2~BOSSB~BOSSCL1","20")
-    YFSignal("M","BOSS2~BOSSB~BOSSCL1","20")
+    YFSignal("L","BOSS2~BOSSB~BOSSCL1","60")
+    YFSignal("M","BOSS2~BOSSB~BOSSCL1","60")
     
     YFSignal("L","HHHL","5")
     YFSignal("M","HHHL","5")
