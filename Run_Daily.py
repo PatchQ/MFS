@@ -9,24 +9,24 @@ if __name__ == '__main__':
     start = t.perf_counter()
 
     #get Daily Data from YF
-    YFgetDaily("L")
-    YFgetDaily("M")
+    #YFgetDaily("L")
+    #YFgetDaily("M")
     
     #process All Data
-    ProcessTA("L")
+    #ProcessTA("L")
     ProcessTA("M")
 
-    YFSignal("L","BOSS2~BOSSB~BOSSCL1","60")
-    YFSignal("M","BOSS2~BOSSB~BOSSCL1","60")
+    # YFSignal("L","BOSS2~BOSSB~BOSSCL1","60")
+    # YFSignal("M","BOSS2~BOSSB~BOSSCL1","60")
     
-    YFSignal("L","HHHL","5")
-    YFSignal("M","HHHL","5")
+    # YFSignal("L","HHHL","5")
+    # YFSignal("M","HHHL","5")
 
-    YFSignal("L","VCP","5")
-    YFSignal("M","VCP","5")
+    # YFSignal("L","VCP","5")
+    # YFSignal("M","VCP","5")
 
-    YFSignal("L","EMA1","1")
-    YFSignal("M","EMA1","1")
+    # YFSignal("L","EMA1","1")
+    # YFSignal("M","EMA1","1")
    
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

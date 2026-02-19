@@ -230,23 +230,23 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
 
-    YFSignal("L","BOSS2~BOSSB~BOSSCL1","60")
-    YFSignal("M","BOSS2~BOSSB~BOSSCL1","60")
+    # YFSignal("L","BOSS2~BOSSB~BOSSCL1","60")
+    # YFSignal("M","BOSS2~BOSSB~BOSSCL1","60")
     
-    YFSignal("L","HHHL","5")
-    YFSignal("M","HHHL","5")
+    # YFSignal("L","HHHL","5")
+    # YFSignal("M","HHHL","5")
 
-    YFSignal("L","VCP","5")
-    YFSignal("M","VCP","5")
+    # YFSignal("L","VCP","5")
+    # YFSignal("M","VCP","5")
 
-    YFSignal("L","EMA2","1")
-    YFSignal("M","EMA2","1")
+    # YFSignal("L","EMA2","1")
+    # YFSignal("M","EMA2","1")
 
     #YFSignal("L","T1_50&EMA2",DAYS)
     #YFSignal("M","T1_50&EMA2",DAYS)    
 
-    #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
-    #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
+    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
+    YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')    

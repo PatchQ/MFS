@@ -7,8 +7,8 @@ from backtesting import Backtest, Strategy
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 
-OUTPATH = "../SData/P_YFData/" 
-#OUTPATH = "../SData/FP_YFData/"
+#OUTPATH = "../SData/P_YFData/" 
+OUTPATH = "../SData/FP_YFData/"
 
 class run(Strategy):
 
@@ -23,6 +23,8 @@ class run(Strategy):
         self.highest_profit = 0
         self.holdingbars = 0
         self.ishold = False
+        self.tp2_price = 0
+        self.cl_price = 0
 
     def next(self):
 
@@ -32,6 +34,8 @@ class run(Strategy):
                 self.ishold = True
                 self.holdingbars = 0                
                 self.highest_profit = 0
+                self.tp2_price = self.data.tp2_price[-1]
+                self.cl_price = self.data.cl_price[-1]
                 #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
             
             if self.position:
@@ -47,17 +51,33 @@ class run(Strategy):
                     self.holding_bars = 0                    
                     #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
                     return
+                
 
                  # 條件2：百分比止損                
-                if current_pl < self.sl:
+                # if current_pl < self.sl:
+                #     self.position.close()
+                #     self.is_holding = False
+                #     self.holding_bars = 0                    
+                #     #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
+                #     return
+                
+                if self.data.Close[-1] < self.cl_price:
                     self.position.close()
                     self.is_holding = False
                     self.holding_bars = 0                    
                     #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
                     return
+                                
                     
                 # 條件3：百分比止盈
-                if current_pl > self.tp:
+                # if current_pl > self.tp:
+                #     self.position.close()
+                #     self.is_holding = False
+                #     self.holding_bars = 0                    
+                #     #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
+                #     return
+                
+                if self.data.Close[-1] > self.tp2_price:
                     self.position.close()
                     self.is_holding = False
                     self.holding_bars = 0                    
@@ -104,9 +124,9 @@ def processBT(signal, stype, max_holdbars, sl, tp, dd):
             )
 
             output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd)
-            bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
-
+            
             if output['# Trades'] != 0:
+                bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
                 # 收集主要指標
                 tempdf['sno'] = sno
                 tempdf['returns'] = [output['Return [%]']] #總收益率
@@ -165,13 +185,13 @@ if __name__ == '__main__':
     start = t.perf_counter()
     
     processBT("BOSSB", "L", max_holdbars, sl, tp, dd)
-    processBT("BOSSB", "M", max_holdbars, sl, tp, dd)
+    #processBT("BOSSB", "M", max_holdbars, sl, tp, dd)
 
-    processBT("HHHL", "L", max_holdbars, sl, tp, dd)
-    processBT("HHHL", "M", max_holdbars, sl, tp, dd)
+    #processBT("HHHL", "L", max_holdbars, sl, tp, dd)
+    # processBT("HHHL", "M", max_holdbars, sl, tp, dd)
 
-    processBT("VCP", "L", max_holdbars, sl, tp, dd)
-    processBT("VCP", "M", max_holdbars, sl, tp, dd)
+    #processBT("VCP", "L", max_holdbars, sl, tp, dd)
+    # processBT("VCP", "M", max_holdbars, sl, tp, dd)
 
     finish = t.perf_counter()
     

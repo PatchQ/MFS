@@ -169,7 +169,7 @@ def checkBoss(df, sno, stype, swing_analysis):
         startbossdate = tempdf.index[i].strftime("%Y/%m/%d")               
 
 
-        buydate_mask = (df.index < buydeadline) & (df.index > hhdate) & (buy_price>=df["Low"]*0.995) & df["EMA2"]
+        buydate_mask = (df.index < buydeadline) & (df.index > hhdate) & (buy_price>=df["Low"]*0.995) & df["EMA3"]
         buydates = df[buydate_mask].index
 
         if len(buydates)!=0:
