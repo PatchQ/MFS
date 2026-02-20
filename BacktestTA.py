@@ -7,8 +7,8 @@ from backtesting import Backtest, Strategy
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 
-#OUTPATH = "../SData/P_YFData/" 
-OUTPATH = "../SData/FP_YFData/"
+OUTPATH = "../SData/P_YFData/" 
+#OUTPATH = "../SData/FP_YFData/"
 
 class run(Strategy):
 
@@ -53,38 +53,41 @@ class run(Strategy):
                     return
                 
 
-                 # 條件2：百分比止損                
-                # if current_pl < self.sl:
-                #     self.position.close()
-                #     self.is_holding = False
-                #     self.holding_bars = 0                    
-                #     #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
-                #     return
-                
-                if self.data.Close[-1] < self.cl_price:
-                    self.position.close()
-                    self.is_holding = False
-                    self.holding_bars = 0                    
-                    #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
-                    return
-                                
+                 # 條件2：價格止損/止盈        
+                if self.signal == "BOSSB":
+
+                    if self.data.Close[-1] < self.cl_price:
+                        self.position.close()
+                        self.is_holding = False
+                        self.holding_bars = 0                    
+                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
+                        return
                     
-                # 條件3：百分比止盈
-                # if current_pl > self.tp:
-                #     self.position.close()
-                #     self.is_holding = False
-                #     self.holding_bars = 0                    
-                #     #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
-                #     return
-                
-                if self.data.Close[-1] > self.tp2_price:
-                    self.position.close()
-                    self.is_holding = False
-                    self.holding_bars = 0                    
-                    #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
-                    return
+                    if self.data.Close[-1] > self.tp2_price:
+                        self.position.close()
+                        self.is_holding = False
+                        self.holding_bars = 0                    
+                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
+                        return
+                    
+                else:
+                    # 條件2：百分比止損/止盈      
+                    if current_pl < self.sl:
+                        self.position.close()
+                        self.is_holding = False
+                        self.holding_bars = 0                    
+                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
+                        return
+                    
+                    if current_pl > self.tp:
+                        self.position.close()
+                        self.is_holding = False
+                        self.holding_bars = 0                    
+                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
+                        return
+
                                 
-                # 條件4：追蹤止損（從最高點回撤5%）
+                # 條件3：追蹤止損（從最高點回撤N%）
                 self.highest_profit = max(self.highest_profit, current_pl)
 
                 if self.highest_profit > self.dd and current_pl < (self.highest_profit - self.dd):                    
@@ -93,7 +96,6 @@ class run(Strategy):
                     self.holding_bars = 0                    
                     #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
                     return
-
 
 
 def processBT(signal, stype, max_holdbars, sl, tp, dd):
@@ -187,11 +189,11 @@ if __name__ == '__main__':
     processBT("BOSSB", "L", max_holdbars, sl, tp, dd)
     #processBT("BOSSB", "M", max_holdbars, sl, tp, dd)
 
-    #processBT("HHHL", "L", max_holdbars, sl, tp, dd)
-    # processBT("HHHL", "M", max_holdbars, sl, tp, dd)
+    processBT("HHHL", "L", max_holdbars, sl, tp, dd)
+    #processBT("HHHL", "M", max_holdbars, sl, tp, dd)
 
-    #processBT("VCP", "L", max_holdbars, sl, tp, dd)
-    # processBT("VCP", "M", max_holdbars, sl, tp, dd)
+    processBT("VCP", "L", max_holdbars, sl, tp, dd)
+    #processBT("VCP", "M", max_holdbars, sl, tp, dd)
 
     finish = t.perf_counter()
     

@@ -9,9 +9,9 @@ def convertData(df):
     df.ffill(inplace=True)
     df.bfill(inplace=True)
 
-    df['F10D'] = df['Close'].shift(-10)
-    df['F20D'] = df['Close'].shift(-20)
-    df['F30D'] = df['Close'].shift(-30)
+    df['F10D'] = df["Close"].pct_change(periods=10).shift(periods=-10)
+    df['F20D'] = df["Close"].pct_change(periods=20).shift(periods=-20)
+    df['F30D'] = df["Close"].pct_change(periods=30).shift(periods=-30)
 
     return df
 

@@ -13,70 +13,85 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 
 
-#get stock excel file from path
-dir_path = "../SData/YFData"
-slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
-slist = slist[:]
+#OUTPATH = "../SData/P_YFData/" 
+OUTPATH = "../SData/FP_YFData/"
+stype = "L"
 
-for sno in tqdm(slist):
-    print(sno)
+snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(OUTPATH+"/"+stype)))
+snolist = snolist[:]
+
+resultdf = pd.DataFrame()
+
+for sno in tqdm(snolist):
+    
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
-
-    train_data = pd.read_excel(dir_path+"/"+sno+".xlsx",index_col=0)
-    train_data.drop(columns=["sno"], inplace=True)
+    
+    train_data = pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv",index_col=0)        
+    train_data["sno"] = train_data["sno"].str.replace(r'^0+', '', regex=True).str.replace('.HK','')    
+    
+    train_data = train_data.apply(pd.to_numeric, errors='coerce')
 
     df = train_data.copy()
     
-    train_data = train_data.loc[train_data.index<="2020-12-31"]
-    train_data["Y"] = train_data["5DayResult"] > 0.05
+    train_data = train_data.loc[train_data.index<="2025-12-31"]
 
-    train_data_y = train_data.pop("Y")
-    train_data.drop(columns=["10DayChange","5DayResult","VCP"], inplace=True)
+    if len(train_data)>500:
 
-    train_data.to_excel("Data/"+sno+"_tree.xlsx")
+        train_data["Y"] = train_data["F10D"] > 0.10
 
-    xtrain, xtest, ytrain, ytest = train_test_split(train_data, train_data_y, test_size=0.2, random_state=1)
-    model = DecisionTreeClassifier(max_depth=14).fit(xtrain,ytrain)
-    pred = model.predict(xtest)
-    accuracy = accuracy_score(ytest, pred)
+        train_data_y = train_data.pop("Y")
+        train_data.drop(columns=["F10D"], inplace=True)
 
-    clf_report = metrics.classification_report(ytest, pred)
-    conf_mat = confusion_matrix(ytest, pred)
+        #train_data.to_csv("Data/"+sno+"_tree.csv")
 
-    print("accuracy:" +str(accuracy))
-    print(clf_report)
+        xtrain, xtest, ytrain, ytest = train_test_split(train_data, train_data_y, test_size=0.2, random_state=1)
+        model = DecisionTreeClassifier(max_depth=14).fit(xtrain,ytrain)
+        pred = model.predict(xtest)
+        accuracy = accuracy_score(ytest, pred)
+
+        clf_report = metrics.classification_report(ytest, pred)
+        conf_mat = confusion_matrix(ytest, pred)
+
+        #print("accuracy:" +str(accuracy))
+        #print(clf_report)
+        
+        df.drop(columns=["F10D"], inplace=True)
+        pp = df.loc[df.index>"2026-01-31"].copy()    
+
+        #print(model.predict_proba(pp))
+
+        pp["Prediction"] = [float(i[1]) for i in model.predict_proba(pp)]
+
+        tempdf = pp.loc[pp["Prediction"]>0.9]
+
+        tempdf.insert(0, 'Date', pd.to_datetime(tempdf.index))                
+
+        resultdf = pd.concat([resultdf, tempdf], ignore_index=True)
+
+resultdf.to_csv("Data/DecisionTree.csv",index=False)
+
     
-    pp = df.loc[df.index>"2020-12-31"]
-    pp.drop(columns=["10DayChange","5DayResult","VCP"], inplace=True)
-
-    print(model.predict_proba(pp))
-
-    pp["Prediction"] = [ float(i[1]) for i in model.predict_proba(pp)]
-
-    pp.to_excel("Data/"+sno+"_tree.xlsx")
-
-    print(pp)
 
 
 
-class AI_test(Strategy):
-    sl_ratio = 99     # stop loss ratio, 99 means 1% loss
+# class AI_test(Strategy):
+#     sl_ratio = 99     # stop loss ratio, 99 means 1% loss
 
-    def init(self):
-        return
+#     def init(self):
+#         return
 
-    def next(self):
-        if self.data.Prediction > 0.7:
-            self.buy(size=.99,sl=self.data.Close[-1]*self.sl_ratio/100)
-        if self.data.Prediction < 0.5 and self.position.is_long:
-            self.position.close()
+#     def next(self):
+#         if self.data.Prediction > 0.7:
+#             self.buy(size=.99,sl=self.data.Close[-1]*self.sl_ratio/100)
+#         if self.data.Prediction < 0.5 and self.position.is_long:
+#             self.position.close()
 
-bt = Backtest(pp, AI_test,
-              cash=1000000, commission=.002,
-              exclusive_orders=True)
+# bt = Backtest(pp, AI_test,
+#               cash=1000000, commission=.002,
+#               exclusive_orders=True)
 
-output = bt.run()
-bt.plot()
-print(output)
+# output = bt.run()
+# bt.plot()
+# print(output)
 
