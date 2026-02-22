@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
     #process All Data
     #ProcessTA("L")
-    ProcessTA("M")
+    #ProcessTA("M")
  
     # YFSignal("L","BOSS2~BOSSB~BOSSCL1","20")
     # YFSignal("M","BOSS2~BOSSB~BOSSCL1","20")
