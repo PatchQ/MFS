@@ -121,14 +121,14 @@ def processBT(signal, stype, max_holdbars, sl, tp, dd):
                 margin=1.0,  #margin = 0.02 (1/50=0.02) 50倍槓杆
                 trade_on_close=False, 
                 hedging=False,
-                exclusive_orders=True, #確保同時只有一個訂單
-                finalize_trades=True  #回測結束時平倉
+                exclusive_orders=True #確保同時只有一個訂單
+                #finalize_trades=True  #回測結束時平倉
             )
 
             output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd)
             
             if output['# Trades'] != 0:
-                bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
+                #bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
                 # 收集主要指標
                 tempdf['sno'] = sno
                 tempdf['returns'] = [output['Return [%]']] #總收益率

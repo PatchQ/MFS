@@ -11,42 +11,52 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import make_pipeline
 
 
-#OUTPATH = "../SData/P_YFData/" 
-OUTPATH = "../SData/FP_YFData/"
+OUTPATH = "../SData/P_YFData/" 
+#OUTPATH = "../SData/FP_YFData/"
 stype = "L"
+tdate = "2020-12-31"
 
 snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(OUTPATH+"/"+stype)))
-snolist = snolist[:]
+snolist = snolist[:1]
 
 resultdf = pd.DataFrame()
 
 for sno in tqdm(snolist):
     
-    tempsno = str(sno).lstrip("0")
-    tempsno = tempsno.zfill(7)
-    
-    train_data = pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv",index_col=0)        
-    train_data["sno"] = train_data["sno"].str.replace(r'^0+', '', regex=True).str.replace('.HK','')    
-    
-    train_data = train_data.apply(pd.to_numeric, errors='coerce')
+    tempsno = str(sno).replace('P_','').replace('.HK','')
+    tempsno = str(tempsno).lstrip("0")
 
-    df = train_data.copy()
+    print(tempsno)
+        
+    df = pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv",index_col=0)        
+    train_data = df.copy()
     
-    train_data = train_data.loc[train_data.index<="2025-12-31"]
+    train_data["sno"] = tempsno
+    train_data = train_data.apply(pd.to_numeric, errors='coerce')
+    train_data = train_data.loc[train_data.index<=tdate]
 
     if len(train_data)>500:
 
         train_data["Y"] = train_data["F10D"] > 0.10
 
         train_data_y = train_data.pop("Y")
-        train_data.drop(columns=["F10D"], inplace=True)
-
-        #train_data.to_csv("Data/"+sno+"_tree.csv")
-
+        train_data.drop(columns=["F10D","F20D","F30D"], inplace=True)
         xtrain, xtest, ytrain, ytest = train_test_split(train_data, train_data_y, test_size=0.2, random_state=1)
-        model = DecisionTreeClassifier(max_depth=14).fit(xtrain,ytrain)
+        
+        # 1. 创建一个填补器（例如：用均值填补，你也可以用 'median' 或 'most_frequent'）
+        imputer = SimpleImputer(strategy='mean') # 或用 'median', 'most_frequent'
+
+        # 2. 将填补器和分类器组合成一个管道
+        model = make_pipeline(imputer, DecisionTreeClassifier(max_depth=14))
+
+        # 3. 直接用管道进行训练（它会先自动填补，再训练）
+        model.fit(xtrain, ytrain)                        
+        #model = DecisionTreeClassifier(max_depth=14).fit(xtrain,ytrain)
+        
         pred = model.predict(xtest)
         accuracy = accuracy_score(ytest, pred)
 
@@ -56,12 +66,17 @@ for sno in tqdm(snolist):
         #print("accuracy:" +str(accuracy))
         #print(clf_report)
         
-        df.drop(columns=["F10D"], inplace=True)
-        pp = df.loc[df.index>"2026-01-31"].copy()    
+        pp = df.loc[df.index>tdate].copy()    
+        pp.drop(columns=["F10D","F20D","F30D"], inplace=True)
+        pp = pp.apply(pd.to_numeric, errors='coerce')
 
         #print(model.predict_proba(pp))
 
         pp["Prediction"] = [float(i[1]) for i in model.predict_proba(pp)]
+        
+        df["DT"] = pp["Prediction"]>0.9
+        
+        df.to_csv(f"Data/{tempsno}DT.csv",index=False)
 
         tempdf = pp.loc[pp["Prediction"]>0.9]
 
@@ -70,6 +85,7 @@ for sno in tqdm(snolist):
         resultdf = pd.concat([resultdf, tempdf], ignore_index=True)
 
 resultdf.to_csv("Data/DecisionTree.csv",index=False)
+print(resultdf)
 
     
 

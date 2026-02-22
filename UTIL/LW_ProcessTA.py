@@ -60,7 +60,7 @@ def ProcessTA(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    with cf.ProcessPoolExecutor(max_workers=5) as executor:
+    with cf.ThreadPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(AnalyzeStock,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 

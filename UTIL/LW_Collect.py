@@ -76,7 +76,7 @@ def YFgetAll(stype,period="max"):
     SLIST = SLIST.assign(period=period+"")
     SLIST = SLIST[:]
 
-    with cf.ProcessPoolExecutor(max_workers=5) as executor:
+    with cf.ThreadPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(getYFAll,SLIST["sno"],SLIST["stype"],SLIST["period"],chunksize=1),total=len(SLIST)))
 
 def YFgetDaily(stype):
@@ -87,14 +87,14 @@ def YFgetDaily(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    with cf.ProcessPoolExecutor(max_workers=5) as executor:
+    with cf.ThreadPoolExecutor(max_workers=5) as executor:
         list(tqdm(executor.map(getDataDaily,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))        
 
 
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    #YFgetAll("L")
+    YFgetAll("L")
     YFgetAll("M")
 
     #YFgetAll("L","2y")
