@@ -5,6 +5,7 @@ import yfinance as yf
 import concurrent.futures as cf
 from tqdm import tqdm
 import os
+import platform
 
 PATH = "../SData/YFData/"
 
@@ -76,7 +77,12 @@ def YFgetAll(stype,period="max"):
     SLIST = SLIST.assign(period=period+"")
     SLIST = SLIST[:]
 
-    with cf.ThreadPoolExecutor(max_workers=5) as executor:
+    if platform.system()=="Windows":
+        executor = cf.ProcessPoolExecutor(max_workers=5)
+    elif platform.system()=="Darwin":
+        executor = cf.ThreadPoolExecutor(max_workers=4)    
+
+    with executor:
         list(tqdm(executor.map(getYFAll,SLIST["sno"],SLIST["stype"],SLIST["period"],chunksize=1),total=len(SLIST)))
 
 def YFgetDaily(stype):
@@ -87,7 +93,12 @@ def YFgetDaily(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    with cf.ThreadPoolExecutor(max_workers=5) as executor:
+    if platform.system()=="Windows":
+        executor = cf.ProcessPoolExecutor(max_workers=5)
+    elif platform.system()=="Darwin":
+        executor = cf.ThreadPoolExecutor(max_workers=4)
+
+    with executor:
         list(tqdm(executor.map(getDataDaily,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))        
 
 

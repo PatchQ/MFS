@@ -5,7 +5,7 @@ from HKEX.AA_GetStockListData import getStockListData
 from UTIL.LW_Collect import YFgetAll
 from UTIL.LW_ProcessTA import ProcessTA
 from UTIL.LW_FilterStock import YFSignal
-
+import platform
 
 if __name__ == '__main__':
 
@@ -18,7 +18,7 @@ if __name__ == '__main__':
     #getStockListData()
 
     # #get All History Data from YF
-    YFgetAll("L")
+    #YFgetAll("L")
     #YFgetAll("M")
     #YFgetAll("S")
 
@@ -26,10 +26,9 @@ if __name__ == '__main__':
     #YFgetAll("M","3y")
     #YFgetAll("S","2y")
 
-
     #process All Data
-    ProcessTA("L")
-    #ProcessTA("M")
+    #ProcessTA("L")
+    ProcessTA("M")
  
     # YFSignal("L","BOSS2~BOSSB~BOSSCL1","20")
     # YFSignal("M","BOSS2~BOSSB~BOSSCL1","20")

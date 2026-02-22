@@ -1,6 +1,7 @@
 import pandas as pd
 import concurrent.futures as cf
 import os
+import platform
 import time as t
 from tqdm import tqdm
 from datetime import datetime, timedelta
@@ -70,7 +71,12 @@ def YFGetSLIST(stype,signal,days=0,ruleout=""):
 
 def YFFilter(SLIST,signaldf):    
 
-    with cf.ThreadPoolExecutor(max_workers=5) as executor:
+    if platform.system()=="Windows":
+        executor = cf.ProcessPoolExecutor(max_workers=5)
+    elif platform.system()=="Darwin":
+        executor = cf.ThreadPoolExecutor(max_workers=4)
+    
+    with executor:
         for tempdf in tqdm(executor.map(filterStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["days"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
             tempdf = tempdf.dropna(axis=1, how="all")
             signaldf = pd.concat([tempdf, signaldf], ignore_index=True)

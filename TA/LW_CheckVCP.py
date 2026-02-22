@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import concurrent.futures as cf
 import os
+import platform
 from tqdm import tqdm
 import time as t
 from sklearn.ensemble import IsolationForest
@@ -501,7 +502,12 @@ def ProcessVCP(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    with cf.ProcessPoolExecutor(max_workers=5) as executor:
+    if platform.system()=="Windows":
+        executor = cf.ProcessPoolExecutor(max_workers=5)
+    elif platform.system()=="Darwin":
+        executor = cf.ThreadPoolExecutor(max_workers=4)
+
+    with executor:
         list(tqdm(executor.map(checkVCP,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 

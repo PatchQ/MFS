@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import time as t
 import concurrent.futures as cf
+import platform
 from tqdm import tqdm
 
 from TA.LW_CalHHLL import *
@@ -60,7 +61,12 @@ def ProcessTA(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    with cf.ThreadPoolExecutor(max_workers=5) as executor:
+    if platform.system()=="Windows":
+        executor = cf.ProcessPoolExecutor(max_workers=5)
+    elif platform.system()=="Darwin":
+        executor = cf.ThreadPoolExecutor(max_workers=4)
+
+    with executor:
         list(tqdm(executor.map(AnalyzeStock,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 

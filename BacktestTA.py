@@ -186,13 +186,15 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
     
-    processBT("BOSSB", "L", max_holdbars, sl, tp, dd)
+    processBT("DT", "L", max_holdbars, sl, tp, dd)
+
+    #processBT("BOSSB", "L", max_holdbars, sl, tp, dd)
     #processBT("BOSSB", "M", max_holdbars, sl, tp, dd)
 
-    processBT("HHHL", "L", max_holdbars, sl, tp, dd)
+    #processBT("HHHL", "L", max_holdbars, sl, tp, dd)
     #processBT("HHHL", "M", max_holdbars, sl, tp, dd)
 
-    processBT("VCP", "L", max_holdbars, sl, tp, dd)
+    #processBT("VCP", "L", max_holdbars, sl, tp, dd)
     #processBT("VCP", "M", max_holdbars, sl, tp, dd)
 
     finish = t.perf_counter()
