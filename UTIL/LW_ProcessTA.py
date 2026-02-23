@@ -49,7 +49,7 @@ def AnalyzeStock(sno,stype):
     df = checkVCP(df)
 
     #DecisionTree
-    df = calDT(sno, df)
+    #df = calDT(sno, df)
 
 
     df = df.reset_index()
