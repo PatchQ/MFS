@@ -13,6 +13,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_pipeline
+import joblib
 
 
 OUTPATH = "../SData/P_YFData/" 
@@ -21,7 +22,7 @@ stype = "L"
 tdate = "2020-12-31"
 
 snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(OUTPATH+"/"+stype)))
-snolist = snolist[:]
+snolist = snolist[:1]
 
 resultdf = pd.DataFrame()
 
@@ -36,7 +37,7 @@ for sno in tqdm(snolist):
     train_data = df.copy()
     
     train_data["sno"] = tempsno
-    train_data = train_data.apply(pd.to_numeric, errors='coerce')
+    #train_data = train_data.apply(pd.to_numeric, errors='coerce')
     train_data = train_data.loc[train_data.index<=tdate]
 
     if len(train_data)>500:
@@ -45,6 +46,7 @@ for sno in tqdm(snolist):
 
         train_data_y = train_data.pop("Y")
         train_data.drop(columns=["F10D","F20D","F30D","DT"], inplace=True)
+        train_data.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
         xtrain, xtest, ytrain, ytest = train_test_split(train_data, train_data_y, test_size=0.2, random_state=1)
         
         # 1. 创建一个填补器（例如：用均值填补，你也可以用 'median' 或 'most_frequent'）
@@ -63,12 +65,12 @@ for sno in tqdm(snolist):
         clf_report = metrics.classification_report(ytest, pred)
         conf_mat = confusion_matrix(ytest, pred)
 
-        #print("accuracy:" +str(accuracy))
-        #print(clf_report)
+        print("accuracy:" +str(accuracy))
+        print(clf_report)
         
         pp = df.loc[df.index>tdate].copy()    
         pp.drop(columns=["F10D","F20D","F30D","DT"], inplace=True)
-        pp = pp.apply(pd.to_numeric, errors='coerce')
+        #pp = pp.apply(pd.to_numeric, errors='coerce')
 
         #print(model.predict_proba(pp))
 
