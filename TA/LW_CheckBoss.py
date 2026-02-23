@@ -102,6 +102,8 @@ def checkBoss(df, sno, stype, swing_analysis):
     df['bullish_ratio'] = 0.00
     df['bullish_count'] = 0
     df['strong_bullish'] = 0
+    df['medium_bullish'] = 0
+    df['weak_bullish'] = 0
     
     
     for i in range(len(tempdf)):

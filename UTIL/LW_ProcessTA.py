@@ -12,6 +12,8 @@ from TA.LW_CheckBoss import *
 from TA.LW_CheckT1 import *
 from TA.LW_CheckVCP import *
 
+from AI.DecisionTree import *
+
 
 PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/"
@@ -45,6 +47,9 @@ def AnalyzeStock(sno,stype):
     
     #VCP
     df = checkVCP(df)
+
+    #DecisionTree
+    df = calDT(sno, df)
 
 
     df = df.reset_index()
