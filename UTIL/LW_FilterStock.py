@@ -240,22 +240,22 @@ if __name__ == '__main__':
     start = t.perf_counter()
 
     YFSignal("L","BOSS2~BOSSB~BOSSCL1","10")
-    #YFSignal("M","BOSS2~BOSSB~BOSSCL1","10")
+    YFSignal("M","BOSS2~BOSSB~BOSSCL1","10")
 
     YFSignal("L","DT","20")
-    #YFSignal("M","DT","20")
+    YFSignal("M","DT","20")
     
     YFSignal("L","HHHL","10")
-    #YFSignal("M","HHHL","10")
+    YFSignal("M","HHHL","10")
 
     YFSignal("L","VCP","10")
-    #YFSignal("M","VCP","10")
+    YFSignal("M","VCP","10")
 
     YFSignal("L","EMA2","1")
-    #YFSignal("M","EMA2","1")
+    YFSignal("M","EMA2","1")
 
     YFSignal("L","T1_50&EMA2",DAYS)
-    #YFSignal("M","T1_50&EMA2",DAYS)    
+    YFSignal("M","T1_50&EMA2",DAYS)    
 
     #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
     #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
