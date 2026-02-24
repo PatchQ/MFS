@@ -49,7 +49,7 @@ def AnalyzeStock(sno,stype):
     df = checkVCP(df)
 
     #DecisionTree
-    #df = calDT(sno, df)
+    df = calDT(sno, df)
 
 
     df = df.reset_index()
@@ -65,6 +65,8 @@ def ProcessTA(stype):
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
+
+    #print(SLIST)
 
     if platform.system()=="Windows":
         executor = cf.ProcessPoolExecutor(max_workers=5)

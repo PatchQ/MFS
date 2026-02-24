@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import time as t
 import os
+import platform
+import concurrent.futures as cf
 from tqdm import tqdm
 from backtesting import Backtest, Strategy
 import warnings
@@ -103,66 +105,86 @@ class run(Strategy):
                     return
 
 
-def processBT(signal, stype, max_holdbars, sl, tp, dd):
+def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
 
     tempdf = pd.DataFrame()
+        
+    df = pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv")
+
+    if len(df)!=0:
+    
+        df.set_index("index" , inplace=True)
+        df = df.set_index(pd.DatetimeIndex(pd.to_datetime(df.index)))
+
+        bt = Backtest(
+            df, run, cash=200000,
+            commission=0.002,
+            margin=1.0,  #margin = 0.02 (1/50=0.02) 50倍槓杆
+            trade_on_close=False, 
+            hedging=False,
+            exclusive_orders=False #確保同時只有一個訂單
+            #finalize_trades=True  #回測結束時平倉
+        )
+
+        output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd)
+        
+        if output['# Trades'] != 0:
+            bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
+            # 收集主要指標
+            tempdf['sno'] = sno
+            tempdf['returns'] = [output['Return [%]']] #總收益率
+            tempdf['final'] = [output['Equity Final [$]']] #最終淨值
+            tempdf['peak'] = [output['Equity Peak [$]']] #最高淨值
+            tempdf['trades_counts'] = [output['# Trades']] 
+            tempdf['win_rates'] = [output['Win Rate [%]']]
+
+            tempdf['RR'] = [output['Profit Factor']] #盈虧比(獲利因子)
+            tempdf['SQN'] = [output['SQN']] #策略表現綜合評分
+            tempdf['sharpe_ratios'] = [output['Sharpe Ratio']] #夏普比率(風險調整收益)
+            tempdf['sortino_ratios'] = [output['Sortino Ratio']] #索提諾比率(下行風調整收益)
+            tempdf['calmar_ratios'] = [output['Calmar Ratio']] #卡爾瑪比率(收益與最大回撤之比)
+            tempdf['avg_trade'] = [output['Avg. Trade [%]']]
+            tempdf['best_trade'] = [output['Best Trade [%]']]
+            tempdf['worst_trade'] = [output['Worst Trade [%]']]
+            tempdf['max_tradeday'] = [output['Max. Trade Duration']]
+            tempdf['avg_tradeday'] = [output['Avg. Trade Duration']]
+
+            tempdf['max_drawdowns'] = [output['Max. Drawdown [%]']]
+            tempdf['avg_drawdowns'] = [output['Avg. Drawdown [%]']]
+            tempdf['max_drawdownday'] = [output['Max. Drawdown Duration']]
+            tempdf['avg_drawdownday'] = [output['Avg. Drawdown Duration']]
+
+            tempdf['buy_hold_return'] = [output['Buy & Hold Return [%]']] #買入持有策略收益率
+            tempdf['ann_return'] = [output['Return (Ann.) [%]']] #年化收益率
+            tempdf['volatility'] = [output['Volatility (Ann.) [%]']] #年化波動率
+
+    return tempdf  
+                            
+
+def processBT(stype, signal, max_holdbars, sl, tp, dd):
+
     resultdf = pd.DataFrame()
 
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(OUTPATH+"/"+stype)))
-    snolist = snolist[:]
+    SLIST = pd.DataFrame(snolist, columns=["sno"])
+    SLIST = SLIST.assign(stype=stype+"")
+    SLIST = SLIST.assign(signal=signal+"")
+    SLIST = SLIST.assign(max_holdbars=max_holdbars)
+    SLIST = SLIST.assign(sl=sl)
+    SLIST = SLIST.assign(tp=tp)
+    SLIST = SLIST.assign(dd=dd)    
+    SLIST = SLIST[:]
 
-    for sno in tqdm(snolist):
-        
-        df = pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv")
-
-        if len(df)!=0:
-        
-            df.set_index("index" , inplace=True)
-            df = df.set_index(pd.DatetimeIndex(pd.to_datetime(df.index)))
-
-            bt = Backtest(
-                df, run, cash=200000,
-                commission=0.002,
-                margin=1.0,  #margin = 0.02 (1/50=0.02) 50倍槓杆
-                trade_on_close=False, 
-                hedging=False,
-                exclusive_orders=False #確保同時只有一個訂單
-                #finalize_trades=True  #回測結束時平倉
-            )
-
-            output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd)
-            
-            if output['# Trades'] != 0:
-                bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
-                # 收集主要指標
-                tempdf['sno'] = sno
-                tempdf['returns'] = [output['Return [%]']] #總收益率
-                tempdf['final'] = [output['Equity Final [$]']] #最終淨值
-                tempdf['peak'] = [output['Equity Peak [$]']] #最高淨值
-                tempdf['trades_counts'] = [output['# Trades']] 
-                tempdf['win_rates'] = [output['Win Rate [%]']]
-
-                tempdf['RR'] = [output['Profit Factor']] #盈虧比(獲利因子)
-                tempdf['SQN'] = [output['SQN']] #策略表現綜合評分
-                tempdf['sharpe_ratios'] = [output['Sharpe Ratio']] #夏普比率(風險調整收益)
-                tempdf['sortino_ratios'] = [output['Sortino Ratio']] #索提諾比率(下行風調整收益)
-                tempdf['calmar_ratios'] = [output['Calmar Ratio']] #卡爾瑪比率(收益與最大回撤之比)
-                tempdf['avg_trade'] = [output['Avg. Trade [%]']]
-                tempdf['best_trade'] = [output['Best Trade [%]']]
-                tempdf['worst_trade'] = [output['Worst Trade [%]']]
-                tempdf['max_tradeday'] = [output['Max. Trade Duration']]
-                tempdf['avg_tradeday'] = [output['Avg. Trade Duration']]
-
-                tempdf['max_drawdowns'] = [output['Max. Drawdown [%]']]
-                tempdf['avg_drawdowns'] = [output['Avg. Drawdown [%]']]
-                tempdf['max_drawdownday'] = [output['Max. Drawdown Duration']]
-                tempdf['avg_drawdownday'] = [output['Avg. Drawdown Duration']]
-
-                tempdf['buy_hold_return'] = [output['Buy & Hold Return [%]']] #買入持有策略收益率
-                tempdf['ann_return'] = [output['Return (Ann.) [%]']] #年化收益率
-                tempdf['volatility'] = [output['Volatility (Ann.) [%]']] #年化波動率
-                                
-                resultdf = pd.concat([resultdf, tempdf], ignore_index=True)
+    if platform.system()=="Windows":
+        executor = cf.ProcessPoolExecutor(max_workers=5)
+    elif platform.system()=="Darwin":
+        executor = cf.ThreadPoolExecutor(max_workers=4)
+    
+    with executor:
+        for tempdf in tqdm(executor.map(runBacktest,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["max_holdbars"],
+                                        SLIST["sl"],SLIST["tp"],SLIST["dd"],chunksize=1),total=len(SLIST)):            
+            tempdf = tempdf.dropna(axis=1, how="all")
+            resultdf = pd.concat([tempdf, resultdf], ignore_index=True)
             
     resultdf.to_csv(f'{OUTPATH}/BT/BT_{stype}_{signal}.csv',index=False)
 
@@ -182,6 +204,7 @@ def processBT(signal, stype, max_holdbars, sl, tp, dd):
     print(f"平均勝率: {np.mean(resultdf['win_rates']):.2f}%") 
 
 
+
 if __name__ == '__main__':
 
     max_holdbars = 100  # 最大持倉K線數
@@ -191,16 +214,17 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
     
-    processBT("DT", "L", max_holdbars, sl, tp, dd)
+    processBT("L", "DT", max_holdbars, sl, tp, dd)
+    processBT("M", "DT", max_holdbars, sl, tp, dd)
 
-    #processBT("BOSSB", "L", max_holdbars, sl, tp, dd)
-    #processBT("BOSSB", "M", max_holdbars, sl, tp, dd)
+    processBT("L", "BOSSB", max_holdbars, sl, tp, dd)
+    processBT("M", "BOSSB", max_holdbars, sl, tp, dd)
 
-    #processBT("HHHL", "L", max_holdbars, sl, tp, dd)
-    #processBT("HHHL", "M", max_holdbars, sl, tp, dd)
+    processBT("L", "HHHL", max_holdbars, sl, tp, dd)
+    processBT("M", "HHHL", max_holdbars, sl, tp, dd)
 
-    #processBT("VCP", "L", max_holdbars, sl, tp, dd)
-    #processBT("VCP", "M", max_holdbars, sl, tp, dd)
+    processBT("L", "VCP", max_holdbars, sl, tp, dd)
+    processBT("M", "VCP", max_holdbars, sl, tp, dd)
 
     finish = t.perf_counter()
     

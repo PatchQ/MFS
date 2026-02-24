@@ -37,7 +37,9 @@ def getYFAll(sno,stype,period):
     outputlist.index = pd.to_datetime(pd.to_datetime(outputlist.index).strftime('%Y%m%d'))
     outputlist = outputlist[outputlist['Volume'] > 0]
     outputlist.insert(0,"sno", sno)    
-    outputlist.to_csv(PATH+"/"+stype+"/"+sno+".csv")
+    
+    if len(outputlist)>0:
+        outputlist.to_csv(PATH+"/"+stype+"/"+sno+".csv")
 
 def getDataDaily(sno,stype):        
     

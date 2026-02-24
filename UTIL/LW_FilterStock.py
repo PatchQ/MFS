@@ -239,8 +239,8 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
 
-    YFSignal("L","BOSS2~BOSSB~BOSSCL1","10")
-    YFSignal("M","BOSS2~BOSSB~BOSSCL1","10")
+    YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
+    YFSignal("M","BOSS2~BOSSB~BOSSCL1","30")
 
     YFSignal("L","DT","20")
     YFSignal("M","DT","20")

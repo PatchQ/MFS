@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import warnings
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=UserWarning)
 
 try:
     from LW_Calindicator import *    
@@ -49,44 +51,42 @@ def checkBoss(df, sno, stype, swing_analysis):
     df['BOSSTU2'] = False
     
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        for i in range(len(swing_analysis) - 2):
-            templist = list(swing_analysis['Classification'].iloc[i:i+3])
-            swing_analysis['PATTERN'].iloc[i] = ''.join(templist)
+    for i in range(len(swing_analysis) - 2):
+        templist = list(swing_analysis['Classification'].iloc[i:i+3])
+        swing_analysis.loc[i,'PATTERN'] = ''.join(templist)
 
-            swing_analysis['LLLow'].iloc[i] = swing_analysis['Price'].iloc[i+1]
-            swing_analysis['LLDate'].iloc[i] = swing_analysis['Date'].iloc[i+1]
-            swing_analysis['HHClose'].iloc[i] = swing_analysis['Close'].iloc[i+2]            
-            swing_analysis['HHDate'].iloc[i] = swing_analysis['Date'].iloc[i+2]
-            swing_analysis['HHHigh'].iloc[i] = swing_analysis['Price'].iloc[i+2]
+        swing_analysis.loc[i,'LLLow'] = swing_analysis['Price'].iloc[i+1]
+        swing_analysis.loc[i,'LLDate'] = swing_analysis['Date'].iloc[i+1]
+        swing_analysis.loc[i,'HHClose'] = swing_analysis['Close'].iloc[i+2]            
+        swing_analysis.loc[i,'HHDate'] = swing_analysis['Date'].iloc[i+2]
+        swing_analysis.loc[i,'HHHigh'] = swing_analysis['Price'].iloc[i+2]
 
-            sadate = pd.to_datetime(swing_analysis['Date'].iloc[i])
+        sadate = pd.to_datetime(swing_analysis['Date'].iloc[i])
 
-            date_match = (df.index == sadate)            
-            df.loc[date_match, "classification"] = swing_analysis["Classification"].iloc[i]
-            df.loc[date_match, "LLLow"] = swing_analysis["LLLow"].iloc[i]
-            df.loc[date_match, "LLDate"] = swing_analysis["LLDate"].iloc[i]
-            df.loc[date_match, "HHClose"] = swing_analysis["HHClose"].iloc[i]
-            df.loc[date_match, "HHDate"] = swing_analysis["HHDate"].iloc[i]
-            df.loc[date_match, "HHHigh"] = swing_analysis["HHHigh"].iloc[i]
-            df.loc[date_match, "BOSS_PATTERN"] = swing_analysis["PATTERN"].iloc[i]
-            df.loc[date_match, "VOLATILITY"] = round(((swing_analysis["HHHigh"].iloc[i] - swing_analysis["LLLow"].iloc[i]) / swing_analysis["LLLow"].iloc[i]),2)
+        date_match = (df.index == sadate)            
+        df.loc[date_match, "classification"] = swing_analysis["Classification"].iloc[i]
+        df.loc[date_match, "LLLow"] = swing_analysis["LLLow"].iloc[i]
+        df.loc[date_match, "LLDate"] = swing_analysis["LLDate"].iloc[i]
+        df.loc[date_match, "HHClose"] = swing_analysis["HHClose"].iloc[i]
+        df.loc[date_match, "HHDate"] = swing_analysis["HHDate"].iloc[i]
+        df.loc[date_match, "HHHigh"] = swing_analysis["HHHigh"].iloc[i]
+        df.loc[date_match, "BOSS_PATTERN"] = swing_analysis["PATTERN"].iloc[i]
+        df.loc[date_match, "VOLATILITY"] = round(((swing_analysis["HHHigh"].iloc[i] - swing_analysis["LLLow"].iloc[i]) / swing_analysis["LLLow"].iloc[i]),2)
 
-            hhdate = pd.to_datetime(swing_analysis["HHDate"].iloc[i])
-            
-            ema_values = df.loc[df.index == hhdate, "EMA1"]
-            df.loc[date_match, "HHEMA1"] = ema_values.iloc[0] if len(ema_values) > 0 else np.nan
-            ema_values = df.loc[df.index == hhdate, "EMA2"]
-            df.loc[date_match, "HHEMA2"] = ema_values.iloc[0] if len(ema_values) > 0 else np.nan
-            ema_values = df.loc[df.index == hhdate, "EMA3"]
-            df.loc[date_match, "HHEMA3"] = ema_values.iloc[0] if len(ema_values) > 0 else np.nan
+        hhdate = pd.to_datetime(swing_analysis["HHDate"].iloc[i])
+        
+        ema_values = df.loc[df.index == hhdate, "EMA1"]
+        df.loc[date_match, "HHEMA1"] = ema_values.iloc[0] if len(ema_values) > 0 else np.nan
+        ema_values = df.loc[df.index == hhdate, "EMA2"]
+        df.loc[date_match, "HHEMA2"] = ema_values.iloc[0] if len(ema_values) > 0 else np.nan
+        ema_values = df.loc[df.index == hhdate, "EMA3"]
+        df.loc[date_match, "HHEMA3"] = ema_values.iloc[0] if len(ema_values) > 0 else np.nan
 
-            etempdate = pd.to_datetime(swing_analysis["LLDate"].iloc[i])
-            stempdate = etempdate - timedelta(days=22)
-            df.loc[date_match, "22DLow"] = df.loc[(df.index>=stempdate) & (df.index<etempdate), "Low"].min()
-            stempdate = etempdate - timedelta(days=33)
-            df.loc[date_match, "33DLow"] = df.loc[(df.index>=stempdate) & (df.index<etempdate), "Low"].min()
+        etempdate = pd.to_datetime(swing_analysis["LLDate"].iloc[i])
+        stempdate = etempdate - timedelta(days=22)
+        df.loc[date_match, "22DLow"] = df.loc[(df.index>=stempdate) & (df.index<etempdate), "Low"].min()
+        stempdate = etempdate - timedelta(days=33)
+        df.loc[date_match, "33DLow"] = df.loc[(df.index>=stempdate) & (df.index<etempdate), "Low"].min()
             
 
     BOSS1Rule1 = (df['BOSS_PATTERN']=="LHLLHH") | (df['BOSS_PATTERN']=="HHLLHH")
