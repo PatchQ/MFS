@@ -17,8 +17,8 @@ from sklearn.pipeline import make_pipeline
 import joblib
 
 
-OUTPATH = "../SData/P_YFData/" 
-#OUTPATH = "../SData/FP_YFData/"
+#OUTPATH = "../SData/P_YFData/" 
+OUTPATH = "../SData/FP_YFData/"
 
 
 def CalDTModel(sno,stype,tdate):
@@ -42,20 +42,32 @@ def CalDTModel(sno,stype,tdate):
         train_data_y = train_data.pop("Y")
         #print(train_data_y.value_counts())
 
-        train_data["sno"] = tempsno
-        train_data.drop(columns=["F10D","F20D","F30D","DT"], inplace=True)
+        #train_data["sno"] = tempsno
+        train_data.drop(columns=["sno","F10D","F20D","F30D","DT"], inplace=True)
         train_data.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
         train_data.drop(columns=["LLDate","HHDate","WLDate","WHDate","Volatility_Decrease"], inplace=True)
 
         xtrain, xtest, ytrain, ytest = train_test_split(train_data, train_data_y, test_size=0.2, random_state=1, stratify=train_data_y)
         
-        model = DecisionTreeClassifier(max_depth=10,random_state=1).fit(xtrain,ytrain)
+         # 1. 创建一个填补器（例如：用均值填补，你也可以用 'median' 或 'most_frequent'）
+        imputer = SimpleImputer(strategy='mean',keep_empty_features=True) # 或用 'median', 'most_frequent'
 
+        # 2. 将填补器和分类器组合成一个管道
+        model = make_pipeline(imputer, DecisionTreeClassifier(max_depth=10,random_state=1))
+
+        # 3. 直接用管道进行训练（它会先自动填补，再训练）
+        model.fit(xtrain, ytrain)                        
+        
         # 4. save model
         joblib.dump(model, f"{OUTPATH}/MODEL/{sno}_DT.pkl")
         
         pred = model.predict(xtest)
         accuracy = accuracy_score(ytest, pred)
+
+        train_score = model.score(xtrain, ytrain)
+        test_score = model.score(xtest, ytest)
+
+        print(f"訓練分數:{train_score}  測試分數:{test_score}")
 
         #clf_report = metrics.classification_report(ytest, pred)
         #conf_mat = confusion_matrix(ytest, pred)
@@ -66,8 +78,8 @@ def CalDTModel(sno,stype,tdate):
         pp = df.loc[df.index>tdate].copy()    
 
         if len(pp)>0:
-            pp["sno"] = tempsno        
-            pp.drop(columns=["F10D","F20D","F30D","DT"], inplace=True)
+            #pp["sno"] = tempsno        
+            pp.drop(columns=["sno","F10D","F20D","F30D","DT"], inplace=True)
             pp.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
             pp.drop(columns=["LLDate","HHDate","WLDate","WHDate","Volatility_Decrease"], inplace=True)
             #pp = pp.apply(pd.to_numeric, errors='coerce')
@@ -108,8 +120,8 @@ def calDT(sno, df):
 
         #print(tempsno)
 
-        pp["sno"] = tempsno
-        pp.drop(columns=["F10D","F20D","F30D","DT"], inplace=True)
+        #pp["sno"] = tempsno
+        pp.drop(columns=["sno","F10D","F20D","F30D","DT"], inplace=True)
         pp.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
         pp.drop(columns=["LLDate","HHDate","WLDate","WHDate","Volatility_Decrease"], inplace=True)
         pp = pp.replace([np.inf, -np.inf], np.nan)
@@ -144,7 +156,7 @@ def ProcessDT(stype,tdate):
     if platform.system()=="Windows":
         executor = cf.ProcessPoolExecutor(max_workers=5)
     elif platform.system()=="Darwin":
-        executor = cf.ThreadPoolExecutor(max_workers=4)
+        executor = cf.ThreadPoolExecutor(max_workers=1)
     
     with executor:
         for tempdf in tqdm(executor.map(CalDTModel,SLIST["sno"],SLIST["stype"],SLIST["tdate"],chunksize=1),total=len(SLIST)):            

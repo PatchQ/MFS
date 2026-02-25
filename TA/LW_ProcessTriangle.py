@@ -698,7 +698,7 @@ def main(stype):
     if platform.system()=="Windows":
         executor = cf.ProcessPoolExecutor(max_workers=5)
     elif platform.system()=="Darwin":
-        executor = cf.ThreadPoolExecutor(max_workers=4)
+        executor = cf.ThreadPoolExecutor(max_workers=1)
 
     with executor:
         list(tqdm(executor.map(CheckTriangle,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))

@@ -37,7 +37,7 @@ def getYFAll(sno,stype,period):
     outputlist.index = pd.to_datetime(pd.to_datetime(outputlist.index).strftime('%Y%m%d'))
     outputlist = outputlist[outputlist['Volume'] > 0]
     outputlist.insert(0,"sno", sno)    
-    
+
     if len(outputlist)>0:
         outputlist.to_csv(PATH+"/"+stype+"/"+sno+".csv")
 
@@ -98,7 +98,7 @@ def YFgetDaily(stype):
     if platform.system()=="Windows":
         executor = cf.ProcessPoolExecutor(max_workers=5)
     elif platform.system()=="Darwin":
-        executor = cf.ThreadPoolExecutor(max_workers=4)
+        executor = cf.ThreadPoolExecutor(max_workers=10)
 
     with executor:
         list(tqdm(executor.map(getDataDaily,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))        

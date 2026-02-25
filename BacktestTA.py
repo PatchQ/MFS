@@ -11,8 +11,8 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 
 
-OUTPATH = "../SData/P_YFData/" 
-#OUTPATH = "../SData/FP_YFData/"
+#OUTPATH = "../SData/P_YFData/" 
+OUTPATH = "../SData/FP_YFData/"
 
 class run(Strategy):
 
@@ -106,10 +106,11 @@ class run(Strategy):
 
 
 def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
-
-    tempdf = pd.DataFrame()
+    
+    tempdf = pd.DataFrame()    
         
     df = pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv")
+    #df = df.loc[df["index"]>"2024-12-31"]        
 
     if len(df)!=0:
     
@@ -127,12 +128,15 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
         )
 
         output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd)
-        
+
         if output['# Trades'] != 0:
-            bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
-            # 收集主要指標
-            tempdf['sno'] = sno
+
+            if platform.system()=="Windows":
+                bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
+                        
+            # 收集主要指標               
             tempdf['returns'] = [output['Return [%]']] #總收益率
+            tempdf['sno'] = str(sno).replace('P_','')
             tempdf['final'] = [output['Equity Final [$]']] #最終淨值
             tempdf['peak'] = [output['Equity Peak [$]']] #最高淨值
             tempdf['trades_counts'] = [output['# Trades']] 
@@ -178,30 +182,33 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
     if platform.system()=="Windows":
         executor = cf.ProcessPoolExecutor(max_workers=5)
     elif platform.system()=="Darwin":
-        executor = cf.ThreadPoolExecutor(max_workers=4)
+        executor = cf.ThreadPoolExecutor(max_workers=1)
     
     with executor:
         for tempdf in tqdm(executor.map(runBacktest,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["max_holdbars"],
                                         SLIST["sl"],SLIST["tp"],SLIST["dd"],chunksize=1),total=len(SLIST)):            
-            tempdf = tempdf.dropna(axis=1, how="all")
-            resultdf = pd.concat([tempdf, resultdf], ignore_index=True)
-            
-    resultdf.to_csv(f'{OUTPATH}/BT/BT_{stype}_{signal}.csv',index=False)
+            #tempdf = tempdf.dropna(axis=1, how="all")
+            #print(tempdf)
+            if len(tempdf)>0:
+                resultdf = pd.concat([tempdf, resultdf], ignore_index=True)
+    
+    resultdf.to_csv(f'{OUTPATH}/BT/BT_{stype}_{signal}.csv', index=False)
 
-    # 計算總體統計
-    print(f"\n=== {signal} : 整體回測統計 ({stype}) ===")
-    print(f"平均報酬率: {np.mean(resultdf['returns']):.2f}%")
-    print(f"報酬率標準差: {np.std(resultdf['returns']):.2f}%")
-    print(f"平均最佳收益: {np.mean(resultdf['best_trade']):.2f}%")
-    print(f"平均最差收益: {np.mean(resultdf['worst_trade']):.2f}%")    
-    print(f"平均盈虧比: {np.mean(resultdf['RR']):.2f}")
-    print(f"平均策略表現綜合評分: {np.mean(resultdf['SQN']):.2f}")
-    print(f"平均夏普比率: {np.mean(resultdf['sharpe_ratios']):.2f}")
-    print(f"平均索提諾比率: {np.mean(resultdf['sortino_ratios']):.2f}")
-    print(f"平均卡爾瑪比率: {np.mean(resultdf['calmar_ratios']):.2f}") 
-    print(f"平均交易次數: {np.mean(resultdf['trades_counts'])}")
-    print(f"總交易次數: {sum(resultdf['trades_counts'])}")
-    print(f"平均勝率: {np.mean(resultdf['win_rates']):.2f}%") 
+    if len(resultdf)>0:
+        # 計算總體統計
+        print(f"\n=== {signal} : 整體回測統計 ({stype}) ===")
+        print(f"平均報酬率: {np.mean(resultdf['returns']):.2f}%")
+        print(f"報酬率標準差: {np.std(resultdf['returns']):.2f}%")
+        print(f"平均最佳收益: {np.mean(resultdf['best_trade']):.2f}%")
+        print(f"平均最差收益: {np.mean(resultdf['worst_trade']):.2f}%")    
+        print(f"平均盈虧比: {np.mean(resultdf['RR']):.2f}")
+        print(f"平均策略表現綜合評分: {np.mean(resultdf['SQN']):.2f}")
+        print(f"平均夏普比率: {np.mean(resultdf['sharpe_ratios']):.2f}")
+        print(f"平均索提諾比率: {np.mean(resultdf['sortino_ratios']):.2f}")
+        print(f"平均卡爾瑪比率: {np.mean(resultdf['calmar_ratios']):.2f}") 
+        print(f"平均交易次數: {np.mean(resultdf['trades_counts'])}")
+        print(f"總交易次數: {sum(resultdf['trades_counts'])}")
+        print(f"平均勝率: {np.mean(resultdf['win_rates']):.2f}%") 
 
 
 
@@ -217,14 +224,14 @@ if __name__ == '__main__':
     processBT("L", "DT", max_holdbars, sl, tp, dd)
     processBT("M", "DT", max_holdbars, sl, tp, dd)
 
-    processBT("L", "BOSSB", max_holdbars, sl, tp, dd)
-    processBT("M", "BOSSB", max_holdbars, sl, tp, dd)
+    # processBT("L", "BOSSB", max_holdbars, sl, tp, dd)
+    # processBT("M", "BOSSB", max_holdbars, sl, tp, dd)
 
-    processBT("L", "HHHL", max_holdbars, sl, tp, dd)
-    processBT("M", "HHHL", max_holdbars, sl, tp, dd)
+    # processBT("L", "HHHL", max_holdbars, sl, tp, dd)
+    # processBT("M", "HHHL", max_holdbars, sl, tp, dd)
 
-    processBT("L", "VCP", max_holdbars, sl, tp, dd)
-    processBT("M", "VCP", max_holdbars, sl, tp, dd)
+    # processBT("L", "VCP", max_holdbars, sl, tp, dd)
+    # processBT("M", "VCP", max_holdbars, sl, tp, dd)
 
     finish = t.perf_counter()
     
