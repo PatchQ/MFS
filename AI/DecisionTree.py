@@ -18,9 +18,10 @@ import joblib
 
 
 PROD = True
-#OUTPATH = "../SData/P_YFData/" 
-OUTPATH = "../SData/FP_YFData/"
+OUTPATH = "../SData/P_YFData/" 
+#OUTPATH = "../SData/FP_YFData/"
 MODEL = "DT"
+MODELLIST = ["DT","XGB","LGBM","LR","MLP","RF","SVM","VOTING"]
 
 def DT(sno,stype,tdate):
 
@@ -32,12 +33,9 @@ def DT(sno,stype,tdate):
     tempsno = str(tempsno).lstrip("0")    
 
     #print(tempsno)
-
-    if "DT" in df.columns:
-        df.drop(columns=["DT"], inplace=True)
-
-    if "XGB" in df.columns:
-        df.drop(columns=["XGB"], inplace=True)
+    for modelname in MODELLIST:
+        if modelname in df.columns:
+            df.drop(columns=[modelname], inplace=True)
 
     train_data = df.copy()
     train_data = train_data.loc[train_data.index<=tdate]    

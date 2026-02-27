@@ -11,8 +11,8 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 
 
-#OUTPATH = "../SData/P_YFData/" 
-OUTPATH = "../SData/FP_YFData/"
+OUTPATH = "../SData/P_YFData/" 
+#OUTPATH = "../SData/FP_YFData/"
 
 class run(Strategy):
 
@@ -221,8 +221,8 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
     
-    #processBT("L", "DT", max_holdbars, sl, tp, dd)
-    #processBT("M", "DT", max_holdbars, sl, tp, dd)
+    processBT("L", "DT", max_holdbars, sl, tp, dd)
+    processBT("M", "DT", max_holdbars, sl, tp, dd)
 
     processBT("L", "XGB", max_holdbars, sl, tp, dd)
     processBT("M", "XGB", max_holdbars, sl, tp, dd)

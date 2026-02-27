@@ -14,6 +14,12 @@ from TA.LW_CheckVCP import *
 
 from AI.DecisionTree import *
 from AI.XGBoost import *
+from AI.LightGBM import *
+from AI.LogisticRegression import *
+from AI.MLP import *
+from AI.RandomForest import *
+from AI.SVM import *
+from AI.VOTING import *
 
 
 PATH = "../SData/YFData/"
@@ -60,6 +66,25 @@ def AnalyzeStock(sno,stype):
     #2. DecisionTree
     dtlist = loadDT(sno, df)
 
+    #3. RandomForest
+    rflist = loadRF(sno, df)
+
+    #4. LogisticRegression
+    lrlist = loadLR(sno, df)
+
+    #5. MLP
+    mlplist = loadMLP(sno, df)
+
+    #6. VOTING
+    votinglist = loadVOTING(sno, df)
+
+    #7. LightGBM
+    lgbmlist = loadLGBM(sno, df)
+
+    #8. SVM
+    svmlist = loadSVM(sno, df)
+
+
     if len(xgblist)>0:
         df["XGB"] = xgblist
     else:
@@ -69,6 +94,36 @@ def AnalyzeStock(sno,stype):
         df["DT"] = dtlist
     else:
         df["DT"] = False
+
+    if len(rflist)>0:
+        df["RF"] = rflist
+    else:
+        df["RF"] = False
+
+    if len(lrlist)>0:
+        df["LR"] = lrlist
+    else:
+        df["LR"] = False
+
+    if len(mlplist)>0:
+        df["MLP"] = mlplist
+    else:
+        df["MLP"] = False
+
+    if len(votinglist)>0:
+        df["VOTING"] = votinglist
+    else:
+        df["VOTING"] = False                    
+
+    if len(lgbmlist)>0:
+        df["LGBM"] = lgbmlist
+    else:
+        df["LGBM"] = False                                
+
+    if len(svmlist)>0:
+        df["SVM"] = svmlist
+    else:
+        df["SVM"] = False                                
 
     df = df.reset_index()
     #df = df.sort_values(by=['index'],ascending=[True])

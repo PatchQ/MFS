@@ -9,8 +9,8 @@ from collections import defaultdict
 
 
 #get stock csv file from path
-#OUTPATH = "../SData/P_YFData/"
-OUTPATH = "../SData/FP_YFData/"
+OUTPATH = "../SData/P_YFData/"
+#OUTPATH = "../SData/FP_YFData/"
 
 #EDATE = "2025-09-30"
 EDATE = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
@@ -236,20 +236,16 @@ if __name__ == '__main__':
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
     DAYS = "20000"    
+    MODELLIST = ["DT","XGB","LGBM","LR","MLP","RF","SVM","VOTING","VCP"]
 
     start = t.perf_counter()
 
-    # YFSignal("L","BOSS2~BOSSB~BOSSCL1","20")
-    # YFSignal("M","BOSS2~BOSSB~BOSSCL1","20")
+    #YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
+    #YFSignal("M","BOSS2~BOSSB~BOSSCL1","30")
 
-    YFSignal("L","DT","30")
-    YFSignal("M","DT","30")
-    
-    # YFSignal("L","HHHL","10")
-    # YFSignal("M","HHHL","10")
-
-    # YFSignal("L","VCP","10")
-    # YFSignal("M","VCP","10")
+    for modelname in MODELLIST:
+        YFSignal("L",modelname,"5")
+        YFSignal("M",modelname,"5")
 
     # YFSignal("L","EMA2","1")
     # YFSignal("M","EMA2","1")

@@ -23,8 +23,8 @@ if __name__ == '__main__':
     #YFgetAll("M")
     #YFgetAll("S")
 
-    YFgetAll("L","3y")
-    YFgetAll("M","3y")
+    YFgetAll("L","6y")
+    YFgetAll("M","6y")
     #YFgetAll("S","2y")
 
     #process All Data
