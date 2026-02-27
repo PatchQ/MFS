@@ -1,8 +1,9 @@
 import time as t
 
 from UTIL.LW_Collect import YFgetDaily
-from UTIL.LW_ProcessTA import ProcessTA
 from UTIL.LW_FilterStock import YFSignal
+
+from ProcessTA import ProcessTA
 
 if __name__ == '__main__':
 

@@ -17,14 +17,15 @@ from sklearn.pipeline import make_pipeline
 import joblib
 
 
+PROD = True
 #OUTPATH = "../SData/P_YFData/" 
 OUTPATH = "../SData/FP_YFData/"
+MODEL = "DT"
 
-
-def CalDTModel(sno,stype,tdate):
+def DT(sno,stype,tdate):
 
     tempdf = pd.DataFrame()
-    
+
     df = pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv",index_col=0)      
     
     tempsno = str(sno).replace('P_','').replace('.HK','')
@@ -32,42 +33,43 @@ def CalDTModel(sno,stype,tdate):
 
     #print(tempsno)
 
+    if "DT" in df.columns:
+        df.drop(columns=["DT"], inplace=True)
+
+    if "XGB" in df.columns:
+        df.drop(columns=["XGB"], inplace=True)
+
     train_data = df.copy()
     train_data = train_data.loc[train_data.index<=tdate]    
     #train_data = train_data.apply(pd.to_numeric, errors='coerce')
     
     if len(train_data)>500:
 
-        train_data["Y"] = train_data["F20D"] > 0.15
+        train_data["Y"] = train_data["F20D"] > 0.15        
         train_data_y = train_data.pop("Y")
         #print(train_data_y.value_counts())
 
-        #train_data["sno"] = tempsno
-        train_data.drop(columns=["sno","F10D","F20D","F30D","DT"], inplace=True)
+        train_data.drop(columns=["sno","F10D","F20D","F30D"], inplace=True)
         train_data.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
         train_data.drop(columns=["LLDate","HHDate","WLDate","WHDate","Volatility_Decrease"], inplace=True)
 
+        train_data = train_data.replace([np.inf, -np.inf], np.nan)
+
         xtrain, xtest, ytrain, ytest = train_test_split(train_data, train_data_y, test_size=0.2, random_state=1, stratify=train_data_y)
         
-         # 1. 创建一个填补器（例如：用均值填补，你也可以用 'median' 或 'most_frequent'）
-        imputer = SimpleImputer(strategy='mean',keep_empty_features=True) # 或用 'median', 'most_frequent'
-
-        # 2. 将填补器和分类器组合成一个管道
+        # create Imputer with mean/median/most_frequent
+        imputer = SimpleImputer(strategy='mean',keep_empty_features=True)
         model = make_pipeline(imputer, DecisionTreeClassifier(max_depth=10,random_state=1))
-
-        # 3. 直接用管道进行训练（它会先自动填补，再训练）
+        
         model.fit(xtrain, ytrain)                        
-        
-        # 4. save model
-        joblib.dump(model, f"{OUTPATH}/MODEL/{sno}_DT.pkl")
-        
-        pred = model.predict(xtest)
-        accuracy = accuracy_score(ytest, pred)
 
-        train_score = model.score(xtrain, ytrain)
-        test_score = model.score(xtest, ytest)
+        #pred = model.predict(xtest)
+        #accuracy = accuracy_score(ytest, pred)
 
-        print(f"訓練分數:{train_score}  測試分數:{test_score}")
+        #train_score = model.score(xtrain, ytrain)
+        #test_score = model.score(xtest, ytest)
+
+        #print(f"訓練分數:{train_score}  測試分數:{test_score}")
 
         #clf_report = metrics.classification_report(ytest, pred)
         #conf_mat = confusion_matrix(ytest, pred)
@@ -75,70 +77,62 @@ def CalDTModel(sno,stype,tdate):
         #print("accuracy:" +str(accuracy))
         #print(clf_report)
         
-        pp = df.loc[df.index>tdate].copy()    
-
-        if len(pp)>0:
-            #pp["sno"] = tempsno        
-            pp.drop(columns=["sno","F10D","F20D","F30D","DT"], inplace=True)
-            pp.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
-            pp.drop(columns=["LLDate","HHDate","WLDate","WHDate","Volatility_Decrease"], inplace=True)
-            #pp = pp.apply(pd.to_numeric, errors='coerce')
-
-            #print(model.predict_proba(pp))
-            proba = model.predict_proba(pp)
-            #print(proba)
-
-            if proba.shape[1] > 1:
-                pp["Prediction"] = [float(i[1]) for i in proba]
-            else:
-                pp["Prediction"] = [float(i[0]) for i in proba]
-                    
-            df["DT"] = pp["Prediction"]>0.9
-            df["DT"] = df["DT"].fillna("")
-            df.loc[df["DT"].astype(str).str.strip() == "", "DT"] = False
-            df.to_csv(f"{OUTPATH}/{stype}/{sno}.csv")
-
-            tempdf = df.loc[df["DT"]]
-            tempdf.insert(0, 'Date', pd.to_datetime(tempdf.index))                
+        # save model
+        if PROD:
+            joblib.dump(model, f"{OUTPATH}/MODEL/{MODEL}/{sno}.pkl")
+        
+        tempdf = Prediction(model,df,sno,stype,tdate,fulldata=True)
+        
+        tempdf = tempdf.loc[tempdf[MODEL]]
+        tempdf.insert(0, 'Date', pd.to_datetime(tempdf.index))   
 
     return tempdf
-            
 
-    
-def calDT(sno, df):
+        
+def Prediction(model,df,sno,stype,tdate,fulldata):
 
-    file_path = f"{OUTPATH}/MODEL/P_{sno}_DT.pkl"
-    
-    if os.path.exists(file_path):
+    pp = df.loc[df.index>tdate].copy()
 
-        pp = df.copy()
+    if len(pp)>0:
 
-        model = joblib.load(file_path)
-
-        tempsno = str(sno).replace('.HK','')
-        tempsno = str(tempsno).lstrip("0") 
-
-        #print(tempsno)
-
-        #pp["sno"] = tempsno
-        pp.drop(columns=["sno","F10D","F20D","F30D","DT"], inplace=True)
+        pp.drop(columns=["sno","F10D","F20D","F30D"], inplace=True)
         pp.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
         pp.drop(columns=["LLDate","HHDate","WLDate","WHDate","Volatility_Decrease"], inplace=True)
+        #pp = pp.apply(pd.to_numeric, errors='coerce')
         pp = pp.replace([np.inf, -np.inf], np.nan)
-
+        
         proba = model.predict_proba(pp)
-        #print(proba)
 
         if proba.shape[1] > 1:
             pp["Prediction"] = [float(i[1]) for i in proba]
         else:
-            pp["Prediction"] = [float(i[0]) for i in proba]        
+            pp["Prediction"] = [float(i[0]) for i in proba]
                 
-        df["DT"] = pp["Prediction"]>0.9
-        df["DT"] = df["DT"].fillna("")
-        df.loc[df["DT"].astype(str).str.strip() == "", "DT"] = False
-    
+        df[MODEL] = pp["Prediction"]>0.9
+        df[MODEL] = df[MODEL].fillna("")
+        df.loc[df[MODEL].astype(str).str.strip() == "", MODEL] = False
+
+        if fulldata:
+            df.to_csv(f"{OUTPATH}/{stype}/{sno}.csv")    
+    else:
+        df[MODEL] = False
+
+
     return df
+                
+def loadDT(sno, df): 
+
+    templist = []
+    file_path = f"{OUTPATH}/MODEL/{MODEL}/P_{sno}.pkl"    
+
+    if os.path.exists(file_path):
+        model = joblib.load(file_path)
+        df = Prediction(model,df,sno,"X","1900-01-01",fulldata=False)
+
+    if MODEL in df.columns:
+        templist = df.pop(MODEL)
+    
+    return templist
 
 
 def ProcessDT(stype,tdate):
@@ -149,7 +143,7 @@ def ProcessDT(stype,tdate):
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST.assign(tdate=tdate+"")
-    SLIST = SLIST[:]
+    SLIST = SLIST[:10]
 
     #print(SLIST)
 
@@ -159,23 +153,21 @@ def ProcessDT(stype,tdate):
         executor = cf.ThreadPoolExecutor(max_workers=1)
     
     with executor:
-        for tempdf in tqdm(executor.map(CalDTModel,SLIST["sno"],SLIST["stype"],SLIST["tdate"],chunksize=1),total=len(SLIST)):            
-            tempdf = tempdf.dropna(axis=1, how="all")
+        for tempdf in tqdm(executor.map(DT,SLIST["sno"],SLIST["stype"],SLIST["tdate"],chunksize=1),total=len(SLIST)):                        
             resultdf = pd.concat([tempdf, resultdf], ignore_index=True)
 
-    resultdf.to_csv("Data/DecisionTree.csv",index=False)
+    resultdf.to_csv(f"Data/{MODEL}.csv",index=False)
     print(resultdf)
-
 
 
 
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    tdate = "2024-12-31"
+    tdate = "2019-12-31"
 
     ProcessDT("L",tdate)
-    ProcessDT("M",tdate)
+    #ProcessDT("M",tdate)
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

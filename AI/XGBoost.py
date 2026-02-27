@@ -17,12 +17,12 @@ from sklearn.pipeline import make_pipeline
 import joblib
 from xgboost import XGBClassifier
 
-#OUTPATH = "../SData/P_YFData/" 
+PROD = True
 OUTPATH = "../SData/FP_YFData/"
-prod = False
+MODEL = "XGB"
 
 
-def CalXGBModel(sno,stype,tdate):
+def XGB(sno,stype,tdate):
 
     tempdf = pd.DataFrame()
     
@@ -33,6 +33,12 @@ def CalXGBModel(sno,stype,tdate):
 
     #print(tempsno)
 
+    if "DT" in df.columns:
+        df.drop(columns=["DT"], inplace=True)
+
+    if "XGB" in df.columns:
+        df.drop(columns=["XGB"], inplace=True)
+
     train_data = df.copy()
     train_data = train_data.loc[train_data.index<=tdate]    
     #train_data = train_data.apply(pd.to_numeric, errors='coerce')
@@ -42,38 +48,41 @@ def CalXGBModel(sno,stype,tdate):
         train_data["Y"] = train_data["F20D"] > 0.15
         train_data_y = train_data.pop("Y")
         #print(train_data_y.value_counts())
-
-        #train_data["sno"] = tempsno
-        train_data.drop(columns=["sno","F10D","F20D","F30D","DT"], inplace=True)
+        
+        train_data.drop(columns=["sno","F10D","F20D","F30D"], inplace=True)
         train_data.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
         train_data.drop(columns=["LLDate","HHDate","WLDate","WHDate","Volatility_Decrease"], inplace=True)
 
+        train_data = train_data.replace([np.inf, -np.inf], np.nan)
+
         xtrain, xtest, ytrain, ytest = train_test_split(train_data, train_data_y, test_size=0.2, random_state=1, stratify=train_data_y)
         
-         # 1. 创建一个填补器（例如：用均值填补，你也可以用 'median' 或 'most_frequent'）
-        imputer = SimpleImputer(strategy='mean',keep_empty_features=True) # 或用 'median', 'most_frequent'
+        # create Imputer with mean/median/most_frequent
+        imputer = SimpleImputer(strategy='mean',keep_empty_features=True)
 
-        # 2. 将填补器和分类器组合成一个管道
+        pos_count = len(ytrain[ytrain == True])
+        neg_count = len(ytrain[ytrain == False])
+
+        if pos_count > 0:
+            scale_pos_weight = neg_count / pos_count #計算不平衡權重
+        else:
+            scale_pos_weight = 1  
+
         model = make_pipeline(imputer, 
                               XGBClassifier(
                                 max_depth=10,
                                 learning_rate=0.1,
                                 n_estimators=100,
-                                scale_pos_weight=len(ytrain[ytrain==False]) / len(ytrain[ytrain==True]),  # 自動計算不平衡權重
+                                scale_pos_weight=scale_pos_weight,
                                 random_state=1,                                
                                 eval_metric='logloss'
                                 )
                             )
 
-        # 3. 直接用管道进行训练（它会先自动填补，再训练）
         model.fit(xtrain, ytrain)                        
-        
-        # 4. save model
-        if prod:
-            joblib.dump(model, f"{OUTPATH}/MODEL/{sno}_DT.pkl")
-        
-        pred = model.predict(xtest)
-        accuracy = accuracy_score(ytest, pred)
+
+        #pred = model.predict(xtest)
+        #accuracy = accuracy_score(ytest, pred)
 
         # train_score = model.score(xtrain, ytrain)
         # test_score = model.score(xtest, ytest)
@@ -86,73 +95,66 @@ def CalXGBModel(sno,stype,tdate):
         #print("accuracy:" +str(accuracy))
         #print(clf_report)
         
-        pp = df.loc[df.index>tdate].copy()    
+        # save model
+        if PROD:
+            joblib.dump(model, f"{OUTPATH}/MODEL/{MODEL}/{sno}.pkl")
 
-        if len(pp)>0:
-            #pp["sno"] = tempsno        
-            pp.drop(columns=["sno","F10D","F20D","F30D","DT"], inplace=True)
-            pp.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
-            pp.drop(columns=["LLDate","HHDate","WLDate","WHDate","Volatility_Decrease"], inplace=True)
-            #pp = pp.apply(pd.to_numeric, errors='coerce')
+        tempdf = Prediction(model,df,sno,stype,tdate,fulldata=True)
+        
+        if len(tempdf)>0:            
+            tempdf = tempdf.loc[tempdf[MODEL]]
+            tempdf.insert(0, 'Date', pd.to_datetime(tempdf.index))   
 
-            #print(model.predict_proba(pp))
-            proba = model.predict_proba(pp)
-            #print(proba)
+    return tempdf            
+           
 
-            if proba.shape[1] > 1:
-                pp["Prediction"] = [float(i[1]) for i in proba]
-            else:
-                pp["Prediction"] = [float(i[0]) for i in proba]
-                    
-            df["DT"] = pp["Prediction"]>0.9
-            df["DT"] = df["DT"].fillna("")
-            df.loc[df["DT"].astype(str).str.strip() == "", "DT"] = False
-            df.to_csv(f"{OUTPATH}/{stype}/{sno}.csv")
+def Prediction(model,df,sno,stype,tdate,fulldata):
 
-            tempdf = df.loc[df["DT"]]
-            tempdf.insert(0, 'Date', pd.to_datetime(tempdf.index))                
+    pp = df.loc[df.index>tdate].copy()
+    df[MODEL] = False
 
-    return tempdf
-            
-
-    
-def calDT(sno, df):
-
-    file_path = f"{OUTPATH}/MODEL/P_{sno}_DT.pkl"
-    
-    if os.path.exists(file_path):
-
-        pp = df.copy()
-
-        model = joblib.load(file_path)
-
-        tempsno = str(sno).replace('.HK','')
-        tempsno = str(tempsno).lstrip("0") 
-
-        #print(tempsno)
-
-        #pp["sno"] = tempsno
-        pp.drop(columns=["sno","F10D","F20D","F30D","DT"], inplace=True)
+    if len(pp)>0:
+         
+        pp.drop(columns=["sno","F10D","F20D","F30D"], inplace=True)
         pp.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
         pp.drop(columns=["LLDate","HHDate","WLDate","WHDate","Volatility_Decrease"], inplace=True)
-        pp = pp.replace([np.inf, -np.inf], np.nan)
+        #pp = pp.apply(pd.to_numeric, errors='coerce')
 
+        pp = pp.replace([np.inf, -np.inf], np.nan)
+        
         proba = model.predict_proba(pp)
-        #print(proba)
 
         if proba.shape[1] > 1:
             pp["Prediction"] = [float(i[1]) for i in proba]
         else:
-            pp["Prediction"] = [float(i[0]) for i in proba]        
-                
-        df["DT"] = pp["Prediction"]>0.9
-        df["DT"] = df["DT"].fillna("")
-        df.loc[df["DT"].astype(str).str.strip() == "", "DT"] = False
+            pp["Prediction"] = [float(i[0]) for i in proba]
+
+
+        df[MODEL] = pp["Prediction"]>0.9
+        df[MODEL] = df[MODEL].fillna("")
+        df.loc[df[MODEL].astype(str).str.strip() == "", MODEL] = False
+
+    if fulldata:        
+        df.to_csv(f"{OUTPATH}/{stype}/{sno}.csv")        
+
+    return df            
+
+def loadXGB(sno, df):
     
-    return df
+    templist = []
+    file_path = f"{OUTPATH}/MODEL/{MODEL}/P_{sno}.pkl"    
 
+    if os.path.exists(file_path):
+        model = joblib.load(file_path)
+        df = Prediction(model,df,sno,"X","1900-01-01",fulldata=False)
 
-def ProcessDT(stype,tdate):
+    if MODEL in df.columns:
+        templist = df.pop(MODEL)
+    
+    return templist
+    
+
+def ProcessXGB(stype,tdate):
 
     resultdf = pd.DataFrame()
 
@@ -170,11 +172,10 @@ def ProcessDT(stype,tdate):
         executor = cf.ThreadPoolExecutor(max_workers=1)
     
     with executor:
-        for tempdf in tqdm(executor.map(CalXGBModel,SLIST["sno"],SLIST["stype"],SLIST["tdate"],chunksize=1),total=len(SLIST)):            
-            tempdf = tempdf.dropna(axis=1, how="all")
+        for tempdf in tqdm(executor.map(XGB,SLIST["sno"],SLIST["stype"],SLIST["tdate"],chunksize=1),total=len(SLIST)):                        
             resultdf = pd.concat([tempdf, resultdf], ignore_index=True)
 
-    resultdf.to_csv("Data/XGBoost.csv",index=False)    
+    resultdf.to_csv(f"Data/{MODEL}.csv",index=False)    
 
 
 
@@ -182,10 +183,10 @@ def ProcessDT(stype,tdate):
 if __name__ == '__main__':
     start = t.perf_counter()
 
-    tdate = "2015-12-31"
+    tdate = "2019-12-31"
 
-    ProcessDT("L",tdate)
-    ProcessDT("M",tdate)
+    #ProcessXGB("L",tdate)
+    ProcessXGB("M",tdate)
 
     finish = t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
