@@ -56,9 +56,6 @@ def AnalyzeStock(sno,stype):
     df = checkVCP(df)
 
 
-
-
-
     #AI Signal
     #1. XGBoost   
     xgblist = loadXGB(sno, df)    

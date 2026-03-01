@@ -131,8 +131,8 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
 
         if output['# Trades'] != 0:
 
-            if platform.system()=="Windows":
-                bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
+            # if platform.system()=="Windows":
+            #     bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
                         
             # 收集主要指標               
             tempdf['returns'] = [output['Return [%]']] #總收益率
@@ -219,23 +219,20 @@ if __name__ == '__main__':
     tp = 20.0    # 止盈百分比
     dd = 5.0     # 回撤
 
+    TALIST = ["BOSSB","HHHL","VCP"]
+    MODELLIST = ["DT","XGB","LGBM","LR","MLP","RF","SVM","VOTING","VCP"]
+
     start = t.perf_counter()
+
+    for modelname in MODELLIST:
+        processBT("L", modelname, max_holdbars, sl, tp, dd)
+        processBT("M", modelname, max_holdbars, sl, tp, dd)
+
+    for taname in TALIST:
+        processBT("L", taname, max_holdbars, sl, tp, dd)
+        processBT("M", taname, max_holdbars, sl, tp, dd)
+
     
-    processBT("L", "DT", max_holdbars, sl, tp, dd)
-    processBT("M", "DT", max_holdbars, sl, tp, dd)
-
-    processBT("L", "XGB", max_holdbars, sl, tp, dd)
-    processBT("M", "XGB", max_holdbars, sl, tp, dd)
-
-    # processBT("L", "BOSSB", max_holdbars, sl, tp, dd)
-    # processBT("M", "BOSSB", max_holdbars, sl, tp, dd)
-
-    # processBT("L", "HHHL", max_holdbars, sl, tp, dd)
-    # processBT("M", "HHHL", max_holdbars, sl, tp, dd)
-
-    # processBT("L", "VCP", max_holdbars, sl, tp, dd)
-    # processBT("M", "VCP", max_holdbars, sl, tp, dd)
-
     finish = t.perf_counter()
     
     print(f'It took {round(finish-start,2)} second(s) to finish.')

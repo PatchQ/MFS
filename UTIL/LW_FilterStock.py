@@ -240,8 +240,8 @@ if __name__ == '__main__':
 
     start = t.perf_counter()
 
-    #YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
-    #YFSignal("M","BOSS2~BOSSB~BOSSCL1","30")
+    YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
+    YFSignal("M","BOSS2~BOSSB~BOSSCL1","30")
 
     for modelname in MODELLIST:
         YFSignal("L",modelname,"5")
