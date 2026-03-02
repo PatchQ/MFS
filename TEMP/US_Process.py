@@ -1,5 +1,5 @@
+from CommonConfig import ExecutorType, DEFAULT_MAX_WORKERS
 import pandas as pd
-import concurrent.futures as cf
 import os
 from tqdm import tqdm
 import time as t
@@ -202,7 +202,7 @@ def YFprocessData(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    with cf.ProcessPoolExecutor(max_workers=5) as executor:
+    with ExecutorType(max_workers=DEFAULT_MAX_WORKERS) as executor:
         list(tqdm(executor.map(AnalyzeData,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 

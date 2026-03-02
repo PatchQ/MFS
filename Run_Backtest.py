@@ -1,18 +1,9 @@
-import pandas as pd
-import numpy as np
-import time as t
-import os
-import platform
-import concurrent.futures as cf
-from tqdm import tqdm
+import UTIL.CommonConfig as cc
+
 from backtesting import Backtest, Strategy
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
-
-
-OUTPATH = "../SData/P_YFData/" 
-#OUTPATH = "../SData/FP_YFData/"
 
 class run(Strategy):
 
@@ -107,15 +98,15 @@ class run(Strategy):
 
 def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
     
-    tempdf = pd.DataFrame()    
+    tempdf = cc.pd.DataFrame()    
         
-    df = pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv")
+    df = cc.pd.read_csv(cc.OUTPATH+"/"+stype+"/"+sno+".csv")
     #df = df.loc[df["index"]>"2024-12-31"]        
 
     if len(df)!=0:
     
         df.set_index("index" , inplace=True)
-        df = df.set_index(pd.DatetimeIndex(pd.to_datetime(df.index)))
+        df = df.set_index(cc.pd.DatetimeIndex(cc.pd.to_datetime(df.index)))
 
         bt = Backtest(
             df, run, cash=200000,
@@ -167,10 +158,10 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
 
 def processBT(stype, signal, max_holdbars, sl, tp, dd):
 
-    resultdf = pd.DataFrame()
+    resultdf = cc.pd.DataFrame()
 
-    snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(OUTPATH+"/"+stype)))
-    SLIST = pd.DataFrame(snolist, columns=["sno"])
+    snolist = list(map(lambda s: s.replace(".csv", ""), cc.os.listdir(cc.OUTPATH+"/"+stype)))
+    SLIST = cc.pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST.assign(signal=signal+"")
     SLIST = SLIST.assign(max_holdbars=max_holdbars)
@@ -178,37 +169,32 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
     SLIST = SLIST.assign(tp=tp)
     SLIST = SLIST.assign(dd=dd)    
     SLIST = SLIST[:]
-
-    if platform.system()=="Windows":
-        executor = cf.ProcessPoolExecutor(max_workers=5)
-    elif platform.system()=="Darwin":
-        executor = cf.ThreadPoolExecutor(max_workers=1)
     
-    with executor:
-        for tempdf in tqdm(executor.map(runBacktest,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["max_holdbars"],
+    with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
+        for tempdf in cc.tqdm(executor.map(runBacktest,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["max_holdbars"],
                                         SLIST["sl"],SLIST["tp"],SLIST["dd"],chunksize=1),total=len(SLIST)):            
             #tempdf = tempdf.dropna(axis=1, how="all")
             #print(tempdf)
             if len(tempdf)>0:
-                resultdf = pd.concat([tempdf, resultdf], ignore_index=True)
+                resultdf = cc.pd.concat([tempdf, resultdf], ignore_index=True)
     
-    resultdf.to_csv(f'{OUTPATH}/BT/BT_{stype}_{signal}.csv', index=False)
+    resultdf.to_csv(f'{cc.OUTPATH}/BT/BT_{stype}_{signal}.csv', index=False)
 
     if len(resultdf)>0:
         # 計算總體統計
         print(f"\n=== {signal} : 整體回測統計 ({stype}) ===")
-        print(f"平均報酬率: {np.mean(resultdf['returns']):.2f}%")
-        print(f"報酬率標準差: {np.std(resultdf['returns']):.2f}%")
-        print(f"平均最佳收益: {np.mean(resultdf['best_trade']):.2f}%")
-        print(f"平均最差收益: {np.mean(resultdf['worst_trade']):.2f}%")    
-        print(f"平均盈虧比: {np.mean(resultdf['RR']):.2f}")
-        print(f"平均策略表現綜合評分: {np.mean(resultdf['SQN']):.2f}")
-        print(f"平均夏普比率: {np.mean(resultdf['sharpe_ratios']):.2f}")
-        print(f"平均索提諾比率: {np.mean(resultdf['sortino_ratios']):.2f}")
-        print(f"平均卡爾瑪比率: {np.mean(resultdf['calmar_ratios']):.2f}") 
-        print(f"平均交易次數: {np.mean(resultdf['trades_counts'])}")
+        print(f"平均報酬率: {cc.np.mean(resultdf['returns']):.2f}%")
+        print(f"報酬率標準差: {cc.np.std(resultdf['returns']):.2f}%")
+        print(f"平均最佳收益: {cc.np.mean(resultdf['best_trade']):.2f}%")
+        print(f"平均最差收益: {cc.np.mean(resultdf['worst_trade']):.2f}%")    
+        print(f"平均盈虧比: {cc.np.mean(resultdf['RR']):.2f}")
+        print(f"平均策略表現綜合評分: {cc.np.mean(resultdf['SQN']):.2f}")
+        print(f"平均夏普比率: {cc.np.mean(resultdf['sharpe_ratios']):.2f}")
+        print(f"平均索提諾比率: {cc.np.mean(resultdf['sortino_ratios']):.2f}")
+        print(f"平均卡爾瑪比率: {cc.np.mean(resultdf['calmar_ratios']):.2f}") 
+        print(f"平均交易次數: {cc.np.mean(resultdf['trades_counts'])}")
         print(f"總交易次數: {sum(resultdf['trades_counts'])}")
-        print(f"平均勝率: {np.mean(resultdf['win_rates']):.2f}%") 
+        print(f"平均勝率: {cc.np.mean(resultdf['win_rates']):.2f}%") 
 
 
 
@@ -222,7 +208,7 @@ if __name__ == '__main__':
     TALIST = ["BOSSB","HHHL","VCP"]
     MODELLIST = ["DT","XGB","LGBM","LR","MLP","RF","SVM","VOTING","VCP"]
 
-    start = t.perf_counter()
+    start = cc.t.perf_counter()
 
     for modelname in MODELLIST:
         processBT("L", modelname, max_holdbars, sl, tp, dd)
@@ -233,7 +219,7 @@ if __name__ == '__main__':
         processBT("M", taname, max_holdbars, sl, tp, dd)
 
     
-    finish = t.perf_counter()
+    finish = cc.t.perf_counter()
     
     print(f'It took {round(finish-start,2)} second(s) to finish.')
 

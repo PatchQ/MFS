@@ -1,29 +1,19 @@
-import pandas as pd
-import concurrent.futures as cf
-import os
-import platform
-import time as t
-from tqdm import tqdm
-from datetime import datetime, timedelta
-from collections import defaultdict
-
-
-#get stock csv file from path
-OUTPATH = "../SData/P_YFData/"
-#OUTPATH = "../SData/FP_YFData/"
+try:
+    import UTIL.CommonConfig as cc  
+except ImportError:
+    import CommonConfig as cc   
 
 #EDATE = "2025-09-30"
-EDATE = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-FILESTAMP = "_"+datetime.now().strftime("%Y%m%d")
+EDATE = (cc.datetime.now() - cc.timedelta(days=30)).strftime("%Y-%m-%d")
+FILESTAMP = "_"+cc.datetime.now().strftime("%Y%m%d")
 FILESTAMP = ""
-
 
 def filterStock(sno,stype,signal,days,ruleout):
 
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
 
-    df = pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv",index_col=0)
+    df = cc.pd.read_csv(cc.OUTPATH+"/"+stype+"/"+sno+".csv",index_col=0)
     #df = df[:-10].copy()
 
     if "~" in days:    
@@ -31,25 +21,25 @@ def filterStock(sno,stype,signal,days,ruleout):
         edate = days.split('~')[1]
         df = df.loc[(df.index>=sdate) & (df.index<edate)]         
     else:
-        datadate = (datetime.now() - timedelta(days=int(days))).strftime("%Y-%m-%d")
+        datadate = (cc.datetime.now() - cc.timedelta(days=int(days))).strftime("%Y-%m-%d")
         df = df.loc[(df.index>=datadate)] 
             
     if "~" in signal:
         if all(col in df.columns for col in signal.split('~')):
             df = df.loc[df[signal.split('~')].any(axis=1)]
         else:
-            df = pd.DataFrame()
+            df = cc.pd.DataFrame()
     else:
         if all(col in df.columns for col in signal.split('&')):
             df = df.loc[df[signal.split('&')].all(axis=1)]
         else:
-            df = pd.DataFrame()
+            df = cc.pd.DataFrame()
     
     if ruleout!="":
         if all(col in df.columns for col in ruleout.split('&')):
             df = df.loc[df[ruleout.split('&')].all(axis=1)==False]
         else:
-            df = pd.DataFrame()                        
+            df = cc.pd.DataFrame()                        
         
     df = df.reset_index()
 
@@ -58,8 +48,8 @@ def filterStock(sno,stype,signal,days,ruleout):
 
 def YFGetSLIST(stype,signal,days=0,ruleout=""):
 
-    snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(OUTPATH+"/"+stype+"/")))
-    SLIST = pd.DataFrame(snolist, columns=["sno"])
+    snolist = list(map(lambda s: s.replace(".csv", ""), cc.os.listdir(cc.OUTPATH+"/"+stype+"/")))
+    SLIST = cc.pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST.assign(signal=signal+"")
     SLIST = SLIST.assign(ruleout=ruleout+"")
@@ -71,15 +61,10 @@ def YFGetSLIST(stype,signal,days=0,ruleout=""):
 
 def YFFilter(SLIST,signaldf):    
 
-    if platform.system()=="Windows":
-        executor = cf.ProcessPoolExecutor(max_workers=5)
-    elif platform.system()=="Darwin":
-        executor = cf.ThreadPoolExecutor(max_workers=10)
-    
-    with executor:
-        for tempdf in tqdm(executor.map(filterStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["days"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
+    with cc.ExecutorType(max_workers=10) as executor:
+        for tempdf in cc.tqdm(executor.map(filterStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["days"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
             tempdf = tempdf.dropna(axis=1, how="all")
-            signaldf = pd.concat([tempdf, signaldf], ignore_index=True)
+            signaldf = cc.pd.concat([tempdf, signaldf], ignore_index=True)
 
         if len(signaldf)!=0:
             signaldf["SNO"] = signaldf["sno"].str.replace(r'^0+', '', regex=True)        
@@ -140,7 +125,7 @@ def countBOSS(stype,signal,df,sdate,edate):
     seq10 = ['BY1']
 
     # 使用defaultdict来存储每只股票的计数
-    stock_counts_dict = defaultdict(lambda: {'TP123': 0, 'TP12': 0, 'TP1': 0, 'TP2': 0, 'TP3': 0, 'TP1C': 0, 'CL1': 0, 'TU1': 0, 'TU2': 0, 'BY1': 0})
+    stock_counts_dict = cc.defaultdict(lambda: {'TP123': 0, 'TP12': 0, 'TP1': 0, 'TP2': 0, 'TP3': 0, 'TP1C': 0, 'CL1': 0, 'TU1': 0, 'TU2': 0, 'BY1': 0})
     
    # 遍历每个组
     for key, events in groups.items():
@@ -169,7 +154,7 @@ def countBOSS(stype,signal,df,sdate,edate):
                 stock_counts_dict[stock]['BY1'] += 1
 
     # 将字典转换为DataFrame    
-    stock_counts_df = pd.DataFrame.from_dict(stock_counts_dict, orient='index')
+    stock_counts_df = cc.pd.DataFrame.from_dict(stock_counts_dict, orient='index')
 
     if len(stock_counts_df)>0:
         stock_counts_df = stock_counts_df.reset_index()
@@ -188,7 +173,7 @@ def countBOSS(stype,signal,df,sdate,edate):
 
 def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout=""):
     
-    signaldf = pd.DataFrame()
+    signaldf = cc.pd.DataFrame()
     
     SLIST = YFGetSLIST(stype,signal,days,ruleout)
     signaldf = YFFilter(SLIST, signaldf)
@@ -235,15 +220,14 @@ if __name__ == '__main__':
        
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
-    DAYS = "20000"    
-    MODELLIST = ["DT","XGB","LGBM","LR","MLP","RF","SVM","VOTING","VCP"]
+    DAYS = "20000"        
 
-    start = t.perf_counter()
+    start = cc.t.perf_counter()
 
     YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
     YFSignal("M","BOSS2~BOSSB~BOSSCL1","30")
 
-    for modelname in MODELLIST:
+    for modelname in cc.MODELLIST:
         YFSignal("L",modelname,"5")
         YFSignal("M",modelname,"5")
 
@@ -256,5 +240,5 @@ if __name__ == '__main__':
     #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
     #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
 
-    finish = t.perf_counter()
+    finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')    

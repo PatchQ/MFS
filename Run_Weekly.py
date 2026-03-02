@@ -1,4 +1,4 @@
-import time as t
+import UTIL.CommonConfig as cc
 
 from HKEX.AA_GetIndustryList import getIndustryList
 from HKEX.AA_GetStockListData import getStockListData
@@ -6,11 +6,9 @@ from UTIL.LW_Collect import YFgetAll
 from UTIL.LW_FilterStock import YFSignal
 from ProcessTA import ProcessTA
 
-import platform
-
 if __name__ == '__main__':
 
-    start = t.perf_counter()
+    start = cc.t.perf_counter()
     
     #get IndustryList from AA
     getIndustryList()
@@ -19,12 +17,12 @@ if __name__ == '__main__':
     getStockListData()
 
     # #get All History Data from YF
-    YFgetAll("L")
-    YFgetAll("M")
+    #YFgetAll("L")
+    #YFgetAll("M")
     #YFgetAll("S")
 
-    #YFgetAll("L","6y")
-    #YFgetAll("M","6y")
+    YFgetAll("L","6y")
+    YFgetAll("M","6y")
     #YFgetAll("S","2y")
 
     #process All Data
@@ -43,5 +41,5 @@ if __name__ == '__main__':
     # YFSignal("L","EMA1","1")
     # YFSignal("M","EMA1","1")
     
-    finish = t.perf_counter()
+    finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

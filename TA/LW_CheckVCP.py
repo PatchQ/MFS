@@ -1,8 +1,8 @@
+from UTIL.CommonConfig import *
+
 import pandas as pd
 import numpy as np
-import concurrent.futures as cf
 import os
-import platform
 from tqdm import tqdm
 import time as t
 from sklearn.ensemble import IsolationForest
@@ -12,9 +12,6 @@ try:
     from LW_Calindicator import *
 except ImportError:
     from TA.LW_Calindicator import *
-
-PATH = "../SData/YFData/"
-OUTPATH = "../SData/P_YFData/" 
 
 class VCPScanner:
     def __init__(self, df):
@@ -502,12 +499,7 @@ def ProcessVCP(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    if platform.system()=="Windows":
-        executor = cf.ProcessPoolExecutor(max_workers=5)
-    elif platform.system()=="Darwin":
-        executor = cf.ThreadPoolExecutor(max_workers=1)
-
-    with executor:
+    with ExecutorType(max_workers=DEFAULT_MAX_WORKERS) as executor: # type: ignore
         list(tqdm(executor.map(checkVCP,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 

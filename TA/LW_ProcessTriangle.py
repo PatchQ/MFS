@@ -1,9 +1,8 @@
+from CommonConfig import ExecutorType, DEFAULT_MAX_WORKERS
 import pandas as pd
 import numpy as np
 import yfinance as yf
-import concurrent.futures as cf
 import os
-import platform
 from tqdm import tqdm
 import time as t
 from datetime import datetime
@@ -695,12 +694,7 @@ def main(stype):
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    if platform.system()=="Windows":
-        executor = cf.ProcessPoolExecutor(max_workers=5)
-    elif platform.system()=="Darwin":
-        executor = cf.ThreadPoolExecutor(max_workers=1)
-
-    with executor:
+    with ExecutorType(max_workers=DEFAULT_MAX_WORKERS) as executor:
         list(tqdm(executor.map(CheckTriangle,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
 
 

@@ -116,11 +116,11 @@ def getStockListData():
     stocklistL = stocklistL.assign(type="L")
     stocklistL = stocklistL.sort_values(by="股票編號")
 
-    stocklistM = stocklist.query("數字市值 < 20000000000").query("數字市值 >= 1000000000")
+    stocklistM = stocklist.query("數字市值 < 20000000000").query("數字市值 >= 5000000000")
     stocklistM = stocklistM.assign(type="M")
     stocklistM = stocklistM.sort_values(by="股票編號")
 
-    stocklistS = stocklist.query("數字市值 < 1000000000")
+    stocklistS = stocklist.query("數字市值 < 5000000000")
     stocklistS = stocklistS.assign(type="S")
     stocklistS = stocklistS.sort_values(by="股票編號")
 

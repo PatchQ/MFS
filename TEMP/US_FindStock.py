@@ -1,3 +1,4 @@
+from CommonConfig import ExecutorType, DEFAULT_MAX_WORKERS
 import pandas as pd
 import concurrent.futures as cf
 import os
@@ -40,7 +41,7 @@ def YFfindSignal(stype,signal,ruleout=""):
     SLIST = SLIST.assign(ruleout=ruleout+"")
     SLIST = SLIST[:]
 
-    with cf.ProcessPoolExecutor(max_workers=5) as executor:
+    with ExecutorType(max_workers=DEFAULT_MAX_WORKERS) as executor:
         for tempdf in tqdm(executor.map(findStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
             tempdf = tempdf.dropna(axis=1, how="all")
             signaldf = pd.concat([tempdf, signaldf], ignore_index=True)
