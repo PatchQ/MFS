@@ -7,13 +7,6 @@ from sklearn.pipeline import make_pipeline
 import joblib
 from xgboost import XGBClassifier
 
-PROD = True
-#OUTPATH = "../SData/FP_YFData/"
-OUTPATH = "../SData/P_YFData/"
-MODELLIST = ["DT","XGB","LGBM","LR","MLP","RF","SVM","VOTING"]
-MODEL = "XGB"
-
-
 def XGB(sno,stype,tdate):
 
     thismodel = cc.sys._getframe().f_code.co_name.upper()

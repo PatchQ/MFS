@@ -122,8 +122,8 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
 
         if output['# Trades'] != 0:
 
-            # if platform.system()=="Windows":
-            #     bt.plot(filename=f'{OUTPATH}/BT/{signal}/{sno}_{signal}.html',open_browser=False)
+            if cc.IS_WINDOWS:
+                 bt.plot(filename=f'{cc.OUTPATH}/BT/{signal}/{sno}.html',open_browser=False)
                         
             # 收集主要指標               
             tempdf['returns'] = [output['Return [%]']] #總收益率
@@ -205,18 +205,13 @@ if __name__ == '__main__':
     tp = 20.0    # 止盈百分比
     dd = 5.0     # 回撤
 
-    TALIST = ["BOSSB","HHHL","VCP"]
-    MODELLIST = ["DT","XGB","LGBM","LR","MLP","RF","SVM","VOTING","VCP"]
-
     start = cc.t.perf_counter()
 
-    for modelname in MODELLIST:
+    for modelname in cc.MODELLIST:
         processBT("L", modelname, max_holdbars, sl, tp, dd)
-        processBT("M", modelname, max_holdbars, sl, tp, dd)
 
-    for taname in TALIST:
+    for taname in cc.TALIST:
         processBT("L", taname, max_holdbars, sl, tp, dd)
-        processBT("M", taname, max_holdbars, sl, tp, dd)
 
     
     finish = cc.t.perf_counter()

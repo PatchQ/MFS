@@ -187,12 +187,8 @@ def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout="")
 
         if str(signal).startswith("BOSS2") or str(signal).startswith("BOSSB"):
             print(signaldf[['index','sno','BOSS_STATUS']])
-        elif str(signal).startswith("HHHL"):
-            print(signaldf[['index','sno','HHHL']])
-        elif str(signal).startswith("VCP"):
-            print(signaldf[['index','sno','VCP']])
-        elif str(signal).startswith("DT"):
-            print(signaldf[['index','sno','DT']])
+        else:
+            print(signaldf[['index','sno',signal]])
 
         
         signaldf.to_csv("Data/"+stype+"_"+signal+FILESTAMP+".csv",index=False)
@@ -224,12 +220,16 @@ if __name__ == '__main__':
 
     start = cc.t.perf_counter()
 
-    YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
-    YFSignal("M","BOSS2~BOSSB~BOSSCL1","30")
+    YFSignal("L","BOSS2~BOSSB~BOSSCL1","60")
+    
+    for taname in cc.TALIST:
+        YFSignal("L",taname,"5")
+        #YFSignal("M",taname,"5")
 
     for modelname in cc.MODELLIST:
         YFSignal("L",modelname,"5")
-        YFSignal("M",modelname,"5")
+        #YFSignal("M",modelname,"5")
+
 
     # YFSignal("L","EMA2","1")
     # YFSignal("M","EMA2","1")

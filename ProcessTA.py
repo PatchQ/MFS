@@ -6,29 +6,29 @@ def AnalyzeStock(sno,stype):
     df = cc.pd.read_csv(cc.PATH+"/"+stype+"/"+sno+".csv",index_col=0) 
     df.index = cc.pd.to_datetime(df.index)  
 
-    df = extendData(df)
-    df = convertData(df)
+    df = cc.extendData(df)
+    df = cc.convertData(df)
 
     #EMA
-    df = calEMA(df)
+    df = cc.calEMA(df)
 
     #T1
-    df = checkT1(df,50)
+    df = cc.checkT1(df,50)
 
     #cal HHHL
-    HHLLdf = calHHLL(df)
+    HHLLdf = cc.calHHLL(df)
 
     if HHLLdf is not None:
         if len(HHLLdf)>0:        
             #Boss
-            df = checkBoss(df, sno, stype, HHLLdf)
+            df = cc.checkBoss(df, sno, stype, HHLLdf)
             #HHHL
-            df = checkWave(df, sno, stype, HHLLdf)                     
+            df = cc.checkWave(df, sno, stype, HHLLdf)                     
     
     #VCP
-    df = checkVCP(df)
+    df = cc.checkVCP(df)
 
-    #AI Signal
+    #AI Signal    
     signals = {}
     for modelname in cc.MODELLIST:
         signals[modelname] = loadModel(modelname, sno, df)
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     start = cc.t.perf_counter()
 
     ProcessTA("L")    
-    ProcessTA("M")    
+    #ProcessTA("M")    
 
     finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

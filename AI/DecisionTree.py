@@ -27,7 +27,7 @@ def DT(sno,stype,tdate):
             df.drop(columns=[modelname], inplace=True)
 
     train_data = df.copy()
-    train_data = train_data.loc[train_data.index<=tdate]    
+    train_data = train_data.loc[train_data.index < tdate]    
     #train_data = train_data.apply(pd.to_numeric, errors='coerce')
     
     if len(train_data)>500:

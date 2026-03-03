@@ -20,10 +20,14 @@ def getYFDaily(sno, sdate):
         print(f"Get {sno} Data Error: {str(e)}")
         return None
 
-def getYFAll(sno,stype,period):        
+def getYFAll(sno,stype,period):      
+
     ticker = cc.yf.Ticker(sno)
-    outputlist = ticker.history(period=period,auto_adjust=False)
-    #outputlist = ticker.history(start="2023-01-01",end="2025-12-31",auto_adjust=False)
+
+    if period=="max":
+        outputlist = ticker.history(period=period,auto_adjust=False)
+    else:
+        outputlist = ticker.history(start=cc.DATADATE,end="2125-12-31",auto_adjust=False)
     
     outputlist.index = cc.pd.to_datetime(cc.pd.to_datetime(outputlist.index).strftime('%Y%m%d'))
     outputlist = outputlist[outputlist['Volume'] > 0]

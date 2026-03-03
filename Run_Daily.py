@@ -16,7 +16,7 @@ if __name__ == '__main__':
     #YFgetDaily("M")
     
     #process All Data
-    #ProcessTA("L")
+    ProcessTA("L")
     #ProcessTA("M")
 
     # YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
@@ -26,11 +26,11 @@ if __name__ == '__main__':
     #     YFSignal("L",modelname,"5")
     #     YFSignal("M",modelname,"5")
 
-    YFSignal("L","HHHL","5")
-    YFSignal("M","HHHL","5")
+    # YFSignal("L","HHHL","5")
+    # YFSignal("M","HHHL","5")
 
-    YFSignal("L","VCP","5")
-    YFSignal("M","VCP","5")            
+    # YFSignal("L","VCP","5")
+    # YFSignal("M","VCP","5")            
 
    
     finish = cc.t.perf_counter()

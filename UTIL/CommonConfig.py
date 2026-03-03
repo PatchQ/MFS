@@ -18,25 +18,25 @@ from TA.LW_CheckBoss import *
 from TA.LW_CheckT1 import *
 from TA.LW_CheckVCP import *
 
-from AI.DecisionTree import *
-from AI.XGBoost import *
-from AI.LightGBM import *
-from AI.LogisticRegression import *
-from AI.MLP import *
-from AI.RandomForest import *
-from AI.SVM import *
-from AI.VOTING import *
+from AI.SVM import *    #總交易次數: 102 平均勝率: 67.74%
+from AI.MLP import *    #總交易次數: 257 平均勝率: 69.38%
+from AI.RandomForest import *   #總交易次數: 21 平均勝率: 66.36%
+from AI.LogisticRegression import * #總交易次數: 2422 平均勝率: 64.28%
+from AI.DecisionTree import *   #總交易次數: 3109 平均勝率: 57.42%
+
 import AI.ZPrediction as zp
 
-PROD = False
+PROD = True
 
+DATADATE = "2023-01-01"
 PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/"
 
 #PATH = "../SData/FYFData/"
 #OUTPATH = "../SData/FP_YFData/"
 
-MODELLIST = ["DT","XGB","LGBM","LR","MLP","RF","SVM","VOTING"]
+TALIST = ["BOSSB","HHHL","VCP"]
+MODELLIST = ["SVM","MLP","RF","LR","DT"]
 
 IS_WINDOWS = platform.system() == "Windows"
 IS_IOS = platform.system() == "Darwin"

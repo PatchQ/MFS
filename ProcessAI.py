@@ -21,15 +21,12 @@ def ProcessAI(stype,modelfunction,tdate):
 
 if __name__ == '__main__':
     start = cc.t.perf_counter()
-
-    tdate = "2019-12-31"
-    #MODELLIST = [DT,XGB,LGBM,LR,MLP,RF,SVM,VOTING]
-    MODELLIST = [cc.DT]
+    
+    MODELLIST = [cc.RF,cc.SVM,cc.MLP,cc.RF,cc.LR,cc.DT]    
 
     for modelfunction in MODELLIST:
         print(modelfunction.__name__)
-        ProcessAI("L",modelfunction,tdate)
-        ProcessAI("M",modelfunction,tdate)
+        ProcessAI("L",modelfunction,cc.DATADATE)        
 
     finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

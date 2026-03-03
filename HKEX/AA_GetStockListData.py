@@ -112,11 +112,11 @@ def getStockListData():
     #filter
     stocklist["數字市值"] = stocklist["市值"].apply(lambda s: changeAmount(s)).astype(float)
 
-    stocklistL = stocklist.query("數字市值 >= 20000000000")
+    stocklistL = stocklist.query("數字市值 >= 10000000000")
     stocklistL = stocklistL.assign(type="L")
     stocklistL = stocklistL.sort_values(by="股票編號")
 
-    stocklistM = stocklist.query("數字市值 < 20000000000").query("數字市值 >= 5000000000")
+    stocklistM = stocklist.query("數字市值 < 10000000000").query("數字市值 >= 3000000000")
     stocklistM = stocklistM.assign(type="M")
     stocklistM = stocklistM.sort_values(by="股票編號")
 

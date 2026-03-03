@@ -1,4 +1,4 @@
-from UTIL.CommonConfig import *
+import UTIL.CommonConfig as cc
 import joblib
 
 
@@ -13,7 +13,7 @@ def Prediction(modelname,model,df,sno,stype,tdate,fulldata):
         pp.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
         pp.drop(columns=["LLDate","HHDate","WLDate","WHDate","Volatility_Decrease"], inplace=True)
         #pp = pp.apply(pd.to_numeric, errors='coerce')
-        pp = pp.replace([np.inf, -np.inf], np.nan)
+        pp = pp.replace([cc.np.inf, -cc.np.inf], cc.np.nan)
         
         proba = model.predict_proba(pp)
 
@@ -27,7 +27,7 @@ def Prediction(modelname,model,df,sno,stype,tdate,fulldata):
         df.loc[df[modelname].astype(str).str.strip() == "", modelname] = False
 
         if fulldata:
-            df.to_csv(f"{OUTPATH}/{stype}/{sno}.csv")    
+            df.to_csv(f"{cc.OUTPATH}/{stype}/{sno}.csv")    
     else:
         df[modelname] = False
 
@@ -37,9 +37,9 @@ def Prediction(modelname,model,df,sno,stype,tdate,fulldata):
 def loadModel(modelname, sno, df): 
 
     templist = []
-    file_path = f"{OUTPATH}/MODEL/{modelname}/P_{sno}.pkl"    
+    file_path = f"{cc.OUTPATH}/MODEL/{modelname}/P_{sno}.pkl"    
 
-    if os.path.exists(file_path):
+    if cc.os.path.exists(file_path):
         model = joblib.load(file_path)
         df = Prediction(modelname,model,df,sno,"X","1900-01-01",fulldata=False)
 
