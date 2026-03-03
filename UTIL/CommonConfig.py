@@ -18,8 +18,8 @@ from TA.LW_CheckBoss import *
 from TA.LW_CheckT1 import *
 from TA.LW_CheckVCP import *
 
-from AI.SVM import *    #總交易次數: 102 平均勝率: 67.74%
 from AI.MLP import *    #總交易次數: 257 平均勝率: 69.38%
+from AI.SVM import *    #總交易次數: 102 平均勝率: 67.74%
 from AI.RandomForest import *   #總交易次數: 21 平均勝率: 66.36%
 from AI.LogisticRegression import * #總交易次數: 2422 平均勝率: 64.28%
 from AI.DecisionTree import *   #總交易次數: 3109 平均勝率: 57.42%
