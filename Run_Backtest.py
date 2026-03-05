@@ -86,14 +86,15 @@ class run(Strategy):
 
                                 
                 # 條件3：追蹤止損（從最高點回撤N%）
-                self.highest_profit = max(self.highest_profit, current_pl)
+                if self.dd > 0:
+                    self.highest_profit = max(self.highest_profit, current_pl)
 
-                if self.highest_profit > self.dd and current_pl < (self.highest_profit - self.dd):                    
-                    self.position.close()
-                    self.is_holding = False
-                    self.holding_bars = 0                    
-                    #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
-                    return
+                    if self.highest_profit > self.dd and current_pl < (self.highest_profit - self.dd):                    
+                        self.position.close()
+                        self.is_holding = False
+                        self.holding_bars = 0                    
+                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
+                        return
 
 
 def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
@@ -203,7 +204,7 @@ if __name__ == '__main__':
     max_holdbars = 100  # 最大持倉K線數
     sl = -10.0      # 止損百分比
     tp = 20.0    # 止盈百分比
-    dd = 5.0     # 回撤
+    dd = 0.0     # 回撤
 
     start = cc.t.perf_counter()
 

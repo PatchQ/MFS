@@ -11,21 +11,21 @@ if __name__ == '__main__':
     start = cc.t.perf_counter()
     
     #get IndustryList from AA
-    #getIndustryList()
+    getIndustryList()
 
     #get All number from AA
-    #getStockListData()
+    getStockListData()
 
     # #get All History Data from YF
     #YFgetAll("L")
     #YFgetDaily("L")
 
-    #YFgetAll("L",cc.DATADATE)
+    YFgetAll("L",cc.DATADATE)
 
     #process All Data
-    #ProcessTA("L",ai="True")
+    ProcessTA("L",ai="True")
  
-    #YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
+    YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
     
     for taname in cc.TALIST:
         YFSignal("L",taname,"1")        

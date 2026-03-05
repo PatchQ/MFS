@@ -24,7 +24,7 @@ if __name__ == '__main__':
     ProcessTA("L",ai="False")
  
     #cal AI Model
-    MODELLIST = [cc.RF,cc.SVM,cc.MLP,cc.RF,cc.LR,cc.DT]    
+    MODELLIST = [cc.RF,cc.SVM,cc.MLP,cc.LR,cc.DT]
 
     for modelfunction in MODELLIST:
         print(modelfunction.__name__)

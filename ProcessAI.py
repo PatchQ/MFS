@@ -22,7 +22,7 @@ def ProcessAI(stype,modelfunction,tdate):
 if __name__ == '__main__':
     start = cc.t.perf_counter()
     
-    MODELLIST = [cc.RF,cc.SVM,cc.MLP,cc.RF,cc.LR,cc.DT]    
+    MODELLIST = [cc.RF,cc.SVM,cc.MLP]    
 
     for modelfunction in MODELLIST:
         print(modelfunction.__name__)

@@ -36,7 +36,7 @@ OUTPATH = "../SData/P_YFData/"
 #OUTPATH = "../SData/FP_YFData/"
 
 TALIST = ["BOSSB","HHHL","VCP"]
-MODELLIST = ["SVM","MLP","RF","LR","DT"]
+MODELLIST = ["SVM","MLP","RF"]
 
 IS_WINDOWS = platform.system() == "Windows"
 IS_IOS = platform.system() == "Darwin"
