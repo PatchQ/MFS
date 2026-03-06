@@ -19,10 +19,10 @@ def filterStock(sno,stype,signal,days,ruleout):
     if "~" in days:    
         sdate = days.split('~')[0]
         edate = days.split('~')[1]
-        df = df.loc[(df.index>=sdate) & (df.index<edate)]         
+        df = df.loc[(df.index >= sdate) & (df.index<edate)]         
     else:
         datadate = (cc.datetime.now() - cc.timedelta(days=int(days))).strftime("%Y-%m-%d")
-        df = df.loc[(df.index>=datadate)] 
+        df = df.loc[(df.index > datadate)] 
             
     if "~" in signal:
         if all(col in df.columns for col in signal.split('~')):
