@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import os
 
 import requests
@@ -6,21 +7,25 @@ import csv
 import pandas as pd
 from pathlib import Path
 
-HKEXPATH = "../SData/HKEX/"
-
-def download_file(url):
+HKEXPATH = "../SData/HKEX/SO/"
+   
+def download_file(url,odate):
+    
+    local_filename = f"{HKEXPATH}{odate}.zip"
     
     try:
         with requests.get(url, stream=True, timeout=10) as r:
             r.raise_for_status()
-            with open(f"{HKEXPATH}temp.zip", 'wb') as f:
+            # 确保目录存在
+            os.makedirs(os.path.dirname(local_filename), exist_ok=True)
+            with open(local_filename, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
-        print(f"下載成功: {HKEXPATH}temp.zip")
+        print(f"下載成功: {local_filename}")
         return True
     except Exception as e:
-        print(f"下載失敗: {e}")
-        return False
+        print(f"下載失敗 {local_filename}: {e}")
+        return False    
 
 def extract_hsi_data(raw_filename, output_csv):
 
@@ -28,7 +33,7 @@ def extract_hsi_data(raw_filename, output_csv):
     extract_dir.mkdir(exist_ok=True)
 
     try:
-        with zipfile.ZipFile(f"{HKEXPATH}temp.zip", 'r') as zip_ref:            
+        with zipfile.ZipFile(f"{HKEXPATH}{odate}.zip", 'r') as zip_ref:            
             if raw_filename not in zip_ref.namelist():
                 raise FileNotFoundError(f"ZIP中未找到 {raw_filename}")
             
@@ -52,7 +57,7 @@ def extract_hsi_data(raw_filename, output_csv):
                 if row[0] == 'T':
                     break
                 # 檢查第二欄是否為 "HSI"
-                if len(row) > 1 and row[1] == 'HSI':
+                if len(row) > 1 and row[1] == 'HSI': #and row[5]=="MAR" and row[6]=="26":
                     hsi_rows.append(row)
         print(f"篩選到 {len(hsi_rows)} 條HSI記錄")
     except Exception as e:
@@ -94,30 +99,58 @@ def extract_hsi_data(raw_filename, output_csv):
     'put_deals',            # 成交宗數（PUT）
     'put_settle_price',     # 結算價（PUT）
     'put_price_change'      # 結算價變動（PUT）
-]
+    ]
 
-    df.to_csv(output_csv, index=False)
+    df['call_ratio'] = round(df['call_turnover'].astype(float) / df['call_deals'].astype(float), 2)
+    df['put_ratio'] = round(df['put_turnover'].astype(float) / df['put_deals'].astype(float), 2)
+
+    desired_order = [
+        'month_abbr', 'year',
+        'call_price_change', 'call_settle_price', 'call_ratio', 'call_deals', 'call_turnover',
+        'call_net_change', 'call_net', 'call_gross',
+        'strike',
+        'put_gross', 'put_net', 'put_net_change', 'put_turnover', 'put_deals','put_ratio',
+        'put_settle_price', 'put_price_change'
+    ]
+
+    df_hsi_selected = df[desired_order]
+
+    df_hsi_selected.to_csv(output_csv, index=False)
     print(f"CSV已保存: {output_csv}")
 
     # 可選：清理暫存檔案
     # os.remove(raw_file_path)
     # os.rmdir(extract_dir)
 
+
+def getfile(odate):
+    #url = f"https://www.hkex.com.hk/eng/stat/dmstat/oi/DTOP_F_{odate}.zip"
+    url = f"https://www.hkex.com.hk/eng/stat/dmstat/oi/DTOP_O_{odate}.zip"
+
+    #target_raw = f"{odate}_1_dtop_f_hkcc_opt_dtl_all.raw"
+    target_raw = f"{odate}_1_dtop_o_seoch_opt_dtl_all.raw"
+    
+    output_csv = f"{HKEXPATH}HSIO{odate}.csv"
+
+    success = download_file(url,odate)
+    if success is False:
+        #extract_hsi_data(target_raw, output_csv)
+        #os.remove(f"{HKEXPATH}temp.zip")
+    #else:
+        print(f"日期 {odate} 下載失敗")
+
+    
+
 if __name__ == "__main__":    
-    # 配置參數
-    odate = "20260305"
 
-    zip_url = f"https://www.hkex.com.hk/eng/stat/dmstat/oi/DTOP_F_{odate}.zip"
-    target_raw = f"{odate}_1_dtop_f_hkcc_opt_dtl_all.raw"
-    output_csv = f"{HKEXPATH}HSI_options_{odate}.csv"
+    start_date = datetime(2018, 1, 1)
+    end_date = datetime(2025, 12, 31)
 
-    # 步驟1：下載ZIP文件
-    if not download_file(zip_url):
-        exit(1)
+    current_date = start_date
+    while current_date <= end_date:        
+        odate = current_date.strftime("%Y%m%d")    
+        getfile(odate)
+        
+        current_date += timedelta(days=1)
 
-    # 步驟2-4：解壓、提取HSI、保存CSV
-    extract_hsi_data(target_raw, output_csv)
-
-    # 可選：刪除下載的ZIP檔以節省空間
-    # os.remove(local_zip)
 
