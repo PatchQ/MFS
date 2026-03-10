@@ -7,7 +7,7 @@ import csv
 import pandas as pd
 from pathlib import Path
 
-HKEXPATH = "../SData/HKEX/SO/"
+HKEXPATH = "../SData/HKEX/IO/"
    
 def download_file(url,odate):
     
@@ -124,27 +124,27 @@ def extract_hsi_data(raw_filename, output_csv):
 
 
 def getfile(odate):
-    #url = f"https://www.hkex.com.hk/eng/stat/dmstat/oi/DTOP_F_{odate}.zip"
-    url = f"https://www.hkex.com.hk/eng/stat/dmstat/oi/DTOP_O_{odate}.zip"
+    url = f"https://www.hkex.com.hk/eng/stat/dmstat/oi/DTOP_F_{odate}.zip"
+    #url = f"https://www.hkex.com.hk/eng/stat/dmstat/oi/DTOP_O_{odate}.zip"
 
-    #target_raw = f"{odate}_1_dtop_f_hkcc_opt_dtl_all.raw"
-    target_raw = f"{odate}_1_dtop_o_seoch_opt_dtl_all.raw"
+    target_raw = f"{odate}_1_dtop_f_hkcc_opt_dtl_all.raw"
+    #target_raw = f"{odate}_1_dtop_o_seoch_opt_dtl_all.raw"
     
     output_csv = f"{HKEXPATH}HSIO{odate}.csv"
 
     success = download_file(url,odate)
-    if success is False:
-        #extract_hsi_data(target_raw, output_csv)
+    if success:
+        extract_hsi_data(target_raw, output_csv)
         #os.remove(f"{HKEXPATH}temp.zip")
-    #else:
+    else:
         print(f"日期 {odate} 下載失敗")
 
     
 
 if __name__ == "__main__":    
 
-    start_date = datetime(2018, 1, 1)
-    end_date = datetime(2025, 12, 31)
+    start_date = datetime(2026, 3, 10)
+    end_date = datetime(2026, 3, 10)
 
     current_date = start_date
     while current_date <= end_date:        
