@@ -1,22 +1,22 @@
-from datetime import datetime, timedelta
 import os
-
 import requests
 import zipfile
 import csv
 import pandas as pd
 from pathlib import Path
+from datetime import datetime, timedelta
 
-HKEXPATH = "../SData/HKEX/IO/"
+IOPATH = "../SData/HKEX/IO/"
    
-def download_file(url,odate):
-    
-    local_filename = f"{HKEXPATH}{odate}.zip"
+def download_file(odate):
+
+    url = f"https://www.hkex.com.hk/eng/stat/dmstat/oi/DTOP_F_{odate}.zip"
+    local_filename = f"{IOPATH}DATA/{odate}.zip"
     
     try:
         with requests.get(url, stream=True, timeout=10) as r:
             r.raise_for_status()
-            # 确保目录存在
+            
             os.makedirs(os.path.dirname(local_filename), exist_ok=True)
             with open(local_filename, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
@@ -27,25 +27,28 @@ def download_file(url,odate):
         print(f"下載失敗 {local_filename}: {e}")
         return False    
 
-def extract_hsi_data(raw_filename, output_csv):
+def extract_data(op, odate):
 
-    extract_dir = Path.cwd() / "extracted"
+    raw_filename = f"{odate}_1_dtop_f_hkcc_opt_dtl_all.raw"    
+    zip_filename = f"{IOPATH}DATA/{odate}.zip"
+
+    extract_dir = Path.cwd().parent / "SData/HKEX/IO/TEMP"
     extract_dir.mkdir(exist_ok=True)
 
     try:
-        with zipfile.ZipFile(f"{HKEXPATH}{odate}.zip", 'r') as zip_ref:            
+        with zipfile.ZipFile(zip_filename, 'r') as zip_ref:            
             if raw_filename not in zip_ref.namelist():
                 raise FileNotFoundError(f"ZIP中未找到 {raw_filename}")
             
             zip_ref.extract(raw_filename, path=extract_dir)
             raw_file_path = extract_dir / raw_filename
-            print(f"解壓成功: {raw_file_path}")
+            
     except Exception as e:
         print(f"解壓失敗: {e}")
         return
 
     # 讀取raw檔並篩選HSI記錄
-    hsi_rows = []
+    op_rows = []
     try:
         with open(raw_file_path, 'r', encoding='utf-8') as f:
             reader = csv.reader(f, quotechar='"')
@@ -56,20 +59,20 @@ def extract_hsi_data(raw_filename, output_csv):
                 # 遇到檔結束標記 'T' 停止
                 if row[0] == 'T':
                     break
-                # 檢查第二欄是否為 "HSI"
-                if len(row) > 1 and row[1] == 'HSI': #and row[5]=="MAR" and row[6]=="26":
-                    hsi_rows.append(row)
-        print(f"篩選到 {len(hsi_rows)} 條HSI記錄")
+                
+                if len(row) > 1 and row[1] == op: 
+                    op_rows.append(row)
+        print(f"篩選到 {len(op_rows)} 條{op}記錄")
     except Exception as e:
         print(f"讀取檔失敗: {e}")
         return
 
-    if not hsi_rows:
-        print("沒有找到HSI記錄")
+    if not op_rows:
+        print(f"沒有找到{op}記錄")
         return
 
     # 轉換為DataFrame並保存為CSV
-    df = pd.DataFrame(hsi_rows)
+    df = pd.DataFrame(op_rows)
 
     df.columns = [
     # 合約基本資訊 (索引0-6)
@@ -113,43 +116,37 @@ def extract_hsi_data(raw_filename, output_csv):
         'put_settle_price', 'put_price_change'
     ]
 
-    df_hsi_selected = df[desired_order]
+    df_op_selected = df[desired_order]
 
-    df_hsi_selected.to_csv(output_csv, index=False)
-    print(f"CSV已保存: {output_csv}")
+    df_op_selected.to_csv(f"{IOPATH}\{op}\{op}_{odate}.csv", index=False)
+    
 
     # 可選：清理暫存檔案
     # os.remove(raw_file_path)
     # os.rmdir(extract_dir)
 
 
-def getfile(odate):
-    url = f"https://www.hkex.com.hk/eng/stat/dmstat/oi/DTOP_F_{odate}.zip"
-    #url = f"https://www.hkex.com.hk/eng/stat/dmstat/oi/DTOP_O_{odate}.zip"
-
-    target_raw = f"{odate}_1_dtop_f_hkcc_opt_dtl_all.raw"
-    #target_raw = f"{odate}_1_dtop_o_seoch_opt_dtl_all.raw"
-    
-    output_csv = f"{HKEXPATH}HSIO{odate}.csv"
-
-    success = download_file(url,odate)
-    if success:
-        extract_hsi_data(target_raw, output_csv)
-        #os.remove(f"{HKEXPATH}temp.zip")
-    else:
-        print(f"日期 {odate} 下載失敗")
-
-    
-
 if __name__ == "__main__":    
 
-    start_date = datetime(2026, 3, 10)
-    end_date = datetime(2026, 3, 10)
+    oplist = ['HSI','MHI','WK1','PDTB6','WK3','HHI','PDTB7']
+    sdate = "20250101"
+    edate = "20251130"
+
+    start_date = datetime.strptime(sdate, "%Y%m%d")
+    end_date = datetime.strptime(edate, "%Y%m%d")
 
     current_date = start_date
+
     while current_date <= end_date:        
         odate = current_date.strftime("%Y%m%d")    
-        getfile(odate)
+        success = download_file(odate)
+
+        if success:
+            for op in oplist:
+                extract_data(op, odate)
+        else:
+            print(f"日期 {odate} 下載失敗")
+        
         
         current_date += timedelta(days=1)
 

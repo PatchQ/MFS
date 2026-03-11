@@ -28,6 +28,9 @@ import AI.ZPrediction as zp
 
 PROD = True
 
+IOPATH = "../SData/HKEX/IO/"
+SOPATH = "../SData/HKEX/SO/"
+
 DATADATE = "2023-01-01"
 PATH = "../SData/YFData/"
 OUTPATH = "../SData/P_YFData/"
