@@ -1,7 +1,11 @@
-try:
-    import UTIL.CommonConfig as cc  
-except ImportError:
-    import CommonConfig as cc   
+import sys
+import os
+
+# Add the project root to the Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
+import UTIL.CommonConfig as cc  
 
 #EDATE = "2025-09-30"
 EDATE = (cc.datetime.now() - cc.timedelta(days=30)).strftime("%Y-%m-%d")
@@ -220,13 +224,13 @@ if __name__ == '__main__':
 
     start = cc.t.perf_counter()
 
-    #YFSignal("L","BOSS2~BOSSB~BOSSCL1","60")
+    YFSignal("L","BOSS2~BOSSB~BOSSCL1","60")
     
-    for taname in cc.TALIST:
-        YFSignal("L",taname,"1")
+    # for taname in cc.TALIST:
+    #     YFSignal("L",taname,"1")
 
-    for modelname in cc.MODELLIST:
-        YFSignal("L",modelname,"1")
+    # for modelname in cc.MODELLIST:
+    #     YFSignal("L",modelname,"1")
 
 
     # YFSignal("L","EMA2","1")

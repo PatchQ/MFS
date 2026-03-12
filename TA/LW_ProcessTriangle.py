@@ -1,11 +1,11 @@
-from CommonConfig import ExecutorType, DEFAULT_MAX_WORKERS
-import pandas as pd
-import numpy as np
-import yfinance as yf
+import sys
 import os
-from tqdm import tqdm
-import time as t
-from datetime import datetime
+
+# Add the project root to the Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
+import UTIL.CommonConfig as cc  
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 
@@ -52,7 +52,7 @@ def set_chinese_font():
 def convertData(df):
 
     numeric_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-    df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+    df[numeric_cols] = df[numeric_cols].apply(cc.pd.to_numeric, errors='coerce')
     df.dropna(subset=numeric_cols, how='all', inplace=True)
     df.ffill(inplace=True)
     df.bfill(inplace=True)
@@ -92,17 +92,17 @@ def find_resistance_test_pattern(sno, stype):
     """
     
     # 下載股票資料
-    ticker = yf.Ticker(sno)
+    ticker = cc.yf.Ticker(sno)
     stock = ticker.history(period=PERIOD,auto_adjust=ADJ)
     stock = stock[stock['Volume'] > 0]
-    stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
+    stock.index = cc.pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
     
     if stock.empty:
         print("無法下載資料，請檢查股票代號和期間設定")
         return None
     
     # 確保索引是DatetimeIndex
-    stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
+    stock.index = cc.pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
     
     # 計算價格變動
     #stock['Price_Change'] = stock['Close'].pct_change()
@@ -210,7 +210,7 @@ def check_pattern_conditions(stock_data, peaks, min_days_between_peaks, resistan
     # 檢查峰值之間的時間間隔
     for i in range(1, len(peaks)):
         # 確保日期是datetime對象
-        if isinstance(peaks[i]['date'], (pd.Timestamp, datetime)):
+        if isinstance(peaks[i]['date'], (cc.pd.Timestamp, cc.datetime)):
             days_between = (peaks[i]['date'] - peaks[i-1]['date']).days
         else:
             # 如果日期是索引位置，轉換為實際日期
@@ -238,7 +238,7 @@ def check_pattern_conditions(stock_data, peaks, min_days_between_peaks, resistan
     
     for i in range(len(peaks)):
         # 確保使用正確的日期
-        if isinstance(peaks[i]['date'], (pd.Timestamp, datetime)):
+        if isinstance(peaks[i]['date'], (cc.pd.Timestamp, cc.datetime)):
             peak_date = peaks[i]['date']
         else:
             peak_date = stock_data.index[peaks[i]['date']] if isinstance(peaks[i]['date'], int) else peaks[i]['date']
@@ -247,7 +247,7 @@ def check_pattern_conditions(stock_data, peaks, min_days_between_peaks, resistan
         
         # 找出這次峰值之後的低點 (下一次峰值之前)
         if i < len(peaks) - 1:
-            if isinstance(peaks[i+1]['date'], (pd.Timestamp, datetime)):
+            if isinstance(peaks[i+1]['date'], (cc.pd.Timestamp, cc.datetime)):
                 next_peak_date = peaks[i+1]['date']
             else:
                 next_peak_date = stock_data.index[peaks[i+1]['date']] if isinstance(peaks[i+1]['date'], int) else peaks[i+1]['date']
@@ -277,7 +277,7 @@ def check_pattern_conditions(stock_data, peaks, min_days_between_peaks, resistan
     return {
         'peaks': peaks,
         'pullbacks': pullbacks,
-        'resistance_level': np.mean([p['price'] for p in peaks])
+        'resistance_level': cc.np.mean([p['price'] for p in peaks])
     }
 
 def calculate_pattern_strength(pattern):
@@ -290,7 +290,7 @@ def calculate_pattern_strength(pattern):
     
     # 峰值相似度 (變異係數越小越好)
     peak_prices = [p['price'] for p in peaks]
-    peak_cv = np.std(peak_prices) / np.mean(peak_prices)
+    peak_cv = cc.np.std(peak_prices) / cc.np.mean(peak_prices)
     
     # 回調深度 (回調幅度越小，模式越強)
     pullback_depths = []
@@ -299,7 +299,7 @@ def calculate_pattern_strength(pattern):
             pullback_depth = (peak['price'] - pullbacks[i]['price']) / peak['price']
             pullback_depths.append(pullback_depth)
     
-    avg_pullback_depth = np.mean(pullback_depths) if pullback_depths else 0
+    avg_pullback_depth = cc.np.mean(pullback_depths) if pullback_depths else 0
     
     # 綜合強度評分 (0-10分，越高越強)
     similarity_score = max(0, 10 - (peak_cv * 1000))  # 峰值相似度貢獻
@@ -332,7 +332,7 @@ def CheckTriangle(sno, stype):
         
         for j, peak in enumerate(peaks):
             # 確保日期格式正確
-            if isinstance(peak['date'], (pd.Timestamp, datetime)):
+            if isinstance(peak['date'], (cc.pd.Timestamp, cc.datetime)):
                 peak_date_str = peak['date'].strftime('%Y-%m-%d')
             else:
                 peak_date_str = str(peak['date'])
@@ -344,7 +344,7 @@ def CheckTriangle(sno, stype):
             if j < len(pullbacks):
                 pullback = pullbacks[j]
                 
-                if isinstance(pullback['date'], (pd.Timestamp, datetime)):
+                if isinstance(pullback['date'], (cc.pd.Timestamp, cc.datetime)):
                     pullback_date_str = pullback['date'].strftime('%Y-%m-%d')
                 else:
                     pullback_date_str = str(pullback['date'])
@@ -359,7 +359,7 @@ def CheckTriangle(sno, stype):
             # 檢查下一個峰值之前是否有突破
             if j < len(peaks) - 1:
                 next_peak = peaks[j+1]
-                if isinstance(next_peak['date'], (pd.Timestamp, datetime)):
+                if isinstance(next_peak['date'], (cc.pd.Timestamp, cc.datetime)):
                     next_peak_date_str = next_peak['date'].strftime('%Y-%m-%d')
                 else:
                     next_peak_date_str = str(next_peak['date'])
@@ -390,10 +390,10 @@ def visualize_resistance_pattern(sno, stype, pattern_index=0):
     
     pattern = result['patterns'][pattern_index]
 
-    ticker = yf.Ticker(sno)
+    ticker = cc.yf.Ticker(sno)
     stock = ticker.history(period=PERIOD,auto_adjust=ADJ)
     stock = stock[stock['Volume'] > 0]
-    stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
+    stock.index = cc.pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
 
     #stock = df.tail(DAYS).copy()  # 使用 copy() 避免 SettingWithCopyWarning
         
@@ -417,7 +417,7 @@ def visualize_resistance_pattern(sno, stype, pattern_index=0):
     peak_dates = []
     for i, peak in enumerate(pattern['peaks']):
         # 處理日期格式
-        if not isinstance(peak['date'], (pd.Timestamp, datetime)):
+        if not isinstance(peak['date'], (cc.pd.Timestamp, cc.datetime)):
             if isinstance(peak['date'], int):
                 # 如果是索引數字，確保在範圍內
                 if peak['date'] < len(stock.index):
@@ -425,7 +425,7 @@ def visualize_resistance_pattern(sno, stype, pattern_index=0):
                 else:
                     continue
             else:
-                peak_date = pd.to_datetime(peak['date'])
+                peak_date = cc.pd.to_datetime(peak['date'])
         else:
             peak_date = peak['date']
         
@@ -448,7 +448,7 @@ def visualize_resistance_pattern(sno, stype, pattern_index=0):
     if peak_prices and peak_dates:
         # 確保日期和價格數量一致
         if len(peak_dates) == len(peak_prices):
-            peaks_series = pd.Series(peak_prices, index=peak_dates)
+            peaks_series = cc.pd.Series(peak_prices, index=peak_dates)
             # 重新索引以確保與主數據對齊
             peaks_series = peaks_series.reindex(stock.index, method=None)
             peak_markers = mpf.make_addplot(peaks_series, type='scatter', markersize=80, 
@@ -460,14 +460,14 @@ def visualize_resistance_pattern(sno, stype, pattern_index=0):
     pullback_dates = []
     for i, pullback in enumerate(pattern['pullbacks']):
         # 處理日期格式
-        if not isinstance(pullback['date'], (pd.Timestamp, datetime)):
+        if not isinstance(pullback['date'], (cc.pd.Timestamp, cc.datetime)):
             if isinstance(pullback['date'], int):
                 if pullback['date'] < len(stock.index):
                     pullback_date = stock.index[pullback['date']]
                 else:
                     continue
             else:
-                pullback_date = pd.to_datetime(pullback['date'])
+                pullback_date = cc.pd.to_datetime(pullback['date'])
         else:
             pullback_date = pullback['date']
         
@@ -489,7 +489,7 @@ def visualize_resistance_pattern(sno, stype, pattern_index=0):
     # 創建回調低點標記序列
     if pullback_prices and pullback_dates:
         if len(pullback_dates) == len(pullback_prices):
-            pullbacks_series = pd.Series(pullback_prices, index=pullback_dates)
+            pullbacks_series = cc.pd.Series(pullback_prices, index=pullback_dates)
             # 重新索引以確保與主數據對齊
             pullbacks_series = pullbacks_series.reindex(stock.index, method=None)
             pullback_markers = mpf.make_addplot(pullbacks_series, type='scatter', markersize=80, 
@@ -503,14 +503,14 @@ def visualize_resistance_pattern(sno, stype, pattern_index=0):
         
         for pullback in pattern['pullbacks']:
             # 處理日期格式
-            if not isinstance(pullback['date'], (pd.Timestamp, datetime)):
+            if not isinstance(pullback['date'], (cc.pd.Timestamp, cc.datetime)):
                 if isinstance(pullback['date'], int):
                     if pullback['date'] < len(stock.index):
                         pullback_date = stock.index[pullback['date']]
                     else:
                         continue
                 else:
-                    pullback_date = pd.to_datetime(pullback['date'])
+                    pullback_date = cc.pd.to_datetime(pullback['date'])
             else:
                 pullback_date = pullback['date']
             
@@ -532,12 +532,12 @@ def visualize_resistance_pattern(sno, stype, pattern_index=0):
         # 創建趨勢線數據
         if len(trend_dates) >= 2 and len(trend_dates) == len(trend_prices):
             # 按日期排序
-            sorted_indices = np.argsort(trend_dates)
+            sorted_indices = cc.np.argsort(trend_dates)
             trend_dates_sorted = [trend_dates[i] for i in sorted_indices]
             trend_prices_sorted = [trend_prices[i] for i in sorted_indices]
             
             # 創建趨勢線序列
-            trend_series = pd.Series(trend_prices_sorted, index=trend_dates_sorted)
+            trend_series = cc.pd.Series(trend_prices_sorted, index=trend_dates_sorted)
             
             # 創建連續的趨勢線數據
             # 找到趨勢線的開始和結束日期
@@ -547,15 +547,15 @@ def visualize_resistance_pattern(sno, stype, pattern_index=0):
             # 計算趨勢線的斜率和截距
             x_values = [(date - start_date).days for date in trend_dates_sorted]
             if len(x_values) > 1 and x_values[-1] > x_values[0]:
-                slope, intercept = np.polyfit(x_values, trend_prices_sorted, 1)
+                slope, intercept = cc.np.polyfit(x_values, trend_prices_sorted, 1)
                 
                 # 創建連續的日期範圍
-                date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+                date_range = cc.pd.date_range(start=start_date, end=end_date, freq='D')
                 x_range = [(date - start_date).days for date in date_range]
                 y_range = [slope * x + intercept for x in x_range]
                 
                 # 創建趨勢線序列
-                trend_line_series = pd.Series(y_range, index=date_range)
+                trend_line_series = cc.pd.Series(y_range, index=date_range)
                 
                 # 重新索引以確保與主數據對齊
                 trend_line_series = trend_line_series.reindex(stock.index, method=None)
@@ -637,10 +637,10 @@ def visualize_resistance_pattern_simple(sno, stype, pattern_index=0):
     
     pattern = result['patterns'][pattern_index]
 
-    ticker = yf.Ticker(sno)
+    ticker = cc.yf.Ticker(sno)
     stock = ticker.history(period=PERIOD,auto_adjust=ADJ)
     stock = stock[stock['Volume'] > 0]
-    stock.index = pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
+    stock.index = cc.pd.to_datetime(stock.index,utc=True).tz_convert('Asia/Shanghai')   
 
     # 準備陰陽燭圖數據
     ohlc_data = stock[['Open', 'High', 'Low', 'Close', 'Volume']].copy()
@@ -690,20 +690,19 @@ def visualize_resistance_pattern_simple(sno, stype, pattern_index=0):
 def main(stype):
 
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
-    SLIST = pd.DataFrame(snolist, columns=["sno"])
+    SLIST = cc.pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
 
-    with ExecutorType(max_workers=DEFAULT_MAX_WORKERS) as executor:
-        list(tqdm(executor.map(CheckTriangle,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))
-
+    with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
+        list(cc.tqdm(executor.map(CheckTriangle,SLIST["sno"],SLIST["stype"],chunksize=1),total=len(SLIST)))  
 
 if __name__ == '__main__':
-    start = t.perf_counter()
+    start = cc.time.perf_counter()
 
     main("L")
     main("M")
     main("S")
 
-    finish = t.perf_counter()
+    finish = cc.time.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

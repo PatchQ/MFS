@@ -1,20 +1,21 @@
+import sys
 import os
-import requests
-import zipfile
-import csv
-import pandas as pd
-from pathlib import Path
-from datetime import datetime, timedelta
+
+# Add the project root to the Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
+import UTIL.CommonConfig as cc  
 
 IOPATH = "../SData/HKEX/IO/"
-   
+
 def download_file(odate):
 
     url = f"https://www.hkex.com.hk/eng/stat/dmstat/oi/DTOP_F_{odate}.zip"
     local_filename = f"{IOPATH}DATA/{odate}.zip"
     
     try:
-        with requests.get(url, stream=True, timeout=10) as r:
+        with cc.requests.get(url, stream=True, timeout=10) as r:
             r.raise_for_status()
             
             os.makedirs(os.path.dirname(local_filename), exist_ok=True)
@@ -27,16 +28,17 @@ def download_file(odate):
         print(f"下載失敗 {local_filename}: {e}")
         return False    
 
-def extract_data(op, odate):
+def extract_data(odate):
+        
+    raw_filename = f"{odate}_1_dtop_f_hkcc_opt_dtl_all.raw"        
 
-    raw_filename = f"{odate}_1_dtop_f_hkcc_opt_dtl_all.raw"    
     zip_filename = f"{IOPATH}DATA/{odate}.zip"
 
-    extract_dir = Path.cwd().parent / "SData/HKEX/IO/TEMP"
+    extract_dir = cc.Path.cwd().parent / "SData/HKEX/IO/TEMP"
     extract_dir.mkdir(exist_ok=True)
 
     try:
-        with zipfile.ZipFile(zip_filename, 'r') as zip_ref:            
+        with cc.zipfile.ZipFile(zip_filename, 'r') as zip_ref:            
             if raw_filename not in zip_ref.namelist():
                 raise FileNotFoundError(f"ZIP中未找到 {raw_filename}")
             
@@ -47,32 +49,7 @@ def extract_data(op, odate):
         print(f"解壓失敗: {e}")
         return
 
-    # 讀取raw檔並篩選HSI記錄
-    op_rows = []
-    try:
-        with open(raw_file_path, 'r', encoding='utf-8') as f:
-            reader = csv.reader(f, quotechar='"')
-            for i, row in enumerate(reader):
-                # 跳過第一行文件頭
-                if i == 0:
-                    continue
-                # 遇到檔結束標記 'T' 停止
-                if row[0] == 'T':
-                    break
-                
-                if len(row) > 1 and row[1] == op: 
-                    op_rows.append(row)
-        print(f"篩選到 {len(op_rows)} 條{op}記錄")
-    except Exception as e:
-        print(f"讀取檔失敗: {e}")
-        return
-
-    if not op_rows:
-        print(f"沒有找到{op}記錄")
-        return
-
-    # 轉換為DataFrame並保存為CSV
-    df = pd.DataFrame(op_rows)
+    df = cc.pd.read_csv(raw_file_path, encoding='utf-8', skiprows=1)
 
     df.columns = [
     # 合約基本資訊 (索引0-6)
@@ -108,7 +85,7 @@ def extract_data(op, odate):
     df['put_ratio'] = round(df['put_turnover'].astype(float) / df['put_deals'].astype(float), 2)
 
     desired_order = [
-        'month_abbr', 'year',
+        'series', 'month_num', 'month_abbr', 'year',
         'call_price_change', 'call_settle_price', 'call_ratio', 'call_deals', 'call_turnover',
         'call_net_change', 'call_net', 'call_gross',
         'strike',
@@ -118,36 +95,58 @@ def extract_data(op, odate):
 
     df_op_selected = df[desired_order]
 
-    df_op_selected.to_csv(f"{IOPATH}\{op}\{op}_{odate}.csv", index=False)
+    oplist = ['HSI','MHI','HTI','HHI','MCH']
+
+    for op in oplist:
+
+        op_dir = cc.Path.cwd().parent / f"SData/HKEX/IO/{op}"
+        op_dir.mkdir(exist_ok=True)
+
+        tempdf = df_op_selected.loc[df_op_selected['series'] == op]
+        tempdf.to_csv(f"{IOPATH}\{op}\{op}_{odate}.csv", index=False)
     
 
     # 可選：清理暫存檔案
-    # os.remove(raw_file_path)
+    os.remove(raw_file_path)
     # os.rmdir(extract_dir)
+
+def ProcessDownlaod(sdate,edate):
+
+    start_date = cc.datetime.strptime(sdate, "%Y%m%d")
+    end_date = cc.datetime.strptime(edate, "%Y%m%d")
+
+    alldates = cc.pd.date_range(start_date, end_date, freq='D').strftime("%Y%m%d").tolist()
+
+    with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:      
+        list(cc.tqdm(executor.map(download_file,alldates,chunksize=1),total=len(alldates)))
+
+
+def ProcessExtract(sdate,edate):
+
+    start_date = cc.datetime.strptime(sdate, "%Y%m%d")
+    end_date = cc.datetime.strptime(edate, "%Y%m%d")
+
+    alldates = cc.pd.date_range(start_date, end_date, freq='D').strftime("%Y%m%d").tolist()
+
+    with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:      
+        list(cc.tqdm(executor.map(extract_data,alldates,chunksize=1),total=len(alldates)))
 
 
 if __name__ == "__main__":    
 
-    oplist = ['HSI','MHI','WK1','PDTB6','WK3','HHI','PDTB7']
     sdate = "20250101"
-    edate = "20251130"
+    edate = "20260311"
 
-    start_date = datetime.strptime(sdate, "%Y%m%d")
-    end_date = datetime.strptime(edate, "%Y%m%d")
+    start = cc.t.perf_counter()
 
-    current_date = start_date
+    #ProcessDownlaod(sdate, edate)
+    ProcessExtract(sdate, edate)
 
-    while current_date <= end_date:        
-        odate = current_date.strftime("%Y%m%d")    
-        success = download_file(odate)
+    finish = cc.t.perf_counter()
+    print(f'It took {round(finish-start,2)} second(s) to finish.')    
+    
 
-        if success:
-            for op in oplist:
-                extract_data(op, odate)
-        else:
-            print(f"日期 {odate} 下載失敗")
-        
-        
-        current_date += timedelta(days=1)
+    
+
 
 

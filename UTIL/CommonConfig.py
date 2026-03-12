@@ -6,6 +6,10 @@ import yfinance as yf
 import os
 import sys
 import platform
+import zipfile
+import csv
+import requests
+from pathlib import Path
 
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -23,8 +27,6 @@ from AI.SVM import *    #總交易次數: 102 平均勝率: 67.74%
 from AI.RandomForest import *   #總交易次數: 21 平均勝率: 66.36%
 from AI.LogisticRegression import * #總交易次數: 2422 平均勝率: 64.28%
 from AI.DecisionTree import *   #總交易次數: 3109 平均勝率: 57.42%
-
-import AI.ZPrediction as zp
 
 PROD = True
 

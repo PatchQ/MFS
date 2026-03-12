@@ -1,4 +1,11 @@
-import UTIL.CommonConfig as cc
+import sys
+import os
+
+# Add the project root to the Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
+import UTIL.CommonConfig as cc  
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix

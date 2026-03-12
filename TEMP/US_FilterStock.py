@@ -1,17 +1,19 @@
-from CommonConfig import ExecutorType, DEFAULT_MAX_WORKERS
-import pandas as pd
-import concurrent.futures as cf
+import datetime
+import sys
 import os
-import time as t
-from tqdm import tqdm
-from datetime import datetime, timedelta
+
+# Add the project root to the Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
+import UTIL.CommonConfig as cc  
 from collections import defaultdict
 
 
 #get stock csv file from path
 OUTPATH = "../SData/P_USData/"
 #EDATE = "2025-09-30"
-EDATE = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+EDATE = (cc.datetime.now() - cc.timedelta(days=30)).strftime("%Y-%m-%d")
 
 
 def filterStock(sno,stype,signal,days,ruleout):
@@ -19,7 +21,7 @@ def filterStock(sno,stype,signal,days,ruleout):
     tempsno = str(sno).lstrip("0")
     tempsno = tempsno.zfill(7)
 
-    df = pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv",index_col=0)
+    df = cc.pd.read_csv(OUTPATH+"/"+stype+"/"+sno+".csv",index_col=0)
 
 
     if "~" in days:    
@@ -27,7 +29,7 @@ def filterStock(sno,stype,signal,days,ruleout):
         edate = days.split('~')[1]
         df = df.loc[(df.index>=sdate) & (df.index<edate)]         
     else:
-        datadate = (datetime.now() - timedelta(days=int(days))).strftime("%Y-%m-%d")
+        datadate = (cc.datetime.now() - cc.timedelta(days=int(days))).strftime("%Y-%m-%d")
         df = df.loc[(df.index>=datadate)] 
             
     if "~" in signal:
@@ -46,7 +48,7 @@ def filterStock(sno,stype,signal,days,ruleout):
 def YFGetSLIST(stype,signal,days=0,ruleout=""):
 
     snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(OUTPATH+"/"+stype+"/")))
-    SLIST = pd.DataFrame(snolist, columns=["sno"])
+    SLIST = cc.pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST.assign(signal=signal+"")
     SLIST = SLIST.assign(ruleout=ruleout+"")
@@ -58,10 +60,10 @@ def YFGetSLIST(stype,signal,days=0,ruleout=""):
 
 def YFFilter(SLIST,signaldf):    
 
-    with ExecutorType(max_workers=DEFAULT_MAX_WORKERS) as executor:
-        for tempdf in tqdm(executor.map(filterStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["days"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
+    with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
+        for tempdf in cc.tqdm(executor.map(filterStock,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["days"],SLIST["ruleout"],chunksize=1),total=len(SLIST)):            
             tempdf = tempdf.dropna(axis=1, how="all")
-            signaldf = pd.concat([tempdf, signaldf], ignore_index=True)
+            signaldf = cc.pd.concat([tempdf, signaldf], ignore_index=True)
 
         if len(signaldf)!=0:
             signaldf["SNO"] = signaldf["sno"].str.replace(r'^0+', '', regex=True)        
@@ -143,7 +145,7 @@ def countBOSS(stype,signal,df,sdate,edate):
                 stock_counts_dict[stock]['BY1'] += 1
 
     # 将字典转换为DataFrame    
-    stock_counts_df = pd.DataFrame.from_dict(stock_counts_dict, orient='index')
+    stock_counts_df = cc.pd.DataFrame.from_dict(stock_counts_dict, orient='index')
 
     if len(stock_counts_df)>0:
         stock_counts_df = stock_counts_df.reset_index()
@@ -161,7 +163,7 @@ def countBOSS(stype,signal,df,sdate,edate):
 
 def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout=""):
     
-    signaldf = pd.DataFrame()
+    signaldf = cc.pd.DataFrame()
     
     SLIST = YFGetSLIST(stype,signal,days,ruleout)
     signaldf = YFFilter(SLIST, signaldf)
@@ -196,7 +198,7 @@ if __name__ == '__main__':
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
     DAYS = "20000"
-    start = t.perf_counter()
+    start = cc.t.perf_counter()
        
     YFSignal("XASE","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","60")
     YFSignal("XNMS","BOSS2~BOSSB~BOSSTP1~BOSSTP2~BOSSCL1~BOSSCL2","60")
@@ -218,7 +220,7 @@ if __name__ == '__main__':
 
     #YFSignal("HHLL","BOSS2",30)
     
-    finish = t.perf_counter()
+    finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
     
 

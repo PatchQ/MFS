@@ -1,4 +1,11 @@
-from UTIL.CommonConfig import *
+import sys
+import os
+
+# Add the project root to the Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
+import UTIL.CommonConfig as cc  
 
 import pandas as pd
 import numpy as np
@@ -494,7 +501,7 @@ def checkVCP(df):
 
 def ProcessVCP(stype):
 
-    snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(PATH+"/"+stype)))
+    snolist = list(map(lambda s: s.replace(".csv", ""), os.listdir(cc.PATH+"/"+stype)))
     SLIST = pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]
