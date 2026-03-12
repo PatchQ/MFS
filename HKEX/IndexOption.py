@@ -134,13 +134,16 @@ def ProcessExtract(sdate,edate):
 
 if __name__ == "__main__":    
 
+    today = cc.datetime.today().strftime("%Y%m%d")
+
     sdate = "20250101"
     edate = "20260311"
 
     start = cc.t.perf_counter()
 
-    #ProcessDownlaod(sdate, edate)
-    ProcessExtract(sdate, edate)
+
+    ProcessDownlaod(today, today)
+    ProcessExtract(today, today)
 
     finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')    
