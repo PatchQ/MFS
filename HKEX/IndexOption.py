@@ -136,14 +136,14 @@ if __name__ == "__main__":
 
     today = cc.datetime.today().strftime("%Y%m%d")
 
-    sdate = "20250101"
-    edate = "20260311"
+    sdate = "20260312"
+    edate = "20260312"
 
     start = cc.t.perf_counter()
 
 
-    ProcessDownlaod(today, today)
-    ProcessExtract(today, today)
+    ProcessDownlaod(sdate, edate)
+    ProcessExtract(sdate, edate)
 
     finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')    
