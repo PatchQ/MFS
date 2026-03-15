@@ -23,7 +23,7 @@ def ProcessAI(stype,modelfunction,tdate):
        for tempdf in cc.tqdm(executor.map(modelfunction,SLIST["sno"],SLIST["stype"],SLIST["tdate"],chunksize=1),total=len(SLIST)):           
            resultdf = cc.pd.concat([tempdf, resultdf], ignore_index=True)
 
-   #resultdf.to_csv(f"Data/{stype}_{model}.csv",index=False)    
+   #resultdf.to_csv(f"data/{stype}_{model}.csv",index=False)    
 
 
 if __name__ == '__main__':

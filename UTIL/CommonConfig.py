@@ -30,15 +30,15 @@ from AI.DecisionTree import *   #總交易次數: 3109 平均勝率: 57.42%
 
 PROD = True
 
-IOPATH = "../SData/HKEX/IO/"
-SOPATH = "../SData/HKEX/SO/"
+IOPATH = "../Sdata/HKEX/IO/"
+SOPATH = "../Sdata/HKEX/SO/"
 
 DATADATE = "2023-01-01"
-PATH = "../SData/YFData/"
-OUTPATH = "../SData/P_YFData/"
+PATH = "../Sdata/YFdata/"
+OUTPATH = "../Sdata/P_YFdata/"
 
-#PATH = "../SData/FYFData/"
-#OUTPATH = "../SData/FP_YFData/"
+#PATH = "../Sdata/FYFdata/"
+#OUTPATH = "../Sdata/FP_YFdata/"
 
 TALIST = ["BOSSB","HHHL","VCP"]
 MODELLIST = ["SVM","MLP","RF"]

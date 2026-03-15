@@ -7,7 +7,7 @@ from tqdm import tqdm
 from curl_cffi import requests
 
 
-PATH = "../SData/USData/"
+PATH = "../Sdata/USdata/"
 #SDATE = "2024-01-01"
 SDATE = "1980-01-01"
 EDATE = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -27,7 +27,7 @@ def getData(sno,stype):
 
 def YFgetAll(stype):    
 
-    STOCKLIST = pd.read_csv("Data/"+stype+".csv",dtype=str, keep_default_na=False)
+    STOCKLIST = pd.read_csv("data/"+stype+".csv",dtype=str, keep_default_na=False)
     SLIST = STOCKLIST[["SNO"]]    
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST[:]

@@ -8,7 +8,7 @@ sys.path.append(project_root)
 import UTIL.CommonConfig as cc  
 
 #get stock csv file from path
-OUTPATH = "../SData/P_USData/"
+OUTPATH = "../Sdata/P_USdata/"
 EDATE = (cc.datetime.now() - cc.timedelta(days=1)).strftime("%Y-%m-%d")
 #EDATE = "2025-09-30"
 
@@ -47,7 +47,7 @@ def YFfindSignal(stype,signal,ruleout=""):
             signaldf = cc.pd.concat([tempdf, signaldf], ignore_index=True)
             
         signaldf["sno"] = signaldf["sno"].str.replace(r'^0+', '', regex=True)
-        signaldf.to_csv("Data/"+signal+"_"+stype+"_"+cc.datetime.now().strftime("%Y%m%d")+".csv",index=False)
+        signaldf.to_csv("data/"+signal+"_"+stype+"_"+cc.datetime.now().strftime("%Y%m%d")+".csv",index=False)
         print("Finish")        
 
 

@@ -40,5 +40,5 @@ def getIndustryList():
     df1 = pd.DataFrame(indno,columns=["行業編號"])
     df = pd.DataFrame(res[1:],columns=res[0][:6])
     df.insert(0,"行業編號",df1["行業編號"])
-    df.to_csv("Data/indlist.csv",index=False,encoding="utf-8-sig")
+    df.to_csv("data/indlist.csv",index=False,encoding="utf-8-sig")
 

@@ -14,8 +14,8 @@ from YFData_Calindicator import *
 
 
 
-PATH = "../SData/YFData/"
-OUTPATH = "../SData/P_YFData/" 
+PATH = "../Sdata/YFdata/"
+OUTPATH = "../Sdata/P_YFdata/" 
 DAYS=0
 TOLERANCE=0.001
 #WINDOW=10

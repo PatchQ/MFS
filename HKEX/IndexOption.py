@@ -7,7 +7,7 @@ sys.path.append(project_root)
 
 import UTIL.CommonConfig as cc  
 
-IOPATH = "../SData/HKEX/IO/"
+IOPATH = "../Sdata/HKEX/IO/"
 
 def download_file(odate):
 
@@ -34,7 +34,7 @@ def extract_data(odate):
 
     zip_filename = f"{IOPATH}DATA/{odate}.zip"
 
-    extract_dir = cc.Path.cwd().parent / "SData/HKEX/IO/TEMP"
+    extract_dir = cc.Path.cwd().parent / "Sdata/HKEX/IO/TEMP"
     extract_dir.mkdir(exist_ok=True)
 
     try:
@@ -99,7 +99,7 @@ def extract_data(odate):
 
     for op in oplist:
 
-        op_dir = cc.Path.cwd().parent / f"SData/HKEX/IO/{op}"
+        op_dir = cc.Path.cwd().parent / f"Sdata/HKEX/IO/{op}"
         op_dir.mkdir(exist_ok=True)
 
         tempdf = df_op_selected.loc[df_op_selected['series'] == op]
@@ -136,8 +136,8 @@ if __name__ == "__main__":
 
     today = cc.datetime.today().strftime("%Y%m%d")
 
-    sdate = "20260312"
-    edate = "20260312"
+    sdate = today #"20260312"
+    edate = today #"20260312"
 
     start = cc.t.perf_counter()
 

@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 import mplfinance as mpf
 
 
-PATH = "../SData/YFData/"
-OUTPATH = "../SData/P_YFData/" 
+PATH = "../Sdata/YFdata/"
+OUTPATH = "../Sdata/P_YFdata/" 
 
 """
 參數:
@@ -547,7 +547,7 @@ if __name__ == "__main__":
 
         swing_points["BOSS"] = (swing_points['PATTERN']=="LHLLHH")
 
-        swing_points.to_csv("Data/0011_HHLL.csv", index=False)
+        swing_points.to_csv("data/0011_HHLL.csv", index=False)
 
         
         # 检查是否有未分类的点

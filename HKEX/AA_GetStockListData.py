@@ -91,7 +91,7 @@ def changeAmount(val):
 
 def getStockListData():
 
-    indlist = pd.read_csv("Data/indlist.csv",dtype=str)
+    indlist = pd.read_csv("data/indlist.csv",dtype=str)
     indnolist = indlist["行業編號"][:]
 
     stocklist = pd.DataFrame()
@@ -125,10 +125,10 @@ def getStockListData():
     stocklistS = stocklistS.sort_values(by="股票編號")
 
 
-    stocklist.to_csv("Data/stocklist.csv",index=False,encoding="utf-8-sig")
-    stocklistL.to_csv("Data/stocklist_L.csv",index=False,encoding="utf-8-sig")
-    stocklistM.to_csv("Data/stocklist_M.csv",index=False,encoding="utf-8-sig")
-    stocklistS.to_csv("Data/stocklist_S.csv",index=False,encoding="utf-8-sig")
+    stocklist.to_csv("data/stocklist.csv",index=False,encoding="utf-8-sig")
+    stocklistL.to_csv("data/stocklist_L.csv",index=False,encoding="utf-8-sig")
+    stocklistM.to_csv("data/stocklist_M.csv",index=False,encoding="utf-8-sig")
+    stocklistS.to_csv("data/stocklist_S.csv",index=False,encoding="utf-8-sig")
 
 
    

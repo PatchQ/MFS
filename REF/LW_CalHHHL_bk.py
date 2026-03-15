@@ -13,8 +13,8 @@ from sklearn.cluster import DBSCAN
 
 from ..Util.LW_Calindicator import *
 
-PATH = "../SData/YFData/"
-OUTPATH = "../SData/P_YFData/" 
+PATH = "../Sdata/YFdata/"
+OUTPATH = "../Sdata/P_YFdata/" 
 
 import yfinance as yf
 import pandas as pd

@@ -11,8 +11,8 @@ import mplfinance as mpf
 
 
 
-PATH = "../SData/YFData/"
-OUTPATH = "../SData/P_YFData/" 
+PATH = "../Sdata/YFdata/"
+OUTPATH = "../Sdata/P_YFdata/" 
 
 """
 參數:

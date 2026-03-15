@@ -49,7 +49,7 @@ def getBData(sno):
     return df_td
 
 
-stocklist = pd.read_excel("Data/outputlist.xlsx")
+stocklist = pd.read_excel("data/outputlist.xlsx")
 snolist = stocklist["股票編號"]
 
 resultlist = pd.DataFrame()
@@ -59,10 +59,10 @@ for sno in snolist:
     tempdf = getBData(sno.replace(".HK",""))
     resultlist = pd.concat([resultlist, tempdf], ignore_index=True)
 
-resultlist.to_excel("Data/BDlist.xlsx", index=False)
+resultlist.to_excel("data/BDlist.xlsx", index=False)
 
 
-bdlist = pd.read_excel("Data/BDlist.xlsx",dtype=str)
+bdlist = pd.read_excel("data/BDlist.xlsx",dtype=str)
 resultlist = []
 
 
@@ -82,6 +82,6 @@ for sno in snolist:
 
 eBDlist = pd.DataFrame(resultlist,columns=["sno","Y1","Y2","Y3"])
 
-eBDlist.to_excel("Data/eBDlist.xlsx", index=False)
+eBDlist.to_excel("data/eBDlist.xlsx", index=False)
 
 

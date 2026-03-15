@@ -3,8 +3,8 @@ import YFData_Process_sk
 from YFData_Process_sk import YFprocessData
 from YFData_FilterStock import YFSignal
 
-YFData_Process_sk.PATH = "../SData/USData/"
-YFData_Process_sk.OUTPATH = "../SData/P_USData/" 
+YFData_Process_sk.PATH = "../Sdata/USdata/"
+YFData_Process_sk.OUTPATH = "../Sdata/P_USdata/" 
 
 if __name__ == '__main__':
 

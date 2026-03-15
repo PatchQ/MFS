@@ -48,11 +48,11 @@ def getStockList():
         XNCM = XNCM.sort_values(by="SNO")
 
 
-        XNYS.to_csv("Data/XNYS.csv", index=False)
-        XASE.to_csv("Data/XASE.csv", index=False)
-        XNGS.to_csv("Data/XNGS.csv", index=False)
-        XNMS.to_csv("Data/XNMS.csv", index=False)
-        XNCM.to_csv("Data/XNCM.csv", index=False)
+        XNYS.to_csv("data/XNYS.csv", index=False)
+        XASE.to_csv("data/XASE.csv", index=False)
+        XNGS.to_csv("data/XNGS.csv", index=False)
+        XNMS.to_csv("data/XNMS.csv", index=False)
+        XNCM.to_csv("data/XNCM.csv", index=False)
         
     except Exception as e:
         print(f"get NYSE List Fail: {e}")        

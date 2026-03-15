@@ -64,14 +64,14 @@ end_date = today
 start_date = date.today() - timedelta(days=365)
 daterange = pd.date_range(start_date, end_date)
 
-bigbrokerlist = pd.read_excel("Data/bigbrokerlist.xlsx",dtype=str)
+bigbrokerlist = pd.read_excel("data/bigbrokerlist.xlsx",dtype=str)
 bblist = bigbrokerlist["No"]
 
-stocklist = pd.read_excel("Data/outputlist.xlsx")
+stocklist = pd.read_excel("data/outputlist.xlsx")
 snolist = stocklist["股票編號"]
 
 #get stock excel file from path
-dir_path = "../SData/CCASS/"
+dir_path = "../Sdata/CCASS/"
 slist = list(map(lambda s: s.replace(".xlsx", ""), os.listdir(dir_path)))
 #diff two list by set 
 difflist = list(set(snolist) - set(slist))

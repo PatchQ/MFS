@@ -84,7 +84,7 @@ def get_nyse_tickers():
 
         df = pd.DataFrame(data)        
 
-        df.to_csv("Data/nyse_stock_list.csv", index=False)
+        df.to_csv("data/nyse_stock_list.csv", index=False)
         
         mask = df['instrumentName'].str.contains('FUND', case=False, na=False)
         #tickers = [item['normalizedTicker'] for item in data if 'normalizedTicker' in item]
@@ -199,7 +199,7 @@ def get_from_other_sources():
 class USStockListFetcher:
     def __init__(self, cache_days=1):
         self.cache_days = cache_days
-        self.cache_file = "Data/us_stock_list_cache.csv"
+        self.cache_file = "data/us_stock_list_cache.csv"
     
     def get_complete_stock_list(self, use_cache=True):
 
@@ -317,7 +317,7 @@ class USStockListFetcher:
     def export_stock_list(self, filename=None):
         
         if filename is None:            
-            filename = "Data/us_stock_list.csv"
+            filename = "data/us_stock_list.csv"
 
         tickers = self.get_complete_stock_list()
         

@@ -11,7 +11,7 @@ from typing import List
 from curl_cffi import requests
 
 
-PATH = "../SData/USData/"
+PATH = "../Sdata/USdata/"
 #SDATE = "2024-01-01"
 SDATE = "1980-01-01"
 EDATE = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -38,7 +38,7 @@ def safe_getData(ticker):
     
 
 def USgetAll():
-    STOCKLIST = pd.read_csv("Data/us_stock_list.csv",dtype=str)
+    STOCKLIST = pd.read_csv("data/us_stock_list.csv",dtype=str)
     #INDEXLIST = pd.Series(["^HSI","^DJI","^IXIC","^GSPC","^N225","^FTSE","^GDAXI","^FCHI","000001.SS","399001.SZ"])
     SLIST = STOCKLIST[["Ticker"]]    
     SLIST = SLIST[:]
@@ -127,7 +127,7 @@ def process_batch(tickers_batch, batch_num, total_batches, batch_delay=5, reques
     logger.info(f"批次 {batch_num} 完成, 成功获取 {len(batch_results)}/{len(tickers_batch)} 个ticker数据")
     return batch_results
 
-def USgetAll_optimized(csv_path="Data/us_stock_list.csv", 
+def USgetAll_optimized(csv_path="data/us_stock_list.csv", 
                          batch_size=30, 
                          max_workers=5, 
                          batch_delay=10,
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     start = t.perf_counter()
     # 调用优化后的函数
     result = USgetAll_optimized(
-        csv_path="Data/us_stock_list.csv",
+        csv_path="data/us_stock_list.csv",
         batch_size=50,      # 较小的批次大小有助于避免限制:cite[1]
         max_workers=5,      # 保守的并发数
         batch_delay=5,     # 批次间延迟10秒

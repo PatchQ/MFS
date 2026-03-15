@@ -6,8 +6,8 @@ from tqdm import tqdm
 from scipy.stats import linregress
 import time as t
 
-PATH = "../SData/YFData/"
-OUTPATH = "../SData/YFData_P/" 
+PATH = "../Sdata/YFdata/"
+OUTPATH = "../Sdata/YFData_P/" 
 
 def cal_slope(arr):
     y = np.array(arr)

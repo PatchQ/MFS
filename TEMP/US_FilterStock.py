@@ -11,7 +11,7 @@ from collections import defaultdict
 
 
 #get stock csv file from path
-OUTPATH = "../SData/P_USData/"
+OUTPATH = "../Sdata/P_USdata/"
 #EDATE = "2025-09-30"
 EDATE = (cc.datetime.now() - cc.timedelta(days=30)).strftime("%Y-%m-%d")
 
@@ -158,7 +158,7 @@ def countBOSS(stype,signal,df,sdate,edate):
 
         print(stock_counts_df.iloc[:,-1].tail(1))
 
-        stock_counts_df.to_csv("Data/"+stype+"_"+signal+"_Stat_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
+        stock_counts_df.to_csv("data/"+stype+"_"+signal+"_Stat_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
 
 
 def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout=""):
@@ -175,7 +175,7 @@ def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout="")
 
         signaldf = signaldf.sort_values(by=['SNO','Date'],ascending=[True, True])
         
-        signaldf.to_csv("Data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
+        signaldf.to_csv("data/"+stype+"_"+signal+"_"+datetime.now().strftime("%Y%m%d")+".csv",index=False)
 
     print(f"{signal} - {stype} : {len(signaldf)}")
     print("Finish")
