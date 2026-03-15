@@ -136,8 +136,8 @@ if __name__ == "__main__":
 
     today = cc.datetime.today().strftime("%Y%m%d")
 
-    sdate = today #"20260312"
-    edate = today #"20260312"
+    sdate = "20260313"
+    edate = "20260313"
 
     start = cc.t.perf_counter()
 
