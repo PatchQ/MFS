@@ -139,12 +139,13 @@ def ProcessExtract(sdate,edate):
 
 if __name__ == "__main__":    
 
-    today = cc.datetime.today().strftime("%Y%m%d")
-
-    sdate = "20260313"
-    edate = "20260313"
-
     start = cc.t.perf_counter()
+
+    sdate = cc.previous_workday()
+    edate = cc.previous_workday()
+
+    #sdate = "20260316"
+    #edate = "20260316"
 
     ProcessDownlaod(sdate, edate)
     ProcessExtract(sdate, edate)
