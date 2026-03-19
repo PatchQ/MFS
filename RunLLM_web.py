@@ -3,10 +3,7 @@ from flask import Flask, request, jsonify
 import os
 import subprocess
 
-#OPENROUTER_API_KEY="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"
-#OPENROUTER_API_KEY="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"
-OPENROUTER_API_KEY = "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"
-
+OPENROUTER_API_KEY="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"
 
 app = Flask(__name__)
 client = OpenRouter(api_key=OPENROUTER_API_KEY)

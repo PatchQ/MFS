@@ -1,10 +1,10 @@
-from openrouter import OpenRouter
+from openai import OpenAI
 import os
 import subprocess
 
 OPENROUTER_API_KEY="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"
 
-with OpenRouter(api_key=OPENROUTER_API_KEY) as client:
+with OpenAI(api_key=OPENROUTER_API_KEY,base_url="https://openrouter.ai/api/v1") as client:
 
     agentmd = open("Agend.md","r",encoding="utf-8").read()
     skillmd = open("Skill.md","r",encoding="utf-8").read()
@@ -17,14 +17,18 @@ with OpenRouter(api_key=OPENROUTER_API_KEY) as client:
         print("\n-----------------Agent Start--------------")
 
         while True:
-            respose = client.chat.send(                
-                model="minimax/minimax-m2.5",                
-                messages=messages
-            )
+            response = client.chat.completions.create(                
+                    model="minimax/minimax-m2.5",
+                    #model="openrouter/free",       
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=300
+                )
   
-            reply  = respose.choices[0].message.content
+            reply  = response.choices[0].message.content
             messages.append({"role":"assistant", "content":reply})
     
+            print("本次 token 用量：", response.usage)
             print(f" [AI] {reply}")
 
             if reply.strip().startswith('###完成###:'):
