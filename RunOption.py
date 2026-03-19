@@ -1,3 +1,4 @@
+from fileinput import filename
 import sys
 import os
 
@@ -14,56 +15,69 @@ EDATE = (cc.datetime.now() - cc.timedelta(days=30)).strftime("%Y-%m-%d")
 FILESTAMP = "_"+cc.datetime.now().strftime("%Y%m%d")
 FILESTAMP = ""
 
-def getStrike(op, oyear, omonth, sdate, edate):    
-   
-   op="HSI"
-   oyear="26"
-   omonth="MAR"
+def filterOption(filename, oyear, omonth, oday, strike):
 
-   sdate="20260201"
-   edate="20260316"
-   
-   
-   SLIST = SLIST[:]
+    op = filename.split("_")[0]
+    filedate = filename.split("_")[1].replace(".csv", "")
+    df = cc.pd.read_csv(cc.IOPATH+"/"+op+"/"+filename,index_col=0)    
+    df = df.loc[(df['year'] == oyear) & (df['month_abbr'] == omonth) & (df['month_num'] == oday) & (df['strike'] == strike)]
+    df.drop(columns=['month_num', 'month_abbr', 'year'], inplace=True)    
+    df.insert(0, "filedate", filedate)
+    df["lotgross"] = (df["call_gross"]>=1000) | (df["put_gross"]>=1000)
+    df["lotnet"] = (df["call_net_change"]>=1000) | (df["put_net_change"]>=1000)
+    return df
 
+
+def getStrike(op, oyear, omonth, oday, strike, sdate, edate):   
+
+   resultdf = cc.pd.DataFrame()
+   filenamelist = []   
+   templist = list(map(lambda s: s.replace(".csv", ""), cc.os.listdir(cc.IOPATH+"/"+op)))
+   
+   for tp in templist:
+       filedate = tp.split("_")[1]       
+       if filedate>=sdate and filedate<=edate:
+           filename = op+"_"+filedate+".csv"
+           filenamelist.append(filename)
+
+   FLIST = cc.pd.DataFrame(filenamelist, columns=["filename"])
+   FLIST = FLIST.assign(oyear=oyear)
+   FLIST = FLIST.assign(omonth=omonth+"")  
+   FLIST = FLIST.assign(oday=oday)
+   FLIST = FLIST.assign(strike=strike)
+   FLIST = FLIST[:]
 
    with cc.ExecutorType(max_workers=10) as executor:
-        for tempdf in cc.tqdm(executor.map(filterOption,SLIST["oyear"],SLIST["omonth"],SLIST["oday"],chunksize=1),total=len(SLIST)):                        
-            signaldf = cc.pd.concat([tempdf, signaldf], ignore_index=True)
+        for tempdf in cc.tqdm(executor.map(filterOption,FLIST["filename"],FLIST["oyear"],FLIST["omonth"],FLIST["oday"],FLIST["strike"],chunksize=1),total=len(FLIST)):
+            resultdf = cc.pd.concat([tempdf, resultdf], ignore_index=True)
 
-        if len(signaldf)!=0:
-            signaldf["SNO"] = signaldf["sno"].str.replace(r'^0+', '', regex=True)        
-
-        return signaldf
-    
-    
-    
+   if resultdf["lotgross"].any() or resultdf["lotnet"].any():
+        if resultdf["lotnet"].any():
+            resultdf.to_csv(f"{cc.IOPATH}/P_{op}/C_{op}{oyear}{omonth}{strike}.csv",index=False)
+        else:
+            resultdf.to_csv(f"{cc.IOPATH}/P_{op}/{op}{oyear}{omonth}{strike}.csv",index=False)
 
 if __name__ == '__main__':
-
-    SDATE, EDATE = "1999/01/01", "2026/12/31"  
        
-    DAYS = "20000"        
+    op="HSI"
+
+    oyear=26
+    omonth="FEB"
+    oday=26
+
+    #omonth="APR"
+    #oday=29
+    
+    start_strike=23600
+    stop_strike=28000
+
+    sdate="20260101"
+    edate="20260130"
 
     start = cc.t.perf_counter()
 
-    getStrike("L","BOSS2~BOSSB~BOSSCL1","60")
-    
-    # for taname in cc.TALIST:
-    #     YFSignal("L",taname,"1")
-
-    # for modelname in cc.MODELLIST:
-    #     YFSignal("L",modelname,"1")
-
-
-    # YFSignal("L","EMA2","1")
-    # YFSignal("M","EMA2","1")
-
-    # YFSignal("L","T1_50&EMA2",DAYS)
-    # YFSignal("M","T1_50&EMA2",DAYS)    
-
-    #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
-    #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
+    for strike in range(start_strike, stop_strike+1, 200):    
+        getStrike(op, oyear, omonth, oday, strike, sdate, edate)
 
     finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')    
