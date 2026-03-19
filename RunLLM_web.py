@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify
 import os
 import subprocess
 
-OPENROUTER_API_KEY="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"
+OPENROUTER_API_KEY="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"
 
 app = Flask(__name__)
 client = OpenRouter(api_key=OPENROUTER_API_KEY)
@@ -52,7 +52,7 @@ def chat():
     return jsonify(steps=steps)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True, port=5000)
+    app.run(host="0.0.0.0", debug=True, port=8080)
 
 
   

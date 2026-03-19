@@ -2,7 +2,7 @@ from openrouter import OpenRouter
 import os
 import subprocess
 
-OPENROUTER_API_KEY="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"
+OPENROUTER_API_KEY="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"
 
 with OpenRouter(api_key=OPENROUTER_API_KEY) as client:
 
@@ -27,30 +27,23 @@ with OpenRouter(api_key=OPENROUTER_API_KEY) as client:
     
             print(f" [AI] {reply}")
 
-            if reply.strip().startswith('###完成###:'):
+            if reply.strip().startswith("完成:"):
                 print("\n-----------------Agent End--------------")
-                try:
-                    print(f" [AI] {reply.strip().split('###完成###:')[1].strip()}")
-                    break
-                except IndexError:
-                    print(f" [AI] {reply.strip()}")
-                    break
-            try:
-                command = reply.strip().split('###命令###:')[1].strip()
-                command_result = subprocess.run(
+                print(f" [AI] {reply.strip().split('完成:')[1].strip()}")
+                break
+
+            command = reply.strip().split("命令:")[1].strip()
+
+            command_result = subprocess.run(
                 command,
                 shell=True,
                 capture_output=True,
                 text=True,                # ← 等同 universal_newlines=True
                 encoding="utf-8",
                 errors="replace"
-            ).stdout     
-            except IndexError:
-                command_result = ""
-                break
+            ).stdout
 
-
-            content = f"###執行完畢### {command_result}"
+            content = f"執行完畢 {command_result}"
             print(f" [Agent] {content}")
             messages.append({"role":"user", "content":content})
 
