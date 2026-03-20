@@ -136,8 +136,8 @@ if __name__ == "__main__":
 
     start = cc.t.perf_counter()
 
-    sdate = cc.previous_workday()
-    edate = cc.previous_workday()
+    sdate = cc.getLastWorkday(cc.date.today()).strftime("%Y%m%d")
+    edate = cc.getLastWorkday(cc.date.today()).strftime("%Y%m%d")
 
     #sdate = "20260316"
     #edate = "20260316"

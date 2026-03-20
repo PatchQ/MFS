@@ -9,7 +9,8 @@ import platform
 import zipfile
 import csv
 import requests
-import workdays
+import holidays
+import calendar
 from pathlib import Path
 
 from collections import defaultdict
@@ -52,78 +53,33 @@ DEFAULT_MAX_WORKERS = 5 if IS_WINDOWS else 1
 
 ExecutorType = cf.ProcessPoolExecutor if IS_WINDOWS else cf.ThreadPoolExecutor
 
+def getLastTradeDay(oyear, omonth):
+    
+    # 計算每月最後一日的前一個工作日（不包括香港公眾假期）
+    year = 2000 + oyear
+    month = list(calendar.month_abbr).index(omonth.capitalize())
 
-# ---------- 1. 定義2026年澳門公眾假期及補假日 ----------
-# 資料來源：澳門特別行政區政府入口網站 [citation:1][citation:2][citation:3]
-# 公眾假期（含補假）列表，格式為 (月, 日)
-public_holidays_2026 = [
-    (1, 1),   # 元旦
-    (2, 17),  # 農曆正月初一
-    (2, 18),  # 農曆正月初二
-    (2, 19),  # 農曆正月初三
-    (4, 3),   # 耶穌受難日
-    (4, 4),   # 復活節前日
-    (4, 5),   # 清明節
-    (4, 6),   # 復活節前日補假 [citation:6]
-    (4, 7),   # 清明節補假 [citation:6]
-    (5, 1),   # 勞動節
-    (5, 24),  # 佛誕節
-    (5, 25),  # 佛誕節補假 [citation:6]
-    (6, 19),  # 端午節
-    (9, 26),  # 中秋節翌日
-    (9, 28),  # 中秋節翌日補假 [citation:6]
-    (10, 1),  # 中華人民共和國國慶日
-    (10, 2),  # 中華人民共和國國慶日翌日
-    (10, 18), # 重陽節
-    (10, 19), # 重陽節補假 [citation:6]
-    (11, 2),  # 追思節
-    (12, 8),  # 聖母無原罪瞻禮
-    (12, 20), # 澳門特別行政區成立紀念日
-    (12, 21), # 澳門特別行政區成立紀念日補假 [citation:6]
-    (12, 22), # 冬至
-    (12, 24), # 聖誕節前日
-    (12, 25), # 聖誕節
-    # 除夕下午豁免上班不計入全天假期，故不列入
-]
+    last_day_num = calendar.monthrange(year, month)[1]
+    last_day = date(year, month, last_day_num)
 
-# 轉換為 date 物件集合
-holiday_dates = {date(2026, m, d) for m, d in public_holidays_2026}
+    hk_holidays = holidays.HK(years=2000+oyear)
+    prev_workday = last_day
 
+    while prev_workday.weekday() >= 5 or prev_workday in hk_holidays:
+        prev_workday -= timedelta(days=1)
+    
+    return getLastWorkday(prev_workday)
 
-def is_workday(check_date: date) -> bool:
+def getLastWorkday(sdate):
     """
-    判斷某一天在澳門是否為工作日
-    :param check_date: 需要判斷的日期
-    :return: True = 工作日, False = 非工作日（週末或公眾假期）
+    計算今日的上一個工作日（不包括香港公眾假期）
+    :return: 上一個工作日的日期字串，格式 yyyymmdd
     """
-    # 星期六或星期日 -> 非工作日
-    if check_date.weekday() >= 5:  # 5=星期六, 6=星期日
-        return False
-    # 公眾假期 -> 非工作日
-    if check_date in holiday_dates:
-        return False
-    # 其餘為工作日
-    return True
+    hk_holidays = holidays.HK(years=date.today().year)
+    prev_workday = sdate - timedelta(days=1)
+    while prev_workday.weekday() >= 5 or prev_workday in hk_holidays:
+        prev_workday -= timedelta(days=1)
+    return prev_workday
 
-def is_yesterday_workday() -> bool:
-    """
-    判斷昨天是否為澳門的工作日
-    :return: True = 昨天是工作日, False = 昨天不是工作日
-    """
-    yesterday = date.today() - timedelta(days=1)
-    return is_workday(yesterday)
 
-def previous_workday(from_date: date = None) -> str:
-    """
-    找出 from_date 的前一個工作日
-    :param from_date: 基準日期，預設為今天
-    :return: 前一個工作日的日期字串，格式 yyyymmdd
-    """
-    if from_date is None:
-        from_date = date.today()
-
-    check_date = from_date - timedelta(days=1)
-    while not is_workday(check_date):
-        check_date -= timedelta(days=1)
-    return check_date.strftime("%Y%m%d")    
    

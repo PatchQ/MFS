@@ -3,14 +3,14 @@ from flask import Flask, request, jsonify
 import os
 import subprocess
 
-OPENROUTER_API_KEY="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"
+OPENROUTER_API_KEY = open("LLM\ApiKey.md","r").read()
 
 app = Flask(__name__)
 client = OpenRouter(api_key=OPENROUTER_API_KEY)
-agentmd = open("Agend.md","r",encoding="utf-8").read()
-skillmd = open("Skill.md","r",encoding="utf-8").read()
+agentmd = open("LLM\Agend.md","r",encoding="utf-8").read()
+skillmd = open("LLM\Skill.md","r",encoding="utf-8").read()
 messages = [{"role":"system","content":agentmd + skillmd}]    
-HTML = open("index.html","r",encoding="utf-8").read()
+HTML = open("LLM\index.html","r",encoding="utf-8").read()
 
 @app.get("/")
 def index():

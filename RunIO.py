@@ -1,6 +1,9 @@
 from fileinput import filename
 import sys
 import os
+import holidays
+import calendar
+from datetime import datetime, timedelta
 
 # Add the project root to the Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -62,22 +65,20 @@ if __name__ == '__main__':
     op="HSI"
 
     oyear=26
-    omonth="FEB"
-    oday=26
-
-    #omonth="APR"
-    #oday=29
+    omonth="MAR"
     
+    oday=cc.getLastTradeDay(oyear, omonth).day
+
     start_strike=23600
     stop_strike=28000
 
-    sdate="20260101"
-    edate="20260130"
+    sdate="20260201"
+    edate="20260319"
 
     start = cc.t.perf_counter()
 
     for strike in range(start_strike, stop_strike+1, 200):    
-        getStrike(op, oyear, omonth, oday, strike, sdate, edate)
+        getStrike(op, oyear, omonth, oday, strike, sdate, edate)        
 
     finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')    

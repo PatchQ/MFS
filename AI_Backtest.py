@@ -67,7 +67,7 @@ class VCPBacktest:
             return False
 
         # 檢查當前波動是否收縮
-        if pd.isna(df.loc[i, 'Contraction']):
+        if pd.isna(df.loc[i, 'Contraction']).any():
             return False
 
         # 波動收縮條件
