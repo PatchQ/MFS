@@ -65,15 +65,15 @@ if __name__ == '__main__':
     op="HSI"
 
     oyear=26
-    omonth="MAR"
+    omonth="APR"
     
     oday=cc.getLastTradeDay(oyear, omonth).day
 
-    start_strike=23600
-    stop_strike=28000
+    start_strike=18800
+    stop_strike=18800
 
-    sdate="20260201"
-    edate="20260319"
+    sdate="20260101"
+    edate="20260320"
 
     start = cc.t.perf_counter()
 
