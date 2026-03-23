@@ -64,21 +64,21 @@ if __name__ == '__main__':
 
     start = cc.t.perf_counter()
        
-    op="0992_LEN"
+    op="9988_ALB"
 
     oyear=26
     omonth="MAR"    
     oday=cc.getLastTradeDay(oyear, omonth).day
 
-    sdate="20260202"
-    edate="20260319"
+    sdate="20260302"
+    edate="20260320"
 
     df = cc.pd.read_csv(f"{cc.SOPATH}{op}/{op}_{sdate}.csv", index_col=0)
 
     diff = df["strike"].iloc[1] - df["strike"].iloc[0]
 
-    start_strike=7
-    stop_strike=13
+    start_strike=100
+    stop_strike=125
 
     strikes = cc.np.arange(start_strike, stop_strike+diff, diff)
 

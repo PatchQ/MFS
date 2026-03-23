@@ -139,8 +139,8 @@ if __name__ == "__main__":
     sdate = cc.getLastWorkday(cc.date.today()).strftime("%Y%m%d")
     edate = cc.getLastWorkday(cc.date.today()).strftime("%Y%m%d")
 
-    sdate = "20260316"
-    edate = "20260320"
+    #date = "20260316"
+    #edate = "20260320"
 
     ProcessDownlaod(sdate, edate)
     ProcessExtract(sdate, edate)
