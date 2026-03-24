@@ -52,13 +52,13 @@ def getFData(op, oyear, omonth, sdate, edate):
 
 if __name__ == '__main__':
        
-    op="HTI"
+    op="HSI"
 
     oyear=26
-    omonth="MAR"
+    omonth="APR"
     
     sdate="20260101"
-    edate="20260323"
+    edate="20260324"
 
     start = cc.t.perf_counter()
 

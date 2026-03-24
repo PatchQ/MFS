@@ -141,8 +141,13 @@ if __name__ == "__main__":
 
     start = cc.t.perf_counter()
 
-    sdate = cc.getLastWorkday(cc.date.today()).strftime("%Y%m%d")
-    edate = cc.getLastWorkday(cc.date.today()).strftime("%Y%m%d")
+    now = cc.datetime.now()
+    if now.hour < 20:
+        sdate = cc.getLastWorkday(cc.date.today()).strftime("%Y%m%d")
+        edate = cc.getLastWorkday(cc.date.today()).strftime("%Y%m%d")
+    else:
+        sdate = cc.date.today().strftime("%Y%m%d")
+        edate = cc.date.today().strftime("%Y%m%d")
 
     #sdate = "20260316"
     #edate = "20260320"
