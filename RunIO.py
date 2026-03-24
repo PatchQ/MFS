@@ -11,8 +11,6 @@ sys.path.append(project_root)
 
 import UTIL.CommonConfig as cc  
 
-IOPATH = "../Sdata/HKEX/IO/"
-
 #EDATE = "2025-09-30"
 EDATE = (cc.datetime.now() - cc.timedelta(days=30)).strftime("%Y-%m-%d")
 FILESTAMP = "_"+cc.datetime.now().strftime("%Y%m%d")

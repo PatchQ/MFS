@@ -32,6 +32,7 @@ from AI.DecisionTree import *   #總交易次數: 3109 平均勝率: 57.42%
 
 PROD = True
 
+IFPATH = "../Sdata/HKEX/IF/"
 IOPATH = "../Sdata/HKEX/IO/"
 SOPATH = "../Sdata/HKEX/SO/"
 
