@@ -63,7 +63,7 @@ def LGBM(sno, stype, tdate):
         if cc.PROD:
             joblib.dump(model, f"{cc.OUTPATH}/MODEL/{thismodel}/{sno}.pkl")
         
-        tempdf = cc.zp.Prediction(thismodel, model, df, sno, stype, tdate, fulldata=True)
+        tempdf = cc.Prediction(thismodel, model, df, sno, stype, tdate, fulldata=True)
         if len(tempdf) > 0:
             tempdf = tempdf.loc[tempdf[thismodel]]
             tempdf.insert(0, 'Date', cc.pd.to_datetime(tempdf.index))

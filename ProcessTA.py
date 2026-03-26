@@ -6,7 +6,6 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
 import UTIL.CommonConfig as cc  
-from AI.ZPrediction import *
 
 def AnalyzeStock(sno,stype,ai):
 
@@ -39,7 +38,7 @@ def AnalyzeStock(sno,stype,ai):
     if ai=="True":
         signals = {}
         for modelname in cc.MODELLIST:
-            signals[modelname] = loadModel(modelname, sno, df)
+            signals[modelname] = cc.loadModel(modelname, sno, df)
 
         for modelname, sig in signals.items():
             df[modelname] = sig if len(sig) > 0 else False                        
