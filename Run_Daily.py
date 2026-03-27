@@ -1,10 +1,17 @@
-import UTIL.CommonConfig as cc
+import sys
+import os
 
-from HKEX.AA_GetIndustryList import getIndustryList
-from HKEX.AA_GetStockListData import getStockListData
+# Add the project root to the Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
+import UTIL.CommonConfig as cc  
+from HEX.AA_GetIndustryList import getIndustryList
+from HEX.AA_GetStockListData import getStockListData
 from UTIL.LW_Collect import YFgetAll
 from UTIL.LW_FilterStock import YFSignal
 from ProcessTA import ProcessTA
+from ProcessAI import CalAI
 
 if __name__ == '__main__':
 
@@ -16,14 +23,16 @@ if __name__ == '__main__':
     #get All number from AA
     #getStockListData()
 
-    # #get All History Data from YF
-    #YFgetAll("L")
+    #get All History Data from YF
+    # YFgetAll("L")    
+    # ProcessTA("L",ai="False")
+    # CalAI()
     #YFgetDaily("L")
 
+    #get History Data from YF   
     #YFgetAll("L",cc.DATADATE)
 
-    # #process All Data
-    #ProcessTA("L",ai="False")
+    #process Data
     #ProcessTA("L",ai="True")
  
     YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")

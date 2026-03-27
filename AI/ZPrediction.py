@@ -18,7 +18,7 @@ def Prediction(modelname,model,df,sno,stype,tdate,fulldata):
 
         pp.drop(columns=["sno","F10D","F20D","F30D"], inplace=True)
         pp.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
-        pp.drop(columns=["LLDate","HHDate","WLDate","WHDate","Volatility_Decrease"], inplace=True)
+        pp.drop(columns=["LLDate","HHDate","WLDate","WHDate"], inplace=True)
         #pp = pp.apply(pd.to_numeric, errors='coerce')
         pp = pp.replace([cc.np.inf, -cc.np.inf], cc.np.nan)
         
