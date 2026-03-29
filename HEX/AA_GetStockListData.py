@@ -38,10 +38,31 @@ def getStockNo(tab,indno):
         if row_td:
             res_td.append(row_td)
 
-    df_td = pd.DataFrame(res_td, columns=headerlist)
+    #df_td = pd.DataFrame(res_td, columns=headerlist)
+    # 確保 res_td 裡面有資料
+    if res_td:
+        # 取得實際抓取到的資料欄位數
+        data_col_count = len(res_td[0])
+    
+        # 如果抓到的資料欄位數量與 headerlist 不同，自動調整標題長度以符合資料
+        if data_col_count != len(headerlist):
+            print(f" [提示] 資料欄位數 ({data_col_count}) 與標題數 ({len(headerlist)}) 不符，已自動調整。")
+            current_headers = headerlist[:data_col_count] # 截取符合長度的標題
+        else:
+            current_headers = headerlist
+            
+        try:
+            # 使用動態調整後的標題建立 DataFrame
+            df_td = pd.DataFrame(res_td, columns=current_headers)
+        except Exception as e:
+            print(f" [錯誤] 無法轉換為 DataFrame，略過此筆。錯誤訊息：{e}")
+            df_td = pd.DataFrame() # 發生意外錯誤時，回傳空表以防程式崩潰
+    else:
+        # 如果根本沒有抓到資料，回傳空表
+        df_td = pd.DataFrame(columns=headerlist)
 
 
-
+    print(df_td)
    
     nolist = []
     for val in df_td["名稱/  \r代號"]:

@@ -220,11 +220,11 @@ if __name__ == '__main__':
        
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
-    DAYS = "20000"        
+    DAYS = "30001"        
 
     start = cc.t.perf_counter()
 
-    YFSignal("L","BOSS2~BOSSB~BOSSCL1","60")
+    #YFSignal("L","BOSS2~BOSSB~BOSSCL1","60")
     
     # for taname in cc.TALIST:
     #     YFSignal("L",taname,"1")

@@ -215,11 +215,11 @@ if __name__ == '__main__':
 
     start = cc.t.perf_counter()
 
-    for modelname in cc.MODELLIST:
-        processBT("L", modelname, max_holdbars, sl, tp, dd)
+    # for modelname in cc.MODELLIST:
+    #     processBT("L", modelname, max_holdbars, sl, tp, dd)
 
     for taname in cc.TALIST:
-        processBT("L", taname, max_holdbars, sl, tp, dd)
+        processBT("M", taname, max_holdbars, sl, tp, dd)
 
     
     finish = cc.t.perf_counter()
