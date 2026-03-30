@@ -40,29 +40,34 @@ def getStockNo(tab,indno):
 
     #df_td = pd.DataFrame(res_td, columns=headerlist)
     # 確保 res_td 裡面有資料
-    if res_td:
-        # 取得實際抓取到的資料欄位數
-        data_col_count = len(res_td[0])
-    
-        # 如果抓到的資料欄位數量與 headerlist 不同，自動調整標題長度以符合資料
-        if data_col_count != len(headerlist):
-            print(f" [提示] 資料欄位數 ({data_col_count}) 與標題數 ({len(headerlist)}) 不符，已自動調整。")
-            current_headers = headerlist[:data_col_count] # 截取符合長度的標題
-        else:
-            current_headers = headerlist
+        if res_td:
+            # 取得實際抓取到的資料欄位數 (看第一筆資料有幾欄)
+            data_col_count = len(res_td[0])
+            expected_col_count = len(headerlist)
             
-        try:
-            # 使用動態調整後的標題建立 DataFrame
-            df_td = pd.DataFrame(res_td, columns=current_headers)
-        except Exception as e:
-            print(f" [錯誤] 無法轉換為 DataFrame，略過此筆。錯誤訊息：{e}")
-            df_td = pd.DataFrame() # 發生意外錯誤時，回傳空表以防程式崩潰
-    else:
-        # 如果根本沒有抓到資料，回傳空表
-        df_td = pd.DataFrame(columns=headerlist)
+            # 如果抓到的資料欄位數量少於標題數，自動補齊空白資料
+            if data_col_count < expected_col_count:
+                diff = expected_col_count - data_col_count
+                print(f" [提示] 資料欄位數 ({data_col_count}) 少於標題數 ({expected_col_count})，已自動為每筆資料補上 {diff} 欄空白。")
+                
+                # 重新建構 res_td，將每一列都轉換為 list 並在尾端補上空字串 ""
+                res_td = [list(row) + [""] * diff for row in res_td]
+                
+            elif data_col_count > expected_col_count:
+                # 預防萬一：如果資料居然比標題多，我們只截取前面符合標題數量的資料
+                print(f" [提示] 資料欄位數 ({data_col_count}) 多於標題數 ({expected_col_count})，已自動截斷多餘資料。")
+                res_td = [list(row)[:expected_col_count] for row in res_td]
 
+            try:
+                # 由於我們已經把 res_td 處理成跟 headerlist 一樣長度了，現在可以安心建立 DataFrame
+                df_td = pd.DataFrame(res_td, columns=headerlist)
+            except Exception as e:
+                print(f" [錯誤] 無法轉換為 DataFrame，略過此筆。錯誤訊息：{e}")
+                df_td = pd.DataFrame(columns=headerlist) # 發生意外時給空表
+        else:
+            # 如果根本沒有抓到資料，回傳帶有正確標題的空表
+            df_td = pd.DataFrame(columns=headerlist)
 
-    print(df_td)
    
     nolist = []
     for val in df_td["名稱/  \r代號"]:
@@ -137,11 +142,11 @@ def getStockListData():
     stocklistL = stocklistL.assign(type="L")
     stocklistL = stocklistL.sort_values(by="股票編號")
 
-    stocklistM = stocklist.query("數字市值 < 20000000000").query("數字市值 >= 5000000000")
+    stocklistM = stocklist.query("數字市值 < 20000000000").query("數字市值 >= 10000000000")
     stocklistM = stocklistM.assign(type="M")
     stocklistM = stocklistM.sort_values(by="股票編號")
 
-    stocklistS = stocklist.query("數字市值 < 5000000000")
+    stocklistS = stocklist.query("數字市值 < 10000000000")
     stocklistS = stocklistS.assign(type="S")
     stocklistS = stocklistS.sort_values(by="股票編號")
 

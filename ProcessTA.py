@@ -67,9 +67,12 @@ def ProcessTA(stype,ai):
 if __name__ == '__main__':
     start = cc.t.perf_counter()
 
-    ProcessTA("L",ai="False")    
-    #ProcessTA("L",ai="True")    
-    #ProcessTA("M")    
+    # ProcessTA("L",ai="False")    
+    # ProcessTA("M",ai="False")    
+
+    ProcessTA("L",ai="True")
+    ProcessTA("M",ai="True")    
+
 
     finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

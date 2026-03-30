@@ -9,8 +9,8 @@ import UTIL.CommonConfig as cc
 from ProcessAI import ProcessAI
 from ProcessTA import ProcessTA
 
-from HKEX.AA_GetIndustryList import getIndustryList
-from HKEX.AA_GetStockListData import getStockListData
+from HEX.AA_GetIndustryList import getIndustryList
+from HEX.AA_GetStockListData import getStockListData
 from UTIL.LW_Collect import YFgetAll
 
 

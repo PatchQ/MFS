@@ -43,10 +43,11 @@ def DT(sno,stype,tdate):
         train_data_y = train_data.pop("Y")
         #print(train_data_y.value_counts())
 
-        train_data.drop(columns=["sno","F10D","F20D","F30D"], inplace=True)
-        train_data.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
-        train_data.drop(columns=["LLDate","HHDate","WLDate","WHDate","Volatility_Decrease"], inplace=True)
-
+        drop_cols = ["sno", "F10D", "F20D", "F30D", "classification",
+                     "BOSS_PATTERN", "BOSS_STATUS", "HHHL_PATTERN",
+                     "LLDate", "HHDate", "WLDate", "WHDate"]
+        
+        train_data.drop(columns=[c for c in drop_cols if c in train_data.columns], inplace=True)                
         train_data = train_data.replace([cc.np.inf, -cc.np.inf], cc.np.nan)
 
         xtrain, xtest, ytrain, ytest = train_test_split(train_data, train_data_y, test_size=0.2, random_state=1, stratify=train_data_y)

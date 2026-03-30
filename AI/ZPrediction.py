@@ -16,11 +16,14 @@ def Prediction(modelname,model,df,sno,stype,tdate,fulldata):
     
     if len(pp)>0:
 
-        pp.drop(columns=["sno","F10D","F20D","F30D"], inplace=True)
-        pp.drop(columns=["classification","BOSS_PATTERN","BOSS_STATUS","HHHL_PATTERN"], inplace=True)
-        pp.drop(columns=["LLDate","HHDate","WLDate","WHDate"], inplace=True)
-        #pp = pp.apply(pd.to_numeric, errors='coerce')
+        drop_cols = ["sno", "F10D", "F20D", "F30D", "classification",
+                     "BOSS_PATTERN", "BOSS_STATUS", "HHHL_PATTERN",
+                     "LLDate", "HHDate", "WLDate", "WHDate"]
+        
+        pp.drop(columns=[c for c in drop_cols if c in pp.columns], inplace=True)                
         pp = pp.replace([cc.np.inf, -cc.np.inf], cc.np.nan)
+        pp = pp.apply(cc.pd.to_numeric, errors='coerce')
+        
         
         proba = model.predict_proba(pp)
 

@@ -41,11 +41,11 @@ def LR(sno, stype, tdate):
         # 刪除不需要的特徵
         drop_cols = ["sno", "F10D", "F20D", "F30D", "classification",
                      "BOSS_PATTERN", "BOSS_STATUS", "HHHL_PATTERN",
-                     "LLDate", "HHDate", "WLDate", "WHDate", "Volatility_Decrease"]
-        train_data.drop(columns=[c for c in drop_cols if c in train_data.columns], inplace=True)
+                     "LLDate", "HHDate", "WLDate", "WHDate"]
         
-        # 處理無窮大
+        train_data.drop(columns=[c for c in drop_cols if c in train_data.columns], inplace=True)                
         train_data = train_data.replace([cc.np.inf, -cc.np.inf], cc.np.nan)
+
         
         # 分割訓練/測試集 (保留 20% 作為測試，但此處未使用，僅為與原格式一致)
         xtrain, xtest, ytrain, ytest = train_test_split(

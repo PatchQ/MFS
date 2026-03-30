@@ -26,19 +26,20 @@ def ProcessAI(stype,modelfunction,tdate):
    #resultdf.to_csv(f"data/{stype}_{model}.csv",index=False)    
 
 
-def CalAI():
+def CalAI(stype):
     MODELLIST = [cc.RF,cc.SVM,cc.MLP]    
 
     for modelfunction in MODELLIST:
         print(modelfunction.__name__)
-        ProcessAI("L",modelfunction,cc.DATADATE)    
+        ProcessAI(stype,modelfunction,cc.DATADATE)    
     
 
 
 if __name__ == '__main__':
     start = cc.t.perf_counter()
     
-    CalAI()    
+    CalAI("L")
+    CalAI("M")
 
     finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

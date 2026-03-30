@@ -76,6 +76,8 @@ class VectorizedVCPScanner:
         """計算突破與量能爆發"""
         # 阻力位：過去 20 天的最高點 (不含當日)
         self.df['Resistance'] = self.df['High'].rolling(window=20, min_periods=1).max().shift(1)
+        # 算出阻力位後，如果有 NaN，就用下一筆有效的數值往回填補
+        self.df['Resistance'] = self.df['Resistance'].bfill()
         
         # 突破日條件：收盤大於阻力，且成交量大於 50日均量的 1.3 倍 (適中條件)
         # 同時要求收盤價收在當天振幅的上半部 (強勢收盤)
