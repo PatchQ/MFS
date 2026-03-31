@@ -1,151 +1,141 @@
 import sys
 import os
+import warnings
 
-# Add the project root to the Python path
+# 加入專案根目錄到系統路徑
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
 import UTIL.CommonConfig as cc  
-
 from backtesting import Backtest, Strategy
-import warnings
+
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 
-class run(Strategy):
+class ModernStrategy(Strategy):
+    # --- 1. 宣告策略參數 (讓 backtesting 庫能自動識別，方便未來做最佳化) ---
+    signal = ""
+    stype = ""
+    max_holdbars = 0
+    sl = 0.0     # 預期傳入百分比，例如 -10.0 代表 -10%
+    tp = 0.0     # 預期傳入百分比，例如 20.0 代表 20%
+    dd = 0.0     # 預期傳入百分比，例如 5.0 代表回撤 5%
 
-    signal=""
-    stype=""
-    max_holdbars=0
-    sl=0
-    tp=0
-    dd=0
-    
     def init(self):
-        self.highest_profit = 0
+        # --- 2. 初始化階段：綁定資料欄位，提升 next() 的執行效能 ---
+        self.has_signal = self.signal in self.data.df.columns
+        if self.has_signal:
+            # 取得訊號陣列
+            self.entry_signal = self.data[self.signal]
+            
+        # 針對 BOSSB 的特殊判斷
+        self.is_bossb = (self.signal == "BOSSB")
+        if self.is_bossb:
+            self.tp2_price = self.data.tp2_price if 'tp2_price' in self.data.df.columns else None
+            self.cl_price = self.data.cl_price if 'cl_price' in self.data.df.columns else None
+
+        # 初始化自定義追蹤狀態
         self.holdingbars = 0
-        self.ishold = False
-        self.tp2_price = 0
-        self.cl_price = 0
+        self.highest_profit_pct = 0.0
 
     def next(self):
+        # 如果資料中沒有我們指定的訊號欄位，直接跳過
+        if not self.has_signal:
+            return
 
-        if self.signal in self.data.df.columns:                 
-            if self.data[self.signal][-1] :#& self.data.EMA1:
-                #price = self.data.Close[-1]
-                #bsize = int(5000 / (price * 0.10))
-                self.buy()
+        current_close = self.data.Close[-1]
 
-                self.ishold = True
-                self.holdingbars = 0                
-                self.highest_profit = 0
-                self.tp2_price = self.data.tp2_price[-1]
-                self.cl_price = self.data.cl_price[-1]
-                #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
+        # --- 3. 已持倉狀態下的平倉邏輯 ---
+        if self.position:
+            self.holdingbars += 1
+            # 將 backtesting 的小數轉為百分比 (例如 0.05 轉為 5.0)，方便與輸入的參數比較
+            current_pl_pct = self.position.pl_pct * 100 
+
+            # 條件 A：持倉時間到達上限 (Time-stop)
+            if self.max_holdbars > 0 and self.holdingbars >= self.max_holdbars:
+                self.position.close()
+                self.holdingbars = 0
+                return
             
-            if self.position:
-                current_pl = self.position.pl_pct
-
-                if self.ishold:
-                    self.holdingbars += 1
-
-                # 條件1：持倉時間止損
-                if self.holdingbars >= self.max_holdbars:
+            # 條件 B：BOSSB 專用價格止損/止盈
+            if self.is_bossb:
+                if current_close < self.cl_price[-1] or current_close > self.tp2_price[-1]:
                     self.position.close()
-                    self.is_holding = False
-                    self.holding_bars = 0                    
-                    #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
+                    self.holdingbars = 0
                     return
-                
+            
+            # 條件 C：追蹤止損 (Trailing Stop - 回撤超過 dd%)
+            if self.dd > 0:
+                self.highest_profit_pct = max(self.highest_profit_pct, current_pl_pct)
+                # 如果最高獲利已經超過我們設定的回撤值，且當前獲利從最高點跌落超過 dd
+                if self.highest_profit_pct > self.dd and current_pl_pct < (self.highest_profit_pct - self.dd):
+                    self.position.close()
+                    self.holdingbars = 0
+                    return
 
-                 # 條件2：價格止損/止盈        
-                if self.signal == "BOSSB":
-
-                    if self.data.Close[-1] < self.cl_price:
-                        self.position.close()
-                        self.is_holding = False
-                        self.holding_bars = 0                    
-                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
-                        return
-                    
-                    if self.data.Close[-1] > self.tp2_price:
-                        self.position.close()
-                        self.is_holding = False
-                        self.holding_bars = 0                    
-                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
-                        return
-                    
-                else:
-                    # 條件2：百分比止損/止盈      
-                    if current_pl < self.sl:
-                        self.position.close()
-                        self.is_holding = False
-                        self.holding_bars = 0                    
-                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
-                        return
-                    
-                    if current_pl > self.tp:
-                        self.position.close()
-                        self.is_holding = False
-                        self.holding_bars = 0                    
-                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
-                        return
-
-                                
-                # 條件3：追蹤止損（從最高點回撤N%）
-                if self.dd > 0:
-                    self.highest_profit = max(self.highest_profit, current_pl)
-
-                    if self.highest_profit > self.dd and current_pl < (self.highest_profit - self.dd):                    
-                        self.position.close()
-                        self.is_holding = False
-                        self.holding_bars = 0                    
-                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
-                        return
+        # --- 4. 空倉狀態下的進場邏輯 ---
+        elif self.entry_signal[-1]:
+            # 計算精確的止損(sl)與止盈(tp)「絕對價格」
+            sl_price = None
+            tp_price = None
+            
+            # 使用內建的 sl/tp 參數進場，能讓回測引擎自動捕捉 K 線內的極值 (High/Low)
+            if not self.is_bossb:
+                if self.sl < 0:
+                    sl_price = current_close * (1 + self.sl / 100) # 計算止損價
+                if self.tp > 0:
+                    tp_price = current_close * (1 + self.tp / 100) # 計算止盈價
+            
+            # 執行買入
+            self.buy(sl=sl_price, tp=tp_price)
+            
+            # 重置計算變數
+            self.holdingbars = 0
+            self.highest_profit_pct = 0.0
 
 
 def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
-    
     tempdf = cc.pd.DataFrame()    
-        
-    df = cc.pd.read_csv(cc.OUTPATH+"/"+stype+"/"+sno+".csv")
-    #df = df.loc[df["index"]>"2024-12-31"]        
-
-    if len(df)!=0:
     
-        df.set_index("index" , inplace=True)
-        df = df.set_index(cc.pd.DatetimeIndex(cc.pd.to_datetime(df.index)))
+    file_path = f"{cc.OUTPATH}/{stype}/{sno}.csv"
+    if not os.path.exists(file_path):
+        return tempdf
+        
+    df = cc.pd.read_csv(file_path)
 
+    if len(df) != 0:
+        df.set_index("index" , inplace=True)
+        df.index = cc.pd.to_datetime(df.index)
+
+        # 傳入更新後的 ModernStrategy
         bt = Backtest(
-            df, run, cash=200000,
+            df, ModernStrategy, cash=200000,
             commission=0.002,
-            margin=1.0,  #margin = 0.02 (1/50=0.02) 50倍槓杆
+            margin=1.0, 
             trade_on_close=False, 
             hedging=False,
-            exclusive_orders=False #確保同時只有一個訂單
-            #finalize_trades=True  #回測結束時平倉
+            exclusive_orders=True # 改為 True 確保同一時間只有一張單，符合原本邏輯
         )
 
         output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd)
 
         if output['# Trades'] != 0:
-
             if cc.IS_WINDOWS:
-                 bt.plot(filename=f'{cc.OUTPATH}/BT/{signal}/{sno}.html',open_browser=False)
+                 bt.plot(filename=f'{cc.OUTPATH}/BT/{signal}/{sno}.html', open_browser=False)
                         
             # 收集主要指標               
-            tempdf['returns'] = [output['Return [%]']] #總收益率
+            tempdf['returns'] = [output['Return [%]']] 
             tempdf['sno'] = str(sno).replace('P_','')
-            tempdf['final'] = [output['Equity Final [$]']] #最終淨值
-            tempdf['peak'] = [output['Equity Peak [$]']] #最高淨值
+            tempdf['final'] = [output['Equity Final [$]']] 
+            tempdf['peak'] = [output['Equity Peak [$]']] 
             tempdf['trades_counts'] = [output['# Trades']] 
             tempdf['win_rates'] = [output['Win Rate [%]']]
 
-            tempdf['RR'] = [output['Profit Factor']] #盈虧比(獲利因子)
-            tempdf['SQN'] = [output['SQN']] #策略表現綜合評分
-            tempdf['sharpe_ratios'] = [output['Sharpe Ratio']] #夏普比率(風險調整收益)
-            tempdf['sortino_ratios'] = [output['Sortino Ratio']] #索提諾比率(下行風調整收益)
-            tempdf['calmar_ratios'] = [output['Calmar Ratio']] #卡爾瑪比率(收益與最大回撤之比)
+            tempdf['RR'] = [output['Profit Factor']] 
+            tempdf['SQN'] = [output['SQN']] 
+            tempdf['sharpe_ratios'] = [output['Sharpe Ratio']] 
+            tempdf['sortino_ratios'] = [output['Sortino Ratio']] 
+            tempdf['calmar_ratios'] = [output['Calmar Ratio']] 
             tempdf['avg_trade'] = [output['Avg. Trade [%]']]
             tempdf['best_trade'] = [output['Best Trade [%]']]
             tempdf['worst_trade'] = [output['Worst Trade [%]']]
@@ -157,11 +147,12 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
             tempdf['max_drawdownday'] = [output['Max. Drawdown Duration']]
             tempdf['avg_drawdownday'] = [output['Avg. Drawdown Duration']]
 
-            tempdf['buy_hold_return'] = [output['Buy & Hold Return [%]']] #買入持有策略收益率
-            tempdf['ann_return'] = [output['Return (Ann.) [%]']] #年化收益率
-            tempdf['volatility'] = [output['Volatility (Ann.) [%]']] #年化波動率
+            tempdf['buy_hold_return'] = [output['Buy & Hold Return [%]']] 
+            tempdf['ann_return'] = [output['Return (Ann.) [%]']] 
+            tempdf['volatility'] = [output['Volatility (Ann.) [%]']] 
 
     return tempdf  
+
                             
 
 def processBT(stype, signal, max_holdbars, sl, tp, dd):
@@ -215,9 +206,9 @@ if __name__ == '__main__':
 
     start = cc.t.perf_counter()
 
-    for modelname in cc.MODELLIST:
-        processBT("L", modelname, max_holdbars, sl, tp, dd)
-        processBT("M", modelname, max_holdbars, sl, tp, dd)
+    # for modelname in cc.MODELLIST:
+    #     processBT("L", modelname, max_holdbars, sl, tp, dd)
+    #     processBT("M", modelname, max_holdbars, sl, tp, dd)
 
     for taname in cc.TALIST:
         processBT("L", taname, max_holdbars, sl, tp, dd)

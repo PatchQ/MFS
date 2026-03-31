@@ -39,20 +39,38 @@ class HHLL:
         
         return self.df['Avg_Range'].iloc[-1]  # 返回最新的平均波幅
     
-    def simple_robust_average(self, window=20, z_threshold=3):
-        from scipy import stats
+    def simple_robust_average(self, window=20, threshold=0.5):
+        """
+        簡化版本：只排除比前值大超過threshold%的單個值
+        """
         avg_values = []
+        
         for i in range(len(self.df['Daily_Range'])):
             if i < window - 1:
                 avg_values.append(np.nan)
                 continue
+            
+            # 獲取窗口數據
             window_data = self.df['Daily_Range'].iloc[i-window+1:i+1]
-            # 使用Z-score排除異常
-            z_scores = np.abs(stats.zscore(window_data))
-            filtered_data = window_data[z_scores < z_threshold]
-            avg = filtered_data.mean() if len(filtered_data) > 0 else np.nan
+            
+            # 計算每個值相對於前一個值的變化
+            changes = window_data.pct_change().fillna(0)
+            
+            # 找出異常值索引
+            outlier_indices = changes[changes > threshold].index
+            
+            if len(outlier_indices) > 0:
+                # 排除異常值
+                filtered_data = window_data.drop(outlier_indices)
+                # 計算平均
+                avg = filtered_data.mean() if len(filtered_data) > 0 else np.nan
+            else:
+                # 沒有異常值，正常計算
+                avg = window_data.mean()
+            
             avg_values.append(avg)
-        return pd.Series(avg_values, index=self.df['Daily_Range'].index)         
+        
+        return pd.Series(avg_values, index=self.df['Daily_Range'].index)              
     
     def find_swing_points(self, window=20, min_trend_length=20, lookback_multiplier=3):
         """
@@ -98,23 +116,22 @@ class HHLL:
             
             # 初始化第一個擺動點
             if last_extreme is None:
-                # 使用窗口內趨勢：計算線性回歸斜率或簡單移動平均差
-                from scipy.stats import linregress
-                x = np.arange(window)
-                y = self.df['Close'].iloc[:window].values
-                slope, _, _, _, _ = linregress(x, y)
-                if slope > 0:
+                # 判斷初始趨勢
+                if i > window and self.df['Close'].iloc[i] > self.df['Close'].iloc[i-1]:
                     trend = 'up'
-                    last_extreme = self.df['High'].iloc[:window].max()
-                    last_extreme_idx = self.df['High'].iloc[:window].idxmax()
+                    last_extreme = current_high
+                    last_extreme_idx = i
                     last_extreme_type = 'high'
+                    last_swing_high = (i, current_high)
+                    swing_points.append((i, last_extreme, 'high'))
                 else:
                     trend = 'down'
-                    last_extreme = self.df['Low'].iloc[:window].min()
-                    last_extreme_idx = self.df['Low'].iloc[:window].idxmin()
+                    last_extreme = current_low
+                    last_extreme_idx = i
                     last_extreme_type = 'low'
-                swing_points.append((last_extreme_idx, last_extreme, last_extreme_type))
-                trend_start_idx = last_extreme_idx
+                    last_swing_low = (i, current_low)
+                    swing_points.append((i, last_extreme, 'low'))
+                trend_start_idx = i
                 continue
             
             # 檢查是否出現長期趨勢

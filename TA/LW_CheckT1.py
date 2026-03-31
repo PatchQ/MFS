@@ -1,28 +1,23 @@
+import pandas as pd
 
-def checkT1(df, days, threshold=0.1):
-    try:
-
-        if len(df) < days:
-            print(f"數據不足，無法計算 {days} 天波動")
-            df["T1_"+str(days)] = False
-            return df
-        
-        # 取最近N天的數據
-        #recent_data = df.tail(days)
-        
-        # 計算最高價、最低價
-        highest = df['High'].rolling(window=days).max()
-        lowest = df['Low'].rolling(window=days).min()
-                
-        # 計算波動幅度
-        volatility = (highest - lowest) / lowest
-        
-        # 檢查波動是否在閾值內
-        df["T1_"+str(days)] = volatility <= threshold
-
-        return df
-
-    except Exception as e:
-        print(f"Indicator error: {str(e)}")
-        df["T1_"+str(days)] = False
-        return df
+def calT1(df, days, max_flat_pct=0.10):    
+    # 取得過去 window 期間內的最高價與最低價極值
+    rolling_max = df['High'].rolling(window=days).max()
+    rolling_min = df['Low'].rolling(window=days).min()
+    
+    # 將盤整區間「往後推一天」，因為我們要在「第 N 天(突破日)」去參考「前 N 天」的盤整狀況
+    prev_rolling_max = rolling_max.shift(1)
+    prev_rolling_min = rolling_min.shift(1)
+    
+    # 計算前 5 天的波幅是否小於等於 10%
+    flat_condition = ((prev_rolling_max - prev_rolling_min) / prev_rolling_min) <= max_flat_pct
+    
+    # 今天的收盤價必須大於過去N天的最高價 (收盤站穩)
+    breakout_condition = df['Close'] > prev_rolling_max
+    
+    df["T1_"+str(days)] = flat_condition & breakout_condition
+    
+    # 將無法計算的前期 NaN 轉換為 False
+    df["T1_"+str(days)] = df["T1_"+str(days)].fillna(False)
+    
+    return df

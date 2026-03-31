@@ -17,10 +17,12 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from tqdm import tqdm
 
-from TA.LW_CalHHLL import *
 from TA.LW_Calindicator import *
-from TA.LW_CheckWave import *
+from TA.LW_CalHHLL import *
+
 from TA.LW_CheckBoss import *
+from TA.LW_CheckWave import *
+from TA.LW_CheckHFH import *
 from TA.LW_CheckT1 import *
 from TA.LW_CheckVCP import *
 
@@ -44,7 +46,7 @@ OUTPATH = "../Sdata/P_YFdata/"
 #PATH = "../Sdata/FYFdata/"
 #OUTPATH = "../Sdata/FP_YFdata/"
 
-TALIST = ["BOSSB","HHHL","VCP"]
+TALIST = ["BOSSB","HHHL","VCP","HFH"]
 MODELLIST = ["SVM","MLP","RF"]
 
 IS_WINDOWS = platform.system() == "Windows"

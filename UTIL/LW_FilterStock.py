@@ -220,17 +220,19 @@ if __name__ == '__main__':
        
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
-    DAYS = "30001"        
+    DAYS = "20000"        
 
     start = cc.t.perf_counter()
 
-    #YFSignal("L","BOSS2~BOSSB~BOSSCL1","60")
+    #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
+    #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
     
-    # for taname in cc.TALIST:
-    #     YFSignal("L",taname,"1")
+    for taname in cc.TALIST:
+        YFSignal("L",taname,DAYS)
+        YFSignal("M",taname,DAYS)
 
     # for modelname in cc.MODELLIST:
-    #     YFSignal("L",modelname,"1")
+    #     YFSignal("L",modelname,DAYS)
 
 
     # YFSignal("L","EMA2","1")
@@ -238,9 +240,6 @@ if __name__ == '__main__':
 
     # YFSignal("L","T1_50&EMA2",DAYS)
     # YFSignal("M","T1_50&EMA2",DAYS)    
-
-    YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
-    YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
 
     finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')    

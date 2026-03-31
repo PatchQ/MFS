@@ -18,8 +18,8 @@ def AnalyzeStock(sno,stype,ai):
     #EMA
     df = cc.calEMA(df)
 
-    #T1
-    df = cc.checkT1(df,50)
+    #HFH
+    df = cc.calHFH(df)
 
     #cal HHHL
     HHLLdf = cc.calHHLL(df)
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     # ProcessTA("L",ai="False")    
     # ProcessTA("M",ai="False")    
 
-    ProcessTA("L",ai="True")
+    #ProcessTA("L",ai="True")
     ProcessTA("M",ai="True")    
 
 
