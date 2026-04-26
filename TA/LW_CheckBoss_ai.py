@@ -8,60 +8,12 @@ warnings.filterwarnings('ignore', category=UserWarning)
 try:
     from LW_Calindicator import *    
 except ImportError:
-    from TA.LW_Calindicator import *
+    from TA.LW_Calindicator import *    
 
-
-# ==========================================
-# BOSS 策略可調整參數設定
-# ==========================================
-class BOSSParams:
-    """BOSS 策略參數集中管理"""
-    
-    # --- 波段認定參數 ---
-    WINDOW_22D_LOW = 22        # 22日滾動低點窗口
-    WINDOW_33D_LOW = 33        # 33日滾動低點窗口
-    MA_PERIOD = 150            # 長期趨勢均線週期
-    
-    # --- BOSS1 篩選參數 ---
-    VOLATILITY_THRESHOLD = 0.14    # 波動率門檻 (14%)
-    BOSS1_PATTERNS = ["LHLLHH", "HHLLHH"]  # 認定的波段型態
-    
-    # --- BOSS2 篩選參數 ---
-    BULLISH_RATIO_THRESHOLD = 0.65     # 漲勢比率門檻 (65%)
-    STRONG_BULLISH_MIN = 1             # 強漲 K 線最少數量
-    BULLISH_COUNT_MIN = 4              # 漲勢 K 線總數最少數量
-    
-    # --- 交易價位參數 ---
-    STOP_LOSS_BUFFER = 0.99            # 停損緩衝 (低點下調 1%)
-    BUY_TOLERANCE = 1.005              # 進場價容忍度 (0.5%)
-    TP1_THRESHOLD = 0.995              # TP1 觸發門檻 (99.5%)
-    TP2_THRESHOLD = 0.99               # TP2 觸發門檻 (99%)
-    TP3_THRESHOLD = 0.99               # TP3 觸發門檻 (99%)
-    
-    # --- 時間窗口參數 ---
-    BUY_DEADLINE = 22          # 進場截止天数 (HH日後)
-    TP_DEADLINE = 30           # TP/CL 追蹤期限 (進場後)
-    TU_PROFIT_THRESHOLD = 0.01 # TU1 獲利門檻 (1%)
-
-
-# 預設參數實例
-_DEFAULT_PARAMS = BOSSParams()
-
-
-def checkBoss(df, sno, stype, swing_analysis, params=None):
+def checkBoss(df, sno, stype, swing_analysis):
     """
     經過效能與勝率優化的 BOSS 策略掃描器
-    
-    Parameters:
-        df: 股票 OHLCV 價格資料
-        sno: 股票代號
-        stype: 股票類型
-        swing_analysis: 波段分析結果
-        params: BOSSParams 參數實例，預設使用 _DEFAULT_PARAMS
     """
-    if params is None:
-        params = _DEFAULT_PARAMS
-    
     if df.empty or swing_analysis.empty:
         return df
 
@@ -126,23 +78,23 @@ def checkBoss(df, sno, stype, swing_analysis, params=None):
     df.loc[mask_has_boss, 'VOLATILITY'] = ((df.loc[mask_has_boss, 'HHHigh'] - df.loc[mask_has_boss, 'LLLow']) / df.loc[mask_has_boss, 'LLLow']).round(2)
 
     # 向量化計算 22DLow 和 33DLow
-    df['rolling_22_low'] = df['Low'].rolling(window=params.WINDOW_22D_LOW, min_periods=1).min()
-    df['rolling_33_low'] = df['Low'].rolling(window=params.WINDOW_33D_LOW, min_periods=1).min()
+    df['rolling_22_low'] = df['Low'].rolling(window=22, min_periods=1).min()
+    df['rolling_33_low'] = df['Low'].rolling(window=33, min_periods=1).min()
     
     # ==========================================
     # 步驟 2: 篩選 BOSS1 與優化勝率邏輯
     # ==========================================
     
     # 新增趨勢過濾器 (例如: 價格必須高於長天期均線，這裡暫時使用簡單的 MA150 代表長期趨勢)
-    df['MA150'] = df['Close'].rolling(params.MA_PERIOD, min_periods=1).mean()
+    df['MA150'] = df['Close'].rolling(150, min_periods=1).mean()
     
     # 修正 BOSS1 邏輯：
     # 1. 確保型態正確
-    BOSS1Rule1 = df['BOSS_PATTERN'].isin(params.BOSS1_PATTERNS)
+    BOSS1Rule1 = df['BOSS_PATTERN'].isin(["LHLLHH", "HHLLHH"])
     # 2. 確保最高中收市價高於LH日的最高位
     BOSS1Rule2 = df['HHClose']>df['High']
-    # 3. 確保突破動能 (波動率大於門檻)
-    BOSS1Rule3 = df['VOLATILITY'] >= params.VOLATILITY_THRESHOLD
+    # 3. 確保突破動能 (波動率大於 14%)
+    BOSS1Rule3 = df['VOLATILITY'] >= 0.14
     # 4. 大趨勢保護：波段高點必須處於多頭排列或價格大於 MA150 (勝率提升關鍵)
     Trend_Filter = df['Close'] > df['MA150']
     
@@ -185,17 +137,17 @@ def checkBoss(df, sno, stype, swing_analysis, params=None):
     # ==========================================
     
     BOSS2Rule1 = df['LLLow'] <= df['22DLow'] 
-    BOSS2Rule2 = df["bullish_ratio"] >= params.BULLISH_RATIO_THRESHOLD
-    BOSS2Rule3 = df["strong_bullish"] >= params.STRONG_BULLISH_MIN
-    BOSS2Rule4 = df["bullish_count"] >= params.BULLISH_COUNT_MIN    
+    BOSS2Rule2 = df["bullish_ratio"] >= 0.65
+    BOSS2Rule3 = df["strong_bullish"] >= 1
+    BOSS2Rule4 = df["bullish_count"] >= 4    
 
     df["BOSS2"] = df["BOSS1"] & BOSS2Rule1 & BOSS2Rule2 & BOSS2Rule3 & BOSS2Rule4
     
     mask_boss2 = df["BOSS2"]
     
-    # 計算買入與停利損價位 (加入停損緩衝區，減少被洗盤機率)
+    # 計算買入與停利損價位 (加入 1% 停損緩衝區，減少被洗盤機率)
     df.loc[mask_boss2, "buy_price"] = ((df.loc[mask_boss2, "HHHigh"] + df.loc[mask_boss2, "LLLow"]) / 2).round(2)
-    df.loc[mask_boss2, "cl_price"] = (df.loc[mask_boss2, "LLLow"] * params.STOP_LOSS_BUFFER).round(2)
+    df.loc[mask_boss2, "cl_price"] = (df.loc[mask_boss2, "LLLow"] * 0.99).round(2) # 停損下移 1%
     df.loc[mask_boss2, "tp1_price"] = df.loc[mask_boss2, "HHHigh"]
     df.loc[mask_boss2, "tp2_price"] = df.loc[mask_boss2, "buy_price"] + (df.loc[mask_boss2, "HHHigh"] - df.loc[mask_boss2, "buy_price"]) * 2 
     df.loc[mask_boss2, "tp3_price"] = df.loc[mask_boss2, "buy_price"] + (df.loc[mask_boss2, "HHHigh"] - df.loc[mask_boss2, "buy_price"]) * 3 
@@ -222,7 +174,7 @@ def checkBoss(df, sno, stype, swing_analysis, params=None):
         if pd.isna(hhdate): continue
             
         hh_idx = df.index.get_loc(pd.to_datetime(hhdate))
-        buydeadline_idx = min(hh_idx + params.BUY_DEADLINE, len(df) - 1)
+        buydeadline_idx = min(hh_idx + 22, len(df) - 1)
         
         buy_price = df['buy_price'].iloc[i]
         cl_price = df['cl_price'].iloc[i]
@@ -234,7 +186,7 @@ def checkBoss(df, sno, stype, swing_analysis, params=None):
 
         # 1. 尋找進場點
         search_window = slice(hh_idx + 1, buydeadline_idx + 1)
-        buy_mask = (lows_array[search_window] <= buy_price * params.BUY_TOLERANCE) & (ema3_array[search_window] == True)
+        buy_mask = (lows_array[search_window] <= buy_price * 1.005) & (ema3_array[search_window] == True)
         high_mask = highs_array[search_window] > hh_price
         
         buy_hit_indices = np.where(buy_mask)[0]
@@ -259,10 +211,10 @@ def checkBoss(df, sno, stype, swing_analysis, params=None):
             df.loc[buy_date, col] = val
 
         # 2. 尋找 TP1 與 CL1
-        tp_deadline_idx = min(buy_idx + params.TP_DEADLINE, len(df) - 1)
+        tp_deadline_idx = min(buy_idx + 30, len(df) - 1)
         trade_window = slice(buy_idx, tp_deadline_idx + 1)
         
-        tp1_mask = highs_array[trade_window] >= tp1_price * params.TP1_THRESHOLD
+        tp1_mask = highs_array[trade_window] >= tp1_price * 0.995
         cl1_mask = closes_array[trade_window] < cl_price
         
         tp1_hits = np.where(tp1_mask)[0]
@@ -274,7 +226,7 @@ def checkBoss(df, sno, stype, swing_analysis, params=None):
         if first_tp1_idx == np.inf and first_cl1_idx == np.inf:
             deadline_date = df.index[tp_deadline_idx]
             if deadline_date < pd.Timestamp(datetime.now().date()):
-                if ((lows_array[tp_deadline_idx] - buy_price) / buy_price) >= params.TU_PROFIT_THRESHOLD:
+                if ((lows_array[tp_deadline_idx] - buy_price) / buy_price) >= 0.01:
                     df.loc[deadline_date, 'BOSSTU1'] = True
                     df.loc[deadline_date, 'BOSS_STATUS'] = "TU1-" + startbossdate
                 else:
@@ -294,10 +246,10 @@ def checkBoss(df, sno, stype, swing_analysis, params=None):
         df.loc[tp1_date, 'BOSSTP1'] = True
         
         # 3. 追蹤 TP2
-        tp2_deadline_idx = min(tp1_idx_global + params.TP_DEADLINE, len(df) - 1)
+        tp2_deadline_idx = min(tp1_idx_global + 30, len(df) - 1)
         trade_window_2 = slice(tp1_idx_global, tp2_deadline_idx + 1)
         
-        tp2_mask = highs_array[trade_window_2] >= tp2_price * params.TP2_THRESHOLD
+        tp2_mask = highs_array[trade_window_2] >= tp2_price * 0.99
         cl2_mask = closes_array[trade_window_2] < cl_price
         
         tp2_hits = np.where(tp2_mask)[0]
@@ -323,9 +275,9 @@ def checkBoss(df, sno, stype, swing_analysis, params=None):
             df.loc[tp2_date, 'BOSSTP2'] = True
             
             # 4. 追蹤 TP3
-            tp3_deadline_idx = min(tp2_idx_global + params.TP_DEADLINE, len(df) - 1)
+            tp3_deadline_idx = min(tp2_idx_global + 30, len(df) - 1)
             trade_window_3 = slice(tp2_idx_global, tp3_deadline_idx + 1)
-            tp3_mask = highs_array[trade_window_3] >= tp3_price * params.TP3_THRESHOLD
+            tp3_mask = highs_array[trade_window_3] >= tp3_price * 0.99
             
             tp3_hits = np.where(tp3_mask)[0]
             if len(tp3_hits) > 0:

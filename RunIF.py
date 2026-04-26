@@ -55,10 +55,10 @@ if __name__ == '__main__':
     op="HSI"
 
     oyear=26
-    omonth="MAY"
+    omonth="MAR"
     
     sdate="20260201"
-    edate="20260331"
+    edate="20260416"
 
     start = cc.t.perf_counter()
 

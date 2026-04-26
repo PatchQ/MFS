@@ -1,0 +1,73 @@
+更菌 BOSS 代戈...
+  更 L_BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2_Stat.csv: 79 郎布
+  更 M_BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2_Stat.csv: 77 郎布
+羆 156 郎布
+
+=== 俱砰ユ挡狦だガ ===
+
+L 布
+  TP123: 12.0
+  TP12: 11.0
+  TP1: 11.0
+  TP2: 0.0
+  TP3: 2.0
+  TP1C: 2.0
+  CL1: 49.0
+  TU1: 6.0
+  TU2: 12.0
+  BY1: 0.0
+  羆ユΩ计: 99.0
+
+M 布
+  TP123: 19.0
+  TP12: 14.0
+  TP1: 11.0
+  TP2: 0.0
+  TP3: 6.0
+  TP1C: 8.0
+  CL1: 36.0
+  TU1: 6.0
+  TU2: 29.0
+  BY1: 1.0
+  羆ユΩ计: 123.0
+
+=== 蝶だ参璸 ===
+  キА Final Score: -0.351
+  程蔼 Final Score: 3.000
+
+=== 呼穓碝程ㄎ把计 ===
+
+=== 程ㄎ把计舱 (Top 10) ===
+     volatility_threshold  bullish_ratio_threshold  strong_bullish_min  bullish_count_min  stop_loss_buffer  avg_score  stocks_count
+721                  0.18                     0.50                   1                  3              0.98   0.716642            79
+720                  0.18                     0.50                   1                  3              0.97   0.716642            79
+722                  0.18                     0.50                   1                  3              0.99   0.716642            79
+756                  0.18                     0.55                   1                  3              0.97   0.714016            79
+757                  0.18                     0.55                   1                  3              0.98   0.714016            79
+758                  0.18                     0.55                   1                  3              0.99   0.714016            79
+792                  0.18                     0.60                   1                  3              0.97   0.711257            79
+793                  0.18                     0.60                   1                  3              0.98   0.711257            79
+794                  0.18                     0.60                   1                  3              0.99   0.711257            79
+542                  0.16                     0.50                   1                  3              0.99   0.708486            79
+
+==================================================
+程ㄎ崩滤把计:
+  猧笆瞯耬 (VOLATILITY_THRESHOLD): 0.18
+  害墩ゑ瞯耬 (BULLISH_RATIO_THRESHOLD): 0.5
+  眏害 K 絬程ぶ计 (STRONG_BULLISH_MIN): 1.0
+  害墩 K 絬羆计程ぶ (BULLISH_COUNT_MIN): 3.0
+  氨穕絯侥 (STOP_LOSS_BUFFER): 0.98
+==================================================
+
+=== BOSSParams 砞﹚絛ㄒ ===
+
+params = BOSSParams(
+    VOLATILITY_THRESHOLD=0.18,
+    BULLISH_RATIO_THRESHOLD=0.5,
+    STRONG_BULLISH_MIN=1.0,
+    BULLISH_COUNT_MIN=3.0,
+    STOP_LOSS_BUFFER=0.98,
+)
+
+
+挡狦纗: e:/Patch/GitHub/MFS\data\BOSS_Optimized_Params_20260426_220020.csv

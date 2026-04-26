@@ -1,0 +1,10 @@
+CWD: e:\Patch\GitHub\MFS
+cc.OUTPATH: ../Sdata/P_YFdata/
+cc.PATH: ../Sdata/YFdata/
+../Sdata/P_YFdata/: exists=True
+  items: ['BT', 'L', 'L_BK', 'M', 'MODEL']
+  L files: 267, first: P_0001.HK.csv
+../Sdata/P_YFdata: exists=True
+  items: ['BT', 'L', 'L_BK', 'M', 'MODEL']
+  L files: 267, first: P_0001.HK.csv
+../../Sdata/P_YFdata: exists=False

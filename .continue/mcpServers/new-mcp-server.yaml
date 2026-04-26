@@ -1,0 +1,34 @@
+name: New MCP server
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: New MCP server
+    command: uvx
+    args:
+      - -y
+      - minimax-coding-plan-mcp
+    env: 
+      - name: MINIMAX_API_KEY
+        value: sk-cp-93FRXvfnxvJu0YIQcd3W5aSrznsbxanPxo4W5h79YqRW9z9pWB_NzDRMF-GMtqb8kkwhbpo-EinYKePgK7c6qqYurRlJyTFaT8TSikAAt32DtkhgzqothPE
+      - name: MINIMAX_MCP_BASE_PATH
+        value: /path/to/local/output/directory
+      - name: MINIMAX_API_HOST
+        value: https://api.minimaxi.com
+      - name: MINIMAX_API_RESOURCE_MODE
+        value: url
+      - name: MINIMAX_API_RESOURCE_URL_PREFIX
+        value: https://minimaxi.com/resources/
+      - name: MINIMAX_API_RESOURCE_URL_SUFFIX
+        value: ""
+      - name: MINIMAX_API_RESOURCE_URL_EXPIRATION_SECONDS
+        value: "3600"
+      - name: MINIMAX_API_RESOURCE_URL_MAX_SIZE_BYTES
+        value: "104857600"
+      - name: MINIMAX_API_RESOURCE_URL_MAX_CONCURRENT_REQUESTS
+        value: "10"
+      - name: MINIMAX_API_RESOURCE_URL_RETRY_ATTEMPTS
+        value: "3"
+      - name: MINIMAX_API_RESOURCE_URL_RETRY_BACKOFF_SECONDS
+        value: "1"
+      - name: MINIMAX_API_RESOURCE_URL_TIMEOUT_SECONDS  
+        value: "30"

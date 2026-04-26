@@ -39,7 +39,7 @@ IFPATH = "../Sdata/HKEX/IF/"
 IOPATH = "../Sdata/HKEX/IO/"
 SOPATH = "../Sdata/HKEX/SO/"
 
-DATADATE = "2025-01-01"
+DATADATE = "2024-01-01"
 PATH = "../Sdata/YFdata/"
 OUTPATH = "../Sdata/P_YFdata/"
 
@@ -47,6 +47,7 @@ OUTPATH = "../Sdata/P_YFdata/"
 #OUTPATH = "../Sdata/FP_YFdata/"
 
 TALIST = ["BOSSB","HHHL","VCP","HFH"]
+#TALIST = ["BOSSB"]
 MODELLIST = ["SVM","MLP","RF"]
 
 IS_WINDOWS = platform.system() == "Windows"

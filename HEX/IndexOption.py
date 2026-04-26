@@ -145,8 +145,8 @@ if __name__ == "__main__":
         edate = cc.date.today().strftime("%Y%m%d")
 
 
-    #sdate = "20260316"
-    #edate = "20260320"
+    # sdate = "20260417"
+    # edate = "20260420"
 
     ProcessDownlaod(sdate, edate)
     ProcessExtract(sdate, edate)

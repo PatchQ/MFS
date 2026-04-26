@@ -18,7 +18,7 @@ with OpenRouter(api_key=OPENROUTER_API_KEY) as client:
 
         while True:
             respose = client.chat.send(                
-                model="minimax/minimax-m2.5",                
+                model="google/gemma-4-31b-it",                
                 messages=messages
             )
   

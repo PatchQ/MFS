@@ -11,10 +11,8 @@ sys.path.append(project_root)
 
 import UTIL.CommonConfig as cc  
 
-#EDATE = "2025-09-30"
-EDATE = (cc.datetime.now() - cc.timedelta(days=30)).strftime("%Y-%m-%d")
-FILESTAMP = "_"+cc.datetime.now().strftime("%Y%m%d")
-FILESTAMP = ""
+volume = 1000
+volume = 700
 
 def filterOption(filename, oyear, omonth, oday, strike):
 
@@ -24,8 +22,8 @@ def filterOption(filename, oyear, omonth, oday, strike):
     df = df.loc[(df['year'] == oyear) & (df['month_abbr'] == omonth) & (df['month_num'] == oday) & (df['strike'] == strike)]
     df.drop(columns=['month_num', 'month_abbr', 'year'], inplace=True)    
     df.insert(0, "filedate", filedate)
-    df["lotgross"] = (df["call_gross"]>=1000) | (df["put_gross"]>=1000)
-    df["lotnet"] = (df["call_net_change"]>=1000) | (df["put_net_change"]>=1000)
+    df["lotgross"] = (df["call_gross"]>=volume) | (df["put_gross"]>=volume)
+    df["lotnet"] = (df["call_net_change"]>=volume) | (df["put_net_change"]>=volume)
     return df
 
 
@@ -63,7 +61,7 @@ if __name__ == '__main__':
     op="HSI"
 
     oyear=26
-    omonth="MAR"
+    omonth="APR"
     
     oday=cc.getLastTradeDay(oyear, omonth).day
 
@@ -71,7 +69,7 @@ if __name__ == '__main__':
     stop_strike=25800
 
     sdate="20260301"
-    edate="20260324"
+    edate="20260401"
 
     start = cc.t.perf_counter()
 
