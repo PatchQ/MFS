@@ -182,86 +182,42 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
     if len(resultdf)>0:
         # 計算總體統計
         print(f"\n=== {signal} : 整體回測統計 ({stype}) ===")
-        print(f"平均報酬率: {np.mean(resultdf['returns']):.2f}%")
-        print(f"報酬率標準差: {np.std(resultdf['returns']):.2f}%")
-        print(f"平均最佳收益: {np.mean(resultdf['best_trade']):.2f}%")
-        print(f"平均最差收益: {np.mean(resultdf['worst_trade']):.2f}%")
-        print(f"平均盈虧比: {np.mean(resultdf['RR']):.2f}")
-        print(f"平均策略表現綜合評分: {np.mean(resultdf['SQN']):.2f}")
-        print(f"平均夏普比率: {np.mean(resultdf['sharpe_ratios']):.2f}")
-        print(f"平均索提諾比率: {np.mean(resultdf['sortino_ratios']):.2f}")
-        print(f"平均卡爾瑪比率: {np.mean(resultdf['calmar_ratios']):.2f}")
-        print(f"平均交易次數: {np.mean(resultdf['trades_counts']):.1f}")
+        print(f"平均報酬率: {cc.np.mean(resultdf['returns']):.2f}%")
+        print(f"報酬率標準差: {cc.np.std(resultdf['returns']):.2f}%")
+        print(f"平均最佳收益: {cc.np.mean(resultdf['best_trade']):.2f}%")
+        print(f"平均最差收益: {cc.np.mean(resultdf['worst_trade']):.2f}%")    
+        print(f"平均盈虧比: {cc.np.mean(resultdf['RR']):.2f}")
+        print(f"平均策略表現綜合評分: {cc.np.mean(resultdf['SQN']):.2f}")
+        print(f"平均夏普比率: {cc.np.mean(resultdf['sharpe_ratios']):.2f}")
+        print(f"平均索提諾比率: {cc.np.mean(resultdf['sortino_ratios']):.2f}")
+        print(f"平均卡爾瑪比率: {cc.np.mean(resultdf['calmar_ratios']):.2f}") 
+        print(f"平均交易次數: {cc.np.mean(resultdf['trades_counts'])}")
         print(f"總交易次數: {sum(resultdf['trades_counts'])}")
-        print(f"平均勝率: {np.mean(resultdf['win_rates']):.2f}%")
-    
-    return resultdf
+        print(f"平均勝率: {cc.np.mean(resultdf['win_rates']):.2f}%") 
 
-
-def run_param_sweep(stype, signal, param_name, param_values, base_params):
-    """
-    參數掃描 - 測試不同參數值的效果
-    
-    參數:
-        stype: 股票類型
-        signal: 信號名稱
-        param_name: 參數名稱 (sl, tp, max_holdbars)
-        param_values: 參數值列表
-        base_params: 基礎參數字典
-    """
-    results = []
-    
-    for val in param_values:
-        params = base_params.copy()
-        params[param_name] = val
-        
-        resultdf = processBT(
-            stype=stype,
-            signal=signal,
-            max_holdbars=params['max_holdbars'],
-            sl=params['sl'],
-            tp=params['tp'],
-            dd=params['dd']
-        )
-        
-        if len(resultdf) > 0:
-            results.append({
-                'param_value': val,
-                'mean_return': np.mean(resultdf['returns']),
-                'mean_sqn': np.mean(resultdf['SQN']),
-                'mean_winrate': np.mean(resultdf['win_rates']),
-                'total_trades': sum(resultdf['trades_counts'])
-            })
-    
-    return pd.DataFrame(results)
 
 
 if __name__ == '__main__':
-    # 回測參數
-    max_holdbars = 100  # 最大持倉K線數 (目前版本暫不使用)
-    sl = -10.0          # 止損百分比
-    tp = 20.0           # 止盈百分比
-    dd = 0.0            # 回撤 (目前版本簡化為止盈止損)
-    
+
+    max_holdbars = 100  # 最大持倉K線數
+    sl = -10.0      # 止損百分比
+    tp = 20.0    # 止盈百分比
+    dd = 0.0     # 回撤
+
     start = cc.t.perf_counter()
-    
-    print("=" * 60)
-    print("VectorBT Backtest Starting...")
-    print("=" * 60)
-    
-    # 回測 TA 信號
-    for taname in cc.TALIST:
-        print(f"\nProcessing: {taname}")
-        processBT("L", taname, max_holdbars, sl, tp, dd)
-    
-    # 如果需要回測 ML 模型
+
     # for modelname in cc.MODELLIST:
     #     processBT("L", modelname, max_holdbars, sl, tp, dd)
     #     processBT("M", modelname, max_holdbars, sl, tp, dd)
+
+    for taname in cc.TALIST:
+        processBT("L", taname, max_holdbars, sl, tp, dd)
+        processBT("M", taname, max_holdbars, sl, tp, dd)
+
     
     finish = cc.t.perf_counter()
     
-    print(f"\nIt took {round(finish - start, 2)} second(s) to finish.")
-    print("=" * 60)
-    print("VectorBT Backtest Completed!")
-    print("=" * 60)
+    print(f'It took {round(finish-start,2)} second(s) to finish.')
+
+
+
