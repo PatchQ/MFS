@@ -3,5 +3,10 @@
         "./HK",
         "./Util",
         "./US"
+    ],
+    "cursorpyright.analysis.extraPaths": [
+        "./HK",
+        "./Util",
+        "./US"
     ]
 }

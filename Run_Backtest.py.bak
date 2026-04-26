@@ -1,5 +1,10 @@
+import sys
 import os
 import warnings
+
+# 加入專案根目錄到系統路徑
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
 
 import UTIL.CommonConfig as cc  
 from backtesting import Backtest, Strategy
@@ -25,11 +30,9 @@ class ModernStrategy(Strategy):
             
         # 針對 BOSSB 的特殊判斷
         self.is_bossb = (self.signal == "BOSSB")
-        self.has_bossb_prices = False
         if self.is_bossb:
             self.tp2_price = self.data.tp2_price if 'tp2_price' in self.data.df.columns else None
             self.cl_price = self.data.cl_price if 'cl_price' in self.data.df.columns else None
-            self.has_bossb_prices = self.tp2_price is not None and self.cl_price is not None
 
         # 初始化自定義追蹤狀態
         self.holdingbars = 0
@@ -55,7 +58,7 @@ class ModernStrategy(Strategy):
                 return
             
             # 條件 B：BOSSB 專用價格止損/止盈
-            if self.is_bossb and self.has_bossb_prices:
+            if self.is_bossb:
                 if current_close < self.cl_price[-1] or current_close > self.tp2_price[-1]:
                     self.position.close()
                     self.holdingbars = 0
@@ -93,11 +96,6 @@ class ModernStrategy(Strategy):
 
 def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
     tempdf = cc.pd.DataFrame()    
-
-    if sl >= 0:
-        raise ValueError(f"sl must be negative percentage, got {sl}")
-    if tp <= 0:
-        raise ValueError(f"tp must be positive percentage, got {tp}")
     
     file_path = f"{cc.OUTPATH}/{stype}/{sno}.csv"
     if not os.path.exists(file_path):
@@ -123,9 +121,7 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
 
         if output['# Trades'] != 0:
             if cc.IS_WINDOWS:
-                plot_dir = f"{cc.OUTPATH}/BT/{signal}"
-                os.makedirs(plot_dir, exist_ok=True)
-                bt.plot(filename=f'{plot_dir}/{sno}.html', open_browser=False)
+                 bt.plot(filename=f'{cc.OUTPATH}/BT/{signal}/{sno}.html', open_browser=False)
                         
             # 收集主要指標               
             tempdf['returns'] = [output['Return [%]']] 
@@ -162,12 +158,8 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
 def processBT(stype, signal, max_holdbars, sl, tp, dd):
 
     resultdf = cc.pd.DataFrame()
-    input_dir = f"{cc.OUTPATH}/{stype}"
-    if not os.path.isdir(input_dir):
-        print(f"Skip {stype}/{signal}: input dir not found -> {input_dir}")
-        return
 
-    snolist = list(map(lambda s: s.replace(".csv", ""), cc.os.listdir(input_dir)))
+    snolist = list(map(lambda s: s.replace(".csv", ""), cc.os.listdir(cc.OUTPATH+"/"+stype)))
     SLIST = cc.pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST.assign(signal=signal+"")
@@ -177,21 +169,15 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
     SLIST = SLIST.assign(dd=dd)    
     SLIST = SLIST[:]
     
-    results = []
     with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
         for tempdf in cc.tqdm(executor.map(runBacktest,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["max_holdbars"],
-                                        SLIST["sl"],SLIST["tp"],SLIST["dd"],chunksize=16),total=len(SLIST)):            
+                                        SLIST["sl"],SLIST["tp"],SLIST["dd"],chunksize=1),total=len(SLIST)):            
             #tempdf = tempdf.dropna(axis=1, how="all")
             #print(tempdf)
             if len(tempdf)>0:
-                results.append(tempdf)
-
-    if results:
-        resultdf = cc.pd.concat(results, ignore_index=True)
+                resultdf = cc.pd.concat([tempdf, resultdf], ignore_index=True)
     
-    bt_dir = f"{cc.OUTPATH}/BT"
-    os.makedirs(bt_dir, exist_ok=True)
-    resultdf.to_csv(f'{bt_dir}/BT_{stype}_{signal}.csv', index=False)
+    resultdf.to_csv(f'{cc.OUTPATH}/BT/BT_{stype}_{signal}.csv', index=False)
 
     if len(resultdf)>0:
         # 計算總體統計
@@ -232,5 +218,6 @@ if __name__ == '__main__':
     finish = cc.t.perf_counter()
     
     print(f'It took {round(finish-start,2)} second(s) to finish.')
+
 
 
