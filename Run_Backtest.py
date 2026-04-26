@@ -8,6 +8,7 @@ sys.path.append(project_root)
 
 import UTIL.CommonConfig as cc  
 from backtesting import Backtest, Strategy
+import numpy as np
 
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)

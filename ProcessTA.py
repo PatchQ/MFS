@@ -70,8 +70,8 @@ if __name__ == '__main__':
     # ProcessTA("L",ai="False")    
     # ProcessTA("M",ai="False")    
 
-    #ProcessTA("L",ai="True")
-    ProcessTA("M",ai="True")    
+    ProcessTA("L",ai="False")  # Process L type stocks with new HFH
+    # ProcessTA("M",ai="True")    
 
 
     finish = cc.t.perf_counter()
