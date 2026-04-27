@@ -19,6 +19,7 @@ def Prediction(modelname,model,df,sno,stype,tdate,fulldata):
         drop_cols = ["sno", "F10D", "F20D", "F30D", "classification",
                      "BOSS_PATTERN", "BOSS_STATUS", "HHHL_PATTERN",
                      "LLDate", "HHDate", "WLDate", "WHDate"]
+                     #"BreakoutQuality","FalseBreakout","PreHighCount"]
         
         pp.drop(columns=[c for c in drop_cols if c in pp.columns], inplace=True)                
         pp = pp.replace([cc.np.inf, -cc.np.inf], cc.np.nan)

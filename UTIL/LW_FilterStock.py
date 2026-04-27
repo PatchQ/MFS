@@ -220,17 +220,16 @@ if __name__ == '__main__':
        
     #DAYS = str((datetime.strptime(EDATE, "%Y/%m/%d") - datetime.strptime(SDATE, "%Y/%m/%d")).days)
 
-    DAYS = "30001"        
+    DAYS = "20000"        
 
     start = cc.t.perf_counter()
 
-    #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
-    YFSignal("L","BOSSB",DAYS,SDATE,EDATE)
+    #YFSignal("L","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)    
     #YFSignal("M","BOSSB~BOSSTP1~BOSSTP2~BOSSTP3~BOSSCL1~BOSSCL2~BOSSTU1~BOSSTU2",DAYS,SDATE,EDATE)
     
-    # for taname in cc.TALIST:
-    #     YFSignal("L",taname,DAYS)
-    #     YFSignal("M",taname,DAYS)
+    for taname in cc.TALIST:
+        YFSignal("L",taname,DAYS)
+        YFSignal("M",taname,DAYS)
 
     # for modelname in cc.MODELLIST:
     #     YFSignal("L",modelname,DAYS)

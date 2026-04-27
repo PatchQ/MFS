@@ -27,6 +27,8 @@ class ModernStrategy(Strategy):
         self.has_signal = self.signal in self.data.df.columns
         if self.has_signal:
             # 取得訊號陣列
+            # 直接使用 self.data[self.signal] 而不是預先存儲引用
+            # 這樣可以確保總是獲取最新的信號值
             self.entry_signal = self.data[self.signal]
             
         # 針對 BOSSB 的特殊判斷
@@ -75,7 +77,7 @@ class ModernStrategy(Strategy):
                     return
 
         # --- 4. 空倉狀態下的進場邏輯 ---
-        elif self.entry_signal[-1]:
+        elif self.data[self.signal][-1]:
             # 計算精確的止損(sl)與止盈(tp)「絕對價格」
             sl_price = None
             tp_price = None
@@ -183,18 +185,18 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
     if len(resultdf)>0:
         # 計算總體統計
         print(f"\n=== {signal} : 整體回測統計 ({stype}) ===")
-        print(f"平均報酬率: {np.mean(resultdf['returns']):.2f}%")
-        print(f"報酬率標準差: {np.std(resultdf['returns']):.2f}%")
-        print(f"平均最佳收益: {np.mean(resultdf['best_trade']):.2f}%")
-        print(f"平均最差收益: {np.mean(resultdf['worst_trade']):.2f}%")
-        print(f"平均盈虧比: {np.mean(resultdf['RR']):.2f}")
-        print(f"平均策略表現綜合評分: {np.mean(resultdf['SQN']):.2f}")
-        print(f"平均夏普比率: {np.mean(resultdf['sharpe_ratios']):.2f}")
-        print(f"平均索提諾比率: {np.mean(resultdf['sortino_ratios']):.2f}")
-        print(f"平均卡爾瑪比率: {np.mean(resultdf['calmar_ratios']):.2f}")
-        print(f"平均交易次數: {np.mean(resultdf['trades_counts']):.1f}")
+        print(f"平均報酬率: {cc.np.mean(resultdf['returns']):.2f}%")
+        print(f"報酬率標準差: {cc.np.std(resultdf['returns']):.2f}%")
+        print(f"平均最佳收益: {cc.np.mean(resultdf['best_trade']):.2f}%")
+        print(f"平均最差收益: {cc.np.mean(resultdf['worst_trade']):.2f}%")
+        print(f"平均盈虧比: {cc.np.mean(resultdf['RR']):.2f}")
+        print(f"平均策略表現綜合評分: {cc.np.mean(resultdf['SQN']):.2f}")
+        print(f"平均夏普比率: {cc.np.mean(resultdf['sharpe_ratios']):.2f}")
+        print(f"平均索提諾比率: {cc.np.mean(resultdf['sortino_ratios']):.2f}")
+        print(f"平均卡爾瑪比率: {cc.np.mean(resultdf['calmar_ratios']):.2f}")
+        print(f"平均交易次數: {cc.np.mean(resultdf['trades_counts']):.1f}")
         print(f"總交易次數: {sum(resultdf['trades_counts'])}")
-        print(f"平均勝率: {np.mean(resultdf['win_rates']):.2f}%")
+        print(f"平均勝率: {cc.np.mean(resultdf['win_rates']):.2f}%")
     
     return resultdf
 
@@ -234,7 +236,7 @@ def run_param_sweep(stype, signal, param_name, param_values, base_params):
                 'total_trades': sum(resultdf['trades_counts'])
             })
     
-    return pd.DataFrame(results)
+    return cc.pd.DataFrame(results)
 
 
 if __name__ == '__main__':
@@ -254,6 +256,7 @@ if __name__ == '__main__':
     for taname in cc.TALIST:
         print(f"\nProcessing: {taname}")
         processBT("L", taname, max_holdbars, sl, tp, dd)
+        processBT("M", taname, max_holdbars, sl, tp, dd)
     
     # 如果需要回測 ML 模型
     # for modelname in cc.MODELLIST:

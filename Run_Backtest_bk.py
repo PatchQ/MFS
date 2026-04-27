@@ -212,7 +212,7 @@ if __name__ == '__main__':
 
     for taname in cc.TALIST:
         processBT("L", taname, max_holdbars, sl, tp, dd)
-        #processBT("M", taname, max_holdbars, sl, tp, dd)
+        processBT("M", taname, max_holdbars, sl, tp, dd)
 
     
     finish = cc.t.perf_counter()
