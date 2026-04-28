@@ -31,28 +31,28 @@ if __name__ == '__main__':
     #ProcessTA("M",ai="False")
 
     #CalAI("L")
-    #CalAI("M")
+   # CalAI("M")
 
     #YFgetDaily("L")
 
     #get History Data from YF   
-    YFgetAll("L",cc.DATADATE)
-    YFgetAll("M",cc.DATADATE)
+    #YFgetAll("L",cc.DATADATE)
+    #YFgetAll("M",cc.DATADATE)
 
     #process Data
-    ProcessTA("L",ai="True")
-    ProcessTA("M",ai="True")
+    #ProcessTA("L",ai="True")
+    #ProcessTA("M",ai="True")
  
-    YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
-    YFSignal("M","BOSS2~BOSSB~BOSSCL1","30")
+    #YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
+    #YFSignal("M","BOSS2~BOSSB~BOSSCL1","30")
     
     for taname in cc.TALIST:
-        YFSignal("L",taname,"2")
-        YFSignal("M",taname,"2")
+        YFSignal("L",taname,"5")
+        YFSignal("M",taname,"5")
 
     for modelname in cc.MODELLIST:
-        YFSignal("L",modelname,"2")
-        YFSignal("M",modelname,"2")
+        YFSignal("L",modelname,"5")
+        YFSignal("M",modelname,"5")
     
     finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')
