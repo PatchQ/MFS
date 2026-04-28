@@ -25,6 +25,10 @@ from TA.LW_CheckWave import *
 from TA.LW_CheckHFH import *
 from TA.LW_CheckT1 import *
 from TA.LW_CheckVCP import *
+from TA.LW_CheckIchimoku import *
+from TA.LW_CheckGBS22C import *
+from TA.LW_CheckBreakout200 import *
+from TA.LW_CheckFisher import *
 
 from AI.MLP import *    #總交易次數: 257 平均勝率: 69.38%
 from AI.SVM import *    #總交易次數: 102 平均勝率: 67.74%
@@ -46,7 +50,8 @@ OUTPATH = "../Sdata/P_YFdata/"
 #PATH = "../Sdata/FYFdata/"
 #OUTPATH = "../Sdata/FP_YFdata/"
 
-TALIST = ["BOSSB","HHHL","VCP","HFH"]
+TALIST = ["BOSSB","HHHL","VCP","HFH","ICHIMOKU","GBS22C","BREAKOUT200","FISHER"]
+TALIST = ["ICHIMOKU","GBS22C","BREAKOUT200","FISHER"]
 #TALIST = ["BOSSB"]
 MODELLIST = ["SVM","MLP","RF"]
 

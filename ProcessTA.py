@@ -34,6 +34,12 @@ def AnalyzeStock(sno,stype,ai):
     #VCP
     df = cc.checkVCP(df)
 
+    #2006 Indicators - Ichimoku, GBS22C, Breakout200, Fisher
+    df = cc.checkIchimoku(df, sno, stype)
+    df = cc.checkGBS22C(df, sno, stype)
+    df = cc.checkBreakout200(df, sno, stype)
+    df = cc.checkFisher(df, sno, stype)
+
     #AI Signal
     if ai=="True":
         signals = {}
@@ -67,11 +73,11 @@ def ProcessTA(stype,ai):
 if __name__ == '__main__':
     start = cc.t.perf_counter()
 
-    # ProcessTA("L",ai="False")    
-    # ProcessTA("M",ai="False")    
-
-    ProcessTA("L",ai="False")  # Process L type stocks with new HFH
+    # ProcessTA("L",ai="True")    
     # ProcessTA("M",ai="True")    
+
+    ProcessTA("L",ai="False") 
+    ProcessTA("M",ai="False")    
 
 
     finish = cc.t.perf_counter()

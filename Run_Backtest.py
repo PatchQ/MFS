@@ -259,10 +259,10 @@ if __name__ == '__main__':
         processBT("M", taname, max_holdbars, sl, tp, dd)
     
     # 如果需要回測 ML 模型
-    for modelname in cc.MODELLIST:
-        print(f"\nProcessing: {modelname}")
-        processBT("L", modelname, max_holdbars, sl, tp, dd)
-        processBT("M", modelname, max_holdbars, sl, tp, dd)
+    # for modelname in cc.MODELLIST:
+    #     print(f"\nProcessing: {modelname}")
+    #     processBT("L", modelname, max_holdbars, sl, tp, dd)
+    #     processBT("M", modelname, max_holdbars, sl, tp, dd)
     
     finish = cc.t.perf_counter()
     
