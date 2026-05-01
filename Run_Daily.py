@@ -15,6 +15,10 @@ from ProcessAI import CalAI
 
 if __name__ == '__main__':
 
+    # 清空上次的信號輸出
+    for f in cc.glob.glob("Data/Result/*.csv"):
+        cc.os.remove(f)
+
     start = cc.t.perf_counter()
     
     #get IndustryList from AA
