@@ -45,6 +45,9 @@ Data/*.png
 # 密鑰
 LLM/ApiKey.md
 
+# 數據目錄（保持本地）
+Sdata/
+
 # OS
 .DS_Store
 Thumbs.db
