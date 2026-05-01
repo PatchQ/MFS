@@ -8,7 +8,7 @@ sys.path.append(project_root)
 import UTIL.CommonConfig as cc  
 
 
-SOPATH = "../Sdata/HKEX/SO/"
+SOPATH = "../SData/HKEX/SO/"
 
 def download_file(odate):
 
@@ -35,7 +35,7 @@ def extract_data(odate):
 
     zip_filename = f"{SOPATH}DATA/{odate}.zip"
 
-    extract_dir = cc.Path.cwd().parent / "Sdata/HKEX/SO/TEMP"
+    extract_dir = cc.Path.cwd().parent / "SData/HKEX/SO/TEMP"
     extract_dir.mkdir(exist_ok=True)
 
     try:
@@ -104,7 +104,7 @@ def extract_data(odate):
         hkats = row["HKATS"]
 
         fname = f"{sno.replace('.HK','')}_{hkats}"
-        op_dir = cc.Path.cwd().parent / f"Sdata/HKEX/SO/{fname}"
+        op_dir = cc.Path.cwd().parent / f"SData/HKEX/SO/{fname}"
         op_dir.mkdir(exist_ok=True)
 
         tempdf = df_op_selected.loc[df_op_selected['series'] == hkats]

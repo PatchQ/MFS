@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 import mplfinance as mpf
 
 
-PATH = "../Sdata/YFdata/"
-OUTPATH = "../Sdata/P_YFdata/" 
+PATH = "../SData/YFdata/"
+OUTPATH = "../SData/P_YFdata/" 
 
 """
 參數:

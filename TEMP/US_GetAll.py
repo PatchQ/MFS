@@ -7,7 +7,7 @@ from tqdm import tqdm
 from curl_cffi import requests
 
 
-PATH = "../Sdata/USdata/"
+PATH = "../SData/USData/"
 #SDATE = "2024-01-01"
 SDATE = "1980-01-01"
 EDATE = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")

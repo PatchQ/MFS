@@ -15,8 +15,8 @@ from sklearn.cluster import DBSCAN
 
 from Util.LW_Calindicator import *
 
-PATH = "../Sdata/YFdata/"
-OUTPATH = "../Sdata/P_YFdata/" 
+PATH = "../SData/YFdata/"
+OUTPATH = "../SData/P_YFdata/" 
 
 class RobustSwingPointAnalyzer:
     def __init__(self):

@@ -8,7 +8,7 @@ import numpy as np
 
 print("Starting fresh test...")
 
-df = pd.read_csv('d:/Github/MFS/../Sdata/P_YFdata/L/P_0001.HK.csv', index_col=0)
+df = pd.read_csv('d:/Github/MFS/../SData/P_YFdata/L/P_0001.HK.csv', index_col=0)
 print(f"Loaded {len(df)} rows")
 
 # Calculate all required EMAs

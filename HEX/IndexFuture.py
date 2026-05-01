@@ -13,7 +13,7 @@ def extract_data(odate):
 
     zip_filename = f"{cc.IOPATH}DATA/{odate}.zip"
 
-    extract_dir = cc.Path.cwd().parent / "Sdata/HKEX/IO/TEMP"
+    extract_dir = cc.Path.cwd().parent / "SData/HKEX/IO/TEMP"
     extract_dir.mkdir(exist_ok=True)
 
     try:
@@ -63,7 +63,7 @@ def extract_data(odate):
 
     for op in oplist:
 
-        op_dir = cc.Path.cwd().parent / f"Sdata/HKEX/IO/{op}"
+        op_dir = cc.Path.cwd().parent / f"SData/HKEX/IO/{op}"
         op_dir.mkdir(exist_ok=True)
 
         tempdf = df_op_selected.loc[df_op_selected['series'] == op]

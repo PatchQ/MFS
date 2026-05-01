@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 # 讀取一支股票
-df = pd.read_csv(f"../Sdata/P_YFData/L/P_0001.HK.csv", index_col=0)
+df = pd.read_csv(f"../SData/P_YFData/L/P_0001.HK.csv", index_col=0)
 df.index = pd.to_datetime(df.index)
 
 # 複製數據並調用 calHFH

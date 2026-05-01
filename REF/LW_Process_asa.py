@@ -15,8 +15,8 @@ warnings.filterwarnings('ignore')
 
 from YFData_Calindicator import *
 
-PATH = "../Sdata/YFdata/"
-OUTPATH = "../Sdata/P_YFdata/" 
+PATH = "../SData/YFdata/"
+OUTPATH = "../SData/P_YFdata/" 
 
 class AdvancedSwingAnalyzer:
     def __init__(self):

@@ -11,7 +11,7 @@ from collections import defaultdict
 
 
 #get stock csv file from path
-OUTPATH = "../Sdata/P_USdata/"
+OUTPATH = "../SData/P_USData/"
 #EDATE = "2025-09-30"
 EDATE = (cc.datetime.now() - cc.timedelta(days=30)).strftime("%Y-%m-%d")
 

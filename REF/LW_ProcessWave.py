@@ -12,8 +12,8 @@ import warnings
 
 from LW_Calindicator import *
 
-PATH = "../Sdata/YFdata/"
-OUTPATH = "../Sdata/P_YFdata/" 
+PATH = "../SData/YFdata/"
+OUTPATH = "../SData/P_YFdata/" 
 DAYS=0
 TOLERANCE=0.001
 #WINDOW=10

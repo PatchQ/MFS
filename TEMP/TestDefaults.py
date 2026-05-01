@@ -13,7 +13,7 @@ import pandas as pd
 
 print("Starting test...")
 
-df = pd.read_csv('d:/Github/MFS/../Sdata/P_YFdata/L/P_0001.HK.csv', index_col=0)
+df = pd.read_csv('d:/Github/MFS/../SData/P_YFdata/L/P_0001.HK.csv', index_col=0)
 df['EMA22'] = df['Close'].ewm(span=22, min_periods=22, adjust=False).mean()
 df['EMA50'] = df['Close'].ewm(span=50, min_periods=50, adjust=False).mean()
 df['EMA100'] = df['Close'].ewm(span=100, min_periods=100, adjust=False).mean()

@@ -2,7 +2,7 @@ import pandas as pd
 import requests
 from io import BytesIO
 
-SOPATH = "../Sdata/HKEX/SO/"
+SOPATH = "../SData/HKEX/SO/"
 
 url = "https://www.hkex.com.hk/-/media/HKEX-Market/Products/Listed-Derivatives/Market-Maker-Program/List-of-Market-Makers_Liquidity-Providers/FullListSOMM_MonthlyWebsite.xlsx"
 

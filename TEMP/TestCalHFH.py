@@ -7,7 +7,7 @@ import UTIL.CommonConfig as cc
 import pandas as pd
 
 # Read a stock
-df = pd.read_csv('../Sdata/P_YFdata/L/P_0001.HK.csv', index_col=0)
+df = pd.read_csv('../SData/P_YFdata/L/P_0001.HK.csv', index_col=0)
 df = cc.calEMA(df)
 
 print("Testing calHFH with new parameters:")

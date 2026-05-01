@@ -39,16 +39,16 @@ from AI.ZPrediction import *
 
 PROD = True
 
-IFPATH = "../Sdata/HKEX/IF/"
-IOPATH = "../Sdata/HKEX/IO/"
-SOPATH = "../Sdata/HKEX/SO/"
+IFPATH = "../SData/HKEX/IF/"
+IOPATH = "../SData/HKEX/IO/"
+SOPATH = "../SData/HKEX/SO/"
 
 DATADATE = "2024-01-01"
-PATH = "../Sdata/YFdata/"
-OUTPATH = "../Sdata/P_YFdata/"
+PATH = "../SData/YFdata/"
+OUTPATH = "../SData/P_YFdata/"
 
-#PATH = "../Sdata/FYFdata/"
-#OUTPATH = "../Sdata/FP_YFdata/"
+#PATH = "../SData/FYFdata/"
+#OUTPATH = "../SData/FP_YFdata/"
 
 TALIST = ["BOSSB","HHHL","VCP","HFH","ICHIMOKU","GBS22C","BREAKOUT200","FISHER"]
 TALIST = ["ICHIMOKU","GBS22C","BREAKOUT200","FISHER"]

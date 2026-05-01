@@ -14,7 +14,7 @@ import pandas as pd
 # 測試修正後的邏輯
 def test_fixed_logic():
     # 讀取一支股票
-    df = pd.read_csv(f"../Sdata/P_YFData/L/P_0001.HK.csv", index_col=0)
+    df = pd.read_csv(f"../SData/P_YFData/L/P_0001.HK.csv", index_col=0)
     df.index = pd.to_datetime(df.index)
     
     opens = df['Open'].values
@@ -97,7 +97,7 @@ def test_fixed_logic():
 
 # 測試原始數據的回測情況
 def test_backtest_on_stock():
-    df = pd.read_csv(f"../Sdata/P_YFData/L/P_0001.HK.csv", index_col=0)
+    df = pd.read_csv(f"../SData/P_YFData/L/P_0001.HK.csv", index_col=0)
     df.index = pd.to_datetime(df.index)
     
     # 使用 calHFH 函數

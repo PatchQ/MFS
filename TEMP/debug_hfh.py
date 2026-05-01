@@ -1,7 +1,7 @@
 import pandas as pd
 import sys
 
-df = pd.read_csv('../Sdata/P_YFdata/L/P_0001.HK.csv', index_col=0)
+df = pd.read_csv('../SData/P_YFdata/L/P_0001.HK.csv', index_col=0)
 print(f'Read {len(df)} rows')
 print(f'Index dtype before: {df.index.dtype}')
 df.index = pd.to_datetime(df.index)

@@ -12,7 +12,7 @@ from TA.LW_CheckFisher import FisherParams, checkFisher
 print('FisherParams.TRIGGER_THRESHOLD =', FisherParams.TRIGGER_THRESHOLD)
 print('FisherParams.STRONG_THRESHOLD =', FisherParams.STRONG_THRESHOLD)
 
-df = pd.read_csv('e:/Patch/GitHub/Sdata/P_YFdata/L/P_0001.HK.csv', index_col=0, low_memory=False)
+df = pd.read_csv('e:/Patch/GitHub/SData/P_YFdata/L/P_0001.HK.csv', index_col=0, low_memory=False)
 print('Before checkFisher - FISHER sum:', df['FISHER'].sum())
 
 df_result = checkFisher(df.head(200).copy(), '0001.HK', 'L')

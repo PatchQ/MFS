@@ -8,7 +8,7 @@ sys.path.append(project_root)
 import UTIL.CommonConfig as cc  
 
 #get stock csv file from path
-OUTPATH = "../Sdata/P_USdata/"
+OUTPATH = "../SData/P_USData/"
 EDATE = (cc.datetime.now() - cc.timedelta(days=1)).strftime("%Y-%m-%d")
 #EDATE = "2025-09-30"
 

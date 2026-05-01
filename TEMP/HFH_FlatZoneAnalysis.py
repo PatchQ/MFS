@@ -7,7 +7,7 @@ import numpy as np
 
 print("=== HFH Detailed Diagnosis ===")
 
-df = pd.read_csv('d:/Github/MFS/../Sdata/P_YFdata/L/P_0001.HK.csv', index_col=0)
+df = pd.read_csv('d:/Github/MFS/../SData/P_YFdata/L/P_0001.HK.csv', index_col=0)
 print(f"Loaded {len(df)} rows, date range: {df.index[0]} to {df.index[-1]}")
 
 # Calculate all required EMAs
