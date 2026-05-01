@@ -119,7 +119,12 @@ def checkBoss(df, sno, stype, swing_analysis, params=None):
     # 使用 pd.Index.intersection 來安全更新
     valid_dates = df.index.intersection(sa_indexed.index)
     for col in ['PATTERN', 'LLLow', 'LLDate', 'HHClose', 'HHDate', 'HHHigh']:
-        df.loc[valid_dates, col if col != 'PATTERN' else 'BOSS_PATTERN'] = sa_indexed.loc[valid_dates, col]
+        target_col = col if col != 'PATTERN' else 'BOSS_PATTERN'
+        value = sa_indexed.loc[valid_dates, col]
+        if target_col == 'BOSS_PATTERN':
+            # 字串欄位：將 NaN 替換為空字串，避免 TypeError
+            value = value.astype(str).replace('nan', '')
+        df.loc[valid_dates, target_col] = value
 
     # 計算波動率 (HHHigh - LLLow) / LLLow
     mask_has_boss = df['BOSS_PATTERN'] != ""
