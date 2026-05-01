@@ -24,8 +24,8 @@ if __name__ == '__main__':
     #getStockListData()
 
     #get All History Data from YF
-    #YFgetAll("L")
-    #YFgetAll("M")
+    YFgetAll("L")
+    YFgetAll("M")
 
     ProcessTA("L",ai="False")
     ProcessTA("M",ai="False")

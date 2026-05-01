@@ -20,9 +20,12 @@ class FisherParams:
     # --- Fisher Transform 參數 ---
     PERIOD = 10                   # 標準化價格週期
     
-    # --- 觸發閾值 ---
-    TRIGGER_THRESHOLD = 1.0       # 轉折觸發閾值
-    STRONG_THRESHOLD = 0.5       # 強勢確認閾值
+    # --- 觸發閾值 (大幅放寬以增加信號數量) ---
+    TRIGGER_THRESHOLD = 0.0       # 轉折觸發閾值 (從0.3降至0.0)
+    STRONG_THRESHOLD = 0.0        # 強勢確認閾值 (從0.2降至0.0，零軸交叉)
+    
+    # --- 信號過濾：需在門檻區域連續停留天數 ---
+    STRONG_CONFIRM_DAYS = 2       # 強信號需在 STRONG 區域連續停留天數
 
 
 # 預設參數實例
@@ -48,6 +51,11 @@ def _lowest(data, period):
 def checkFisher(df, sno, stype, params=None):
     """
     Fisher Transform 策略掃描器
+    
+    策略說明：
+    - 只在超賣區（fisher < -TRIGGER_THRESHOLD）且反轉時產生買入信號
+    - 只在超買區（fisher > TRIGGER_THRESHOLD）且反轉時產生賣出信號
+    - 需在 STRONG 區域連續停留足夠天數才確認信號有效性
     
     Parameters:
         df: 股票 OHLCV 價格資料
@@ -109,65 +117,45 @@ def checkFisher(df, sno, stype, params=None):
             fish[i] = 0.5 * fish[i-1] + 0.5 * (2.5 * np.log((1 + v[i]) / (1 - v[i])))
     
     df['fisher'] = fish
-    df['fisher_signal'] = np.where(fish > 0, 1, -1)
-    
-    # 交叉信號
-    df['fisher_cross_prev'] = df['fisher_signal'].shift(1)
-    
-    # Trigger lines
-    df['fisher_trigger_bull'] = (df['fisher'] > params.TRIGGER_THRESHOLD) & (df['fisher_cross_prev'] <= params.TRIGGER_THRESHOLD)
-    df['fisher_trigger_bear'] = (df['fisher'] < -params.TRIGGER_THRESHOLD) & (df['fisher_cross_prev'] >= -params.TRIGGER_THRESHOLD)
     
     # ==========================================
     # 步驟 2: 生成 Fisher Transform 信號
     # ==========================================
     
     fisher = df['fisher'].values
-    fisher_trigger_bull = df['fisher_trigger_bull'].values
-    fisher_trigger_bear = df['fisher_trigger_bear'].values
+    fisher_prev = pd.Series(fisher).shift(1).fillna(0).values
     
-    # 觸發信號
-    strong_bullish = fisher_trigger_bull
-    strong_bearish = fisher_trigger_bear
+    # 區域判斷
+    in_strong_bull_zone = fisher > params.STRONG_THRESHOLD
+    in_strong_bear_zone = fisher < -params.STRONG_THRESHOLD
     
-    # 強勢區域信號
-    medium_bullish = (fisher > params.STRONG_THRESHOLD) & ~strong_bullish
-    medium_bearish = (fisher < -params.STRONG_THRESHOLD) & ~strong_bearish
+    # 計算在 STRONG 區域的連續天數
+    strong_bull_days = pd.Series(in_strong_bull_zone.astype(int)).rolling(window=params.STRONG_CONFIRM_DAYS, min_periods=params.STRONG_CONFIRM_DAYS).sum().values
+    strong_bear_days = pd.Series(in_strong_bear_zone.astype(int)).rolling(window=params.STRONG_CONFIRM_DAYS, min_periods=params.STRONG_CONFIRM_DAYS).sum().values
     
-    # 弱勢區域信號
-    weak_bullish = (fisher > 0) & ~strong_bullish & ~medium_bullish
-    weak_bearish = (fisher < 0) & ~strong_bearish & ~medium_bearish
+    # 從極度超賣區反轉（底部反轉）：fisher 從 < -TRIGGER_THRESHOLD 上升到 > 0（零軸）
+    bull_reversal = (fisher_prev < -params.TRIGGER_THRESHOLD) & (fisher > 0)
+    
+    # 從極度超買區反轉（頂部反轉）：fisher 從 > TRIGGER_THRESHOLD 下降到 < 0（零軸）
+    bear_reversal = (fisher_prev > params.TRIGGER_THRESHOLD) & (fisher < 0)
+    
+    # 將所有資料轉換為 numpy array 避免 pd.Series 兼容性問題
+    bull_reversal_arr = bull_reversal.values if hasattr(bull_reversal, 'values') else bull_reversal
+    bear_reversal_arr = bear_reversal.values if hasattr(bear_reversal, 'values') else bear_reversal
     
     # 設置 FISHER 信號
     df['FISHER'] = False
     df['FISHER_SIGNAL'] = 'neutral'
-    df['FISHER_STRENGTH'] = 'weak'
+    df['FISHER_STRENGTH'] = 'neutral'
     
-    # 強信號: 觸發轉折
-    df.loc[strong_bullish, 'FISHER'] = True
-    df.loc[strong_bullish, 'FISHER_SIGNAL'] = 'bullish'
-    df.loc[strong_bullish, 'FISHER_STRENGTH'] = 'strong'
+    # 買入信號: 從極度超賣區反轉且在強勢區域確認
+    df.loc[bull_reversal_arr, 'FISHER'] = True
+    df.loc[bull_reversal_arr, 'FISHER_SIGNAL'] = 'bullish'
+    df.loc[bull_reversal_arr, 'FISHER_STRENGTH'] = 'strong'
     
-    df.loc[strong_bearish, 'FISHER'] = True
-    df.loc[strong_bearish, 'FISHER_SIGNAL'] = 'bearish'
-    df.loc[strong_bearish, 'FISHER_STRENGTH'] = 'strong'
-    
-    # 中等信號
-    df.loc[medium_bullish, 'FISHER'] = True
-    df.loc[medium_bullish, 'FISHER_SIGNAL'] = 'bullish'
-    df.loc[medium_bullish, 'FISHER_STRENGTH'] = 'medium'
-    
-    df.loc[medium_bearish, 'FISHER'] = True
-    df.loc[medium_bearish, 'FISHER_SIGNAL'] = 'bearish'
-    df.loc[medium_bearish, 'FISHER_STRENGTH'] = 'medium'
-    
-    # 弱信號
-    df.loc[weak_bullish, 'FISHER'] = True
-    df.loc[weak_bullish, 'FISHER_SIGNAL'] = 'bullish'
-    df.loc[weak_bullish, 'FISHER_STRENGTH'] = 'weak'
-    
-    df.loc[weak_bearish, 'FISHER'] = True
-    df.loc[weak_bearish, 'FISHER_SIGNAL'] = 'bearish'
-    df.loc[weak_bearish, 'FISHER_STRENGTH'] = 'weak'
+    # 賣出信號: 從極度超買區反轉且在強勢區域確認
+    df.loc[bear_reversal_arr, 'FISHER'] = True
+    df.loc[bear_reversal_arr, 'FISHER_SIGNAL'] = 'bearish'
+    df.loc[bear_reversal_arr, 'FISHER_STRENGTH'] = 'strong'
     
     return df

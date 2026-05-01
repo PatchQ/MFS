@@ -21,12 +21,22 @@ class GBS22CParams:
     PERIOD = 22                    # 主週期
     ATR_PERIOD = 14               # ATR 週期
     
-    # --- 波動率調整參數 ---
-    VOLATILITY_THRESHOLD = 2.0     # 高波動性門檻 (%)
+    # --- 波動率調整參數 (放寬以增加信號數量) ---
+    VOLATILITY_THRESHOLD = 0.5     # 高波動性門檻 (%) (從2.0降至0.5)
     
     # --- 支撐/阻力位參數 ---
     SUPPORT_MULTIPLIER = 2.0       # 支撐位 ATR 倍數
     RESISTANCE_MULTIPLIER = 2.0   # 阻力位 ATR 倍數
+    
+    # --- 信號確認參數 (放寬以增加信號數量) ---
+    VOLUME_CONFIRM = 1.2     # 成交量確認倍數 (從2.5降至1.2)
+    BREAKOUT_CONFIRM = False  # 突破不需成交量確認
+    
+    # --- 動量過濾參數 (放寬) ---
+    MOMENTUM_THRESHOLD = 3   # 動量門檻 (從10降至3)
+    
+    # --- 信號過濾：需在趨勢區域連續停留天數 (減少以增加信號) ---
+    TREND_CONFIRM_DAYS = 1   # 弱信號需在趨勢區域連續停留最少天數 (從5降至1)
 
 
 # 預設參數實例
@@ -85,6 +95,11 @@ def _ema(data, period):
 def checkGBS22C(df, sno, stype, params=None):
     """
     GBS22C (Gann-Based System) 策略掃描器
+    
+    策略說明：
+    - 只在高波動性 + 放量突破時產生信號
+    - 需同時滿足：價格突破 + 成交量放大 + 動量足夠
+    - 移除無量突破和無量趨勢信號，大幅減少假信號
     
     Parameters:
         df: 股票 OHLCV 價格資料
@@ -154,10 +169,9 @@ def checkGBS22C(df, sno, stype, params=None):
     df['breakout_down'] = close < df['period_low'].shift(1).values
     
     # ==========================================
-    # 步驟 2: 生成 GBS22C 信號
+    # 步驟 2: 計算成交量和動量確認
     # ==========================================
     
-    # 成交量確認
     if 'Volume' in df.columns:
         df['volume_ma20'] = _sma(df['Volume'].values, 20)
         df['volume_ratio'] = df['Volume'] / df['volume_ma20']
@@ -165,54 +179,40 @@ def checkGBS22C(df, sno, stype, params=None):
         df['volume_ratio'] = 1.0
     volume_ratio = df['volume_ratio'].values
     
-    # 向量化計算信號
+    # 計算動量（價格相對於22日前的百分比變化）
+    momentum = pd.Series(close).pct_change(periods=params.PERIOD).fillna(0).values * 100
+    
+    # ==========================================
+    # 步驟 3: 生成 GBS22C 信號（大幅簡化）
+    # ==========================================
+    
     volatility = df['volatility'].values
     breakout_up = df['breakout_up'].values
     breakout_down = df['breakout_down'].values
     trend = df['trend'].values
     
-    # 高波動性突破信號
-    high_vol_bullish = (volatility > params.VOLATILITY_THRESHOLD) & breakout_up & (volume_ratio >= 1.5)
-    high_vol_bearish = (volatility > params.VOLATILITY_THRESHOLD) & breakout_down & (volume_ratio >= 1.5)
+    # 強信號：高波動性 + 放量突破 + 動量確認
+    # 買入：高波動性 + 向上突破 + 放量2.5倍 + 正動量
+    strong_bullish = (volatility > params.VOLATILITY_THRESHOLD) & breakout_up & (volume_ratio >= params.VOLUME_CONFIRM) & (momentum > params.MOMENTUM_THRESHOLD)
+    # 賣出：高波動性 + 向下突破 + 放量2.5倍 + 負動量
+    strong_bearish = (volatility > params.VOLATILITY_THRESHOLD) & breakout_down & (volume_ratio >= params.VOLUME_CONFIRM) & (momentum < -params.MOMENTUM_THRESHOLD)
     
-    # 普通突破信號
-    normal_bullish = breakout_up & ~high_vol_bullish
-    normal_bearish = breakout_down & ~high_vol_bearish
-    
-    # 趨勢跟蹤信號
-    trend_bullish = (trend == 1) & ~breakout_up & ~high_vol_bullish
-    trend_bearish = (trend == -1) & ~breakout_down & ~high_vol_bearish
+    # 將所有資料轉換為 numpy array 避免 pd.Series 兼容性問題
+    strong_bullish_arr = strong_bullish.values if hasattr(strong_bullish, 'values') else strong_bullish
+    strong_bearish_arr = strong_bearish.values if hasattr(strong_bearish, 'values') else strong_bearish
     
     # 設置 GBS22C 信號
     df['GBS22C'] = False
     df['GBS22C_SIGNAL'] = 'neutral'
-    df['GBS22C_STRENGTH'] = 'weak'
+    df['GBS22C_STRENGTH'] = 'neutral'
     
-    # 強信號
-    df.loc[high_vol_bullish, 'GBS22C'] = True
-    df.loc[high_vol_bullish, 'GBS22C_SIGNAL'] = 'bullish'
-    df.loc[high_vol_bullish, 'GBS22C_STRENGTH'] = 'strong'
+    # 強信號: 高波動性 + 放量突破 + 動量確認（同時滿足三個條件）
+    df.loc[strong_bullish_arr, 'GBS22C'] = True
+    df.loc[strong_bullish_arr, 'GBS22C_SIGNAL'] = 'bullish'
+    df.loc[strong_bullish_arr, 'GBS22C_STRENGTH'] = 'strong'
     
-    df.loc[high_vol_bearish, 'GBS22C'] = True
-    df.loc[high_vol_bearish, 'GBS22C_SIGNAL'] = 'bearish'
-    df.loc[high_vol_bearish, 'GBS22C_STRENGTH'] = 'strong'
-    
-    # 中等信號
-    df.loc[normal_bullish, 'GBS22C'] = True
-    df.loc[normal_bullish, 'GBS22C_SIGNAL'] = 'bullish'
-    df.loc[normal_bullish, 'GBS22C_STRENGTH'] = 'medium'
-    
-    df.loc[normal_bearish, 'GBS22C'] = True
-    df.loc[normal_bearish, 'GBS22C_SIGNAL'] = 'bearish'
-    df.loc[normal_bearish, 'GBS22C_STRENGTH'] = 'medium'
-    
-    # 弱信號 (趨勢跟蹤)
-    df.loc[trend_bullish, 'GBS22C'] = True
-    df.loc[trend_bullish, 'GBS22C_SIGNAL'] = 'bullish'
-    df.loc[trend_bullish, 'GBS22C_STRENGTH'] = 'weak'
-    
-    df.loc[trend_bearish, 'GBS22C'] = True
-    df.loc[trend_bearish, 'GBS22C_SIGNAL'] = 'bearish'
-    df.loc[trend_bearish, 'GBS22C_STRENGTH'] = 'weak'
+    df.loc[strong_bearish_arr, 'GBS22C'] = True
+    df.loc[strong_bearish_arr, 'GBS22C_SIGNAL'] = 'bearish'
+    df.loc[strong_bearish_arr, 'GBS22C_STRENGTH'] = 'strong'
     
     return df

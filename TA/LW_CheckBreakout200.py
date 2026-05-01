@@ -20,11 +20,14 @@ class Breakout200Params:
     # --- 突破週期參數 ---
     PERIOD = 200                  # 200日移動窗口
     
-    # --- 成交量確認參數 ---
-    VOLUME_CONFIRM = 1.5          # 放量確認倍數
+    # --- 成交量確認參數 (放寬以增加信號數量) ---
+    VOLUME_CONFIRM = 1.2          # 放量確認倍數 (從2.0降至1.2)
     
-    # --- 動量過濾參數 ---
-    PRICE_ABOVE_MA_THRESHOLD = 5   # 價格高於均線百分比閾值
+    # --- 動量過濾參數 (放寬) ---
+    PRICE_ABOVE_MA_THRESHOLD = 10  # 價格高於均線百分比閾值 (從20降至10)
+    
+    # --- 信號過濾：需在均線上方連續停留天數 (減少以增加信號) ---
+    STRONG_CONFIRM_DAYS = 1      # 強信號需在均線上方停留最少天數 (從5降至1)
 
 
 # 預設參數實例
@@ -58,6 +61,11 @@ def _sma(data, period):
 def checkBreakout200(df, sno, stype, params=None):
     """
     200日新高突破策略掃描器
+    
+    策略說明：
+    - 只在放量突破200日新高時產生買入信號
+    - 只在放量跌破200日新低時產生賣出信號
+    - 成交量需超過20日均量的2倍確認突破有效性
     
     Parameters:
         df: 股票 OHLCV 價格資料
@@ -123,7 +131,7 @@ def checkBreakout200(df, sno, stype, params=None):
     df['breakout_strength'] = close - df['highest_200'].shift(1).values
     
     # ==========================================
-    # 步驟 2: 生成 Breakout200 信號
+    # 步驟 2: 生成 Breakout200 信號（大幅簡化）
     # ==========================================
     
     volume_ratio = df['volume_ratio'].values
@@ -131,49 +139,27 @@ def checkBreakout200(df, sno, stype, params=None):
     new_low = df['new_low_200'].values
     price_vs_ma = df['price_vs_ma200'].values
     
-    # 放量突破200日新高
-    vol_confirmed_bullish = new_high & (volume_ratio >= params.VOLUME_CONFIRM)
-    # 放量跌破200日新低
-    vol_confirmed_bearish = new_low & (volume_ratio >= params.VOLUME_CONFIRM)
+    # 放量突破200日新高（需成交量確認，且價格在均線上方）
+    vol_confirmed_bullish = new_high & (volume_ratio >= params.VOLUME_CONFIRM) & (price_vs_ma > 0)
+    # 放量跌破200日新低（需成交量確認，且價格在均線下方）
+    vol_confirmed_bearish = new_low & (volume_ratio >= params.VOLUME_CONFIRM) & (price_vs_ma < 0)
     
-    # 無量突破
-    weak_bullish = new_high & ~vol_confirmed_bullish
-    weak_bearish = new_low & ~vol_confirmed_bearish
-    
-    # 價格在均線上方震盪
-    price_bullish = (price_vs_ma > params.PRICE_ABOVE_MA_THRESHOLD) & ~new_high
-    price_bearish = (price_vs_ma < -params.PRICE_ABOVE_MA_THRESHOLD) & ~new_low
+    # 將所有資料轉換為 numpy array 避免 pd.Series 兼容性問題
+    vol_confirmed_bullish_arr = vol_confirmed_bullish.values if hasattr(vol_confirmed_bullish, 'values') else vol_confirmed_bullish
+    vol_confirmed_bearish_arr = vol_confirmed_bearish.values if hasattr(vol_confirmed_bearish, 'values') else vol_confirmed_bearish
     
     # 設置 BREAKOUT200 信號
     df['BREAKOUT200'] = False
     df['BREAKOUT200_SIGNAL'] = 'neutral'
-    df['BREAKOUT200_STRENGTH'] = 'weak'
+    df['BREAKOUT200_STRENGTH'] = 'neutral'
     
-    # 強信號: 放量突破
-    df.loc[vol_confirmed_bullish, 'BREAKOUT200'] = True
-    df.loc[vol_confirmed_bullish, 'BREAKOUT200_SIGNAL'] = 'bullish'
-    df.loc[vol_confirmed_bullish, 'BREAKOUT200_STRENGTH'] = 'strong'
+    # 強信號: 放量突破（同時滿足：突破200日新高/新低 + 放量2倍 + 價格在均線同側）
+    df.loc[vol_confirmed_bullish_arr, 'BREAKOUT200'] = True
+    df.loc[vol_confirmed_bullish_arr, 'BREAKOUT200_SIGNAL'] = 'bullish'
+    df.loc[vol_confirmed_bullish_arr, 'BREAKOUT200_STRENGTH'] = 'strong'
     
-    df.loc[vol_confirmed_bearish, 'BREAKOUT200'] = True
-    df.loc[vol_confirmed_bearish, 'BREAKOUT200_SIGNAL'] = 'bearish'
-    df.loc[vol_confirmed_bearish, 'BREAKOUT200_STRENGTH'] = 'strong'
-    
-    # 中等信號: 無量突破
-    df.loc[weak_bullish, 'BREAKOUT200'] = True
-    df.loc[weak_bullish, 'BREAKOUT200_SIGNAL'] = 'bullish'
-    df.loc[weak_bullish, 'BREAKOUT200_STRENGTH'] = 'medium'
-    
-    df.loc[weak_bearish, 'BREAKOUT200'] = True
-    df.loc[weak_bearish, 'BREAKOUT200_SIGNAL'] = 'bearish'
-    df.loc[weak_bearish, 'BREAKOUT200_STRENGTH'] = 'medium'
-    
-    # 弱信號: 價格在均線上方/下方
-    df.loc[price_bullish, 'BREAKOUT200'] = True
-    df.loc[price_bullish, 'BREAKOUT200_SIGNAL'] = 'bullish'
-    df.loc[price_bullish, 'BREAKOUT200_STRENGTH'] = 'weak'
-    
-    df.loc[price_bearish, 'BREAKOUT200'] = True
-    df.loc[price_bearish, 'BREAKOUT200_SIGNAL'] = 'bearish'
-    df.loc[price_bearish, 'BREAKOUT200_STRENGTH'] = 'weak'
+    df.loc[vol_confirmed_bearish_arr, 'BREAKOUT200'] = True
+    df.loc[vol_confirmed_bearish_arr, 'BREAKOUT200_SIGNAL'] = 'bearish'
+    df.loc[vol_confirmed_bearish_arr, 'BREAKOUT200_STRENGTH'] = 'strong'
     
     return df

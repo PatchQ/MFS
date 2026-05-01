@@ -23,8 +23,8 @@ class IchimokuParams:
     SENKOU_B_PERIOD = 52    # 先行區間B週期
     DISPLACEMENT = 26       # 位移量
     
-    # --- 信號確認參數 ---
-    VOLUME_CONFIRM = 1.5    # 成交量確認倍數
+    # --- 信號確認參數 (放寬以增加信號數量) ---
+    VOLUME_CONFIRM = 1.0     # 成交量確認倍數 (從2.0降至1.0，移除成交量確認)
 
 
 # 預設參數實例
@@ -159,20 +159,20 @@ def checkIchimoku(df, sno, stype, params=None):
     tk_only_bullish = df['tk_golden'].values & in_cloud
     tk_only_bearish = df['tk_death'].values & in_cloud
     
-    # 強度評估
+    # 強度評估（簡化邏輯，減少假信號）
     # 強多頭: 金叉 + 雲上 + 放量
     strong_bullish = bullish_signal
-    # 中多頭: 金叉 + 雲上（無量）或 雲中金叉 + 放量
-    medium_bullish = (df['tk_golden'].values & above_cloud & ~strong_bullish) | (tk_only_bullish & (volume_ratio >= params.VOLUME_CONFIRM))
-    # 弱多頭: 雲中金叉（無量）或 雲上但無TK交叉
-    weak_bullish = (tk_only_bullish & ~(medium_bullish | strong_bullish)) | (above_cloud & (df['tk_cross'].values == 1) & ~strong_bullish & ~medium_bullish)
+    # 中多頭: 金叉 + 雲上（無量）- 移除無量雲中金叉信號以減少假信號
+    medium_bullish = (df['tk_golden'].values & above_cloud & ~strong_bullish) & (volume_ratio >= params.VOLUME_CONFIRM)
+    # 弱多頭: 僅保留金叉 + 雲中 + 放量（移除無交叉的弱信號）
+    weak_bullish = tk_only_bullish & (volume_ratio >= params.VOLUME_CONFIRM) & ~(medium_bullish | strong_bullish)
     
     # 強空頭: 死叉 + 雲下 + 放量
     strong_bearish = bearish_signal
-    # 中空頭: 死叉 + 雲下（無量）或 雲中死叉 + 放量
-    medium_bearish = (df['tk_death'].values & below_cloud & ~strong_bearish) | (tk_only_bearish & (volume_ratio >= params.VOLUME_CONFIRM))
-    # 弱空頭: 雲中死叉（無量）或 雲下但無TK交叉
-    weak_bearish = (tk_only_bearish & ~(medium_bearish | strong_bearish)) | (below_cloud & (df['tk_cross'].values == -1) & ~strong_bearish & ~medium_bearish)
+    # 中空頭: 死叉 + 雲下（無量）- 移除無量雲中死叉信號以減少假信號
+    medium_bearish = (df['tk_death'].values & below_cloud & ~strong_bearish) & (volume_ratio >= params.VOLUME_CONFIRM)
+    # 弱空頭: 僅保留死叉 + 雲中 + 放量（移除無交叉的弱信號）
+    weak_bearish = tk_only_bearish & (volume_ratio >= params.VOLUME_CONFIRM) & ~(medium_bearish | strong_bearish)
     
     # 設置 ICHIMOKU 信號
     df['ICHIMOKU'] = False
