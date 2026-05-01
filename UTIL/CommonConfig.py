@@ -44,8 +44,8 @@ IOPATH = "../SData/HKEX/IO/"
 SOPATH = "../SData/HKEX/SO/"
 
 DATADATE = "2024-01-01"
-PATH = "../SData/YFdata/"
-OUTPATH = "../SData/P_YFdata/"
+PATH = "../SData/YFData/"
+OUTPATH = "../SData/P_YFData/"
 
 #PATH = "../SData/FYFdata/"
 #OUTPATH = "../SData/FP_YFdata/"
