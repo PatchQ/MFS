@@ -18,7 +18,12 @@ def Prediction(modelname,model,df,sno,stype,tdate,fulldata):
 
         drop_cols = ["sno", "F10D", "F20D", "F30D", "classification",
                      "BOSS_PATTERN", "BOSS_STATUS", "HHHL_PATTERN",
-                     "LLDate", "HHDate", "WLDate", "WHDate"]
+                     "LLDate", "HHDate", "WLDate", "WHDate",
+                     # 字串欄位（SimpleImputer 無法處理，須與訓練時一致）
+                     "ICHIMOKU_SIGNAL", "ICHIMOKU_STRENGTH",
+                     "GBS22C_SIGNAL", "GBS22C_STRENGTH",
+                     "BREAKOUT200_SIGNAL", "BREAKOUT200_STRENGTH",
+                     "FISHER_SIGNAL", "FISHER_STRENGTH"]
                      #"BreakoutQuality","FalseBreakout","PreHighCount"]
         
         pp.drop(columns=[c for c in drop_cols if c in pp.columns], inplace=True)                

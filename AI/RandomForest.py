@@ -37,7 +37,12 @@ def RF(sno, stype, tdate):
         
         drop_cols = ["sno", "F10D", "F20D", "F30D", "classification",
                      "BOSS_PATTERN", "BOSS_STATUS", "HHHL_PATTERN",
-                     "LLDate", "HHDate", "WLDate", "WHDate"]
+                     "LLDate", "HHDate", "WLDate", "WHDate",
+                     # 字串欄位（SimpleImputer 無法處理）
+                     "ICHIMOKU_SIGNAL", "ICHIMOKU_STRENGTH",
+                     "GBS22C_SIGNAL", "GBS22C_STRENGTH",
+                     "BREAKOUT200_SIGNAL", "BREAKOUT200_STRENGTH",
+                     "FISHER_SIGNAL", "FISHER_STRENGTH"]
         
         train_data.drop(columns=[c for c in drop_cols if c in train_data.columns], inplace=True)                
         train_data = train_data.replace([cc.np.inf, -cc.np.inf], cc.np.nan)
