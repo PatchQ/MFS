@@ -121,9 +121,9 @@ def checkBoss(df, sno, stype, swing_analysis, params=None):
     for col in ['PATTERN', 'LLLow', 'LLDate', 'HHClose', 'HHDate', 'HHHigh']:
         target_col = col if col != 'PATTERN' else 'BOSS_PATTERN'
         value = sa_indexed.loc[valid_dates, col]
-        if target_col == 'BOSS_PATTERN':
-            # 字串欄位：將 NaN 替換為空字串，避免 TypeError
-            value = value.astype(str).replace('nan', '')
+        # 字串欄位：將 NaN/NaT 替換為空字串，避免 ExtensionDtype 嚴格檢查
+        if target_col in ('BOSS_PATTERN', 'LLDate', 'HHDate'):
+            value = value.astype(object).where(pd.notna(value), '')
         df.loc[valid_dates, target_col] = value
 
     # 計算波動率 (HHHigh - LLLow) / LLLow
