@@ -18,29 +18,20 @@ if __name__ == '__main__':
     start = cc.t.perf_counter()
     
     #get IndustryList from AA
-    #getIndustryList()
+    getIndustryList()
 
     #get All number from AA
-    #getStockListData()
+    getStockListData()
 
-    #get History Data from YF   
-    YFgetAll("L",cc.DATADATE)
-    YFgetAll("M",cc.DATADATE)
+    #get All History Data from YF
+    YFgetAll("L")
+    YFgetAll("M")
 
-    #process Data
-    ProcessTA("L",ai="True")
-    ProcessTA("M",ai="True")
- 
-    YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
-    YFSignal("M","BOSS2~BOSSB~BOSSCL1","30")
+    ProcessTA("L",ai="False")
+    ProcessTA("M",ai="False")
     
-    for taname in cc.TALIST:
-      YFSignal("L",taname,"2")
-      YFSignal("M",taname,"2")
-
-    for modelname in cc.MODELLIST:
-      YFSignal("L",modelname,"2")
-      YFSignal("M",modelname,"2")
+    CalAI("L")
+    CalAI("M")
     
     finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

@@ -172,7 +172,7 @@ def countBOSS(stype,signal,df,sdate,edate):
 
         print(stock_counts_df.iloc[:,-1].tail(1))
 
-        stock_counts_df.to_csv("Data/"+stype+"_"+signal+"_Stat"+FILESTAMP+".csv",index=False)
+        stock_counts_df.to_csv("Data/Result/"+stype+"_"+signal+"_Stat"+FILESTAMP+".csv",index=False)
 
 
 def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout=""):
@@ -195,7 +195,7 @@ def YFSignal(stype,signal,days,sdate="2024/01/01",edate="2026/12/31",ruleout="")
             print(signaldf[['index','sno',signal]])
 
         
-        signaldf.to_csv("Data/"+stype+"_"+signal+FILESTAMP+".csv",index=False)
+        signaldf.to_csv("Data/Result/"+stype+"_"+signal+FILESTAMP+".csv",index=False)
 
     print(f"{signal} - {stype} : {len(signaldf)}")
     print("Finish")
