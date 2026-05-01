@@ -59,9 +59,9 @@ IS_WINDOWS = platform.system() == "Windows"
 IS_IOS = platform.system() == "Darwin"
 
 # 預設的 max_workers（可覆寫）
-DEFAULT_MAX_WORKERS = 5 if IS_WINDOWS else 1
+DEFAULT_MAX_WORKERS = 5 if IS_IOS else 1
 
-ExecutorType = cf.ProcessPoolExecutor if IS_WINDOWS else cf.ThreadPoolExecutor
+ExecutorType = cf.ThreadPoolExecutor if IS_IOS else cf.ProcessPoolExecutor
 
 def getLastTradeDay(oyear, omonth):
     
