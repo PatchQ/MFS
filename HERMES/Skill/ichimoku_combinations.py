@@ -122,7 +122,7 @@ def calculate_macd(df, fast=12, slow=26, signal=9):
 
 # ============ 第四部分：移動平均線 ============
 
-def calculate_ma(df, periods=[50, 200]):
+def calculate_ma(df, periods=[49, 233]):
     """
     計算簡單移動平均線 (SMA)
     
@@ -311,8 +311,8 @@ def plot_ichimoku_combinations(df, signals, ticker):
     ax3.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('/root/ichimoku_analysis.png', dpi=150, bbox_inches='tight')
-    print('✅ 圖表已保存到 /root/ichimoku_analysis.png')
+    plt.savefig('HERMES/Skill/ichimoku_analysis.png', dpi=150, bbox_inches='tight')
+    print('✅ 圖表已保存到 HERMES/Skill/ichimoku_analysis.png')
     
     # -------- 第四張圖：綜合信號 --------
     fig2, ax = plt.subplots(figsize=(16, 8))
@@ -347,8 +347,8 @@ def plot_ichimoku_combinations(df, signals, ticker):
     ax.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
     
     plt.tight_layout()
-    plt.savefig('/root/combined_signals.png', dpi=150, bbox_inches='tight')
-    print('Combined signals chart saved to /root/combined_signals.png')
+    plt.savefig('HERMES/Skill/combined_signals.png', dpi=150, bbox_inches='tight')
+    print('Combined signals chart saved to HERMES/Skill/combined_signals.png')
     
     return fig, fig2
 
