@@ -82,7 +82,7 @@ def download_one(code: str, odate: str) -> tuple[str, bool]:
             dt_start = datetime.strptime(odate, "%Y%m%d")
             # yfinance 需要 'YYYY-MM-DD' 格式
             start_str = dt_start.strftime("%Y-%m-%d")
-            data = stock.history(start=start_str, auto_adjust=False)
+            data = stock.history(start=start_str,end="2125-12-31",auto_adjust=False)
 
             if data.empty:
                 return code5, False
