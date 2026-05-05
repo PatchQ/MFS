@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎙️ Hermes 語音助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #fff;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .header .subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+        
+        .status-bar {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #666;
+            transition: all 0.3s ease;
+        }
+        
+        .status-dot.connected {
+            background: #00d26a;
+            box-shadow: 0 0 10px #00d26a;
+        }
+        
+        .status-dot.error {
+            background: #ff4757;
+            box-shadow: 0 0 10px #ff4757;
+        }
+        
+        .status-message {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+            margin-top: 8px;
+            min-height: 20px;
+        }
+        
+        .transcript-area {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            min-height: 200px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .transcript-message {
+            margin-bottom: 16px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .transcript-message.user {
+            text-align: right;
+        }
+        
+        .transcript-message.assistant {
+            text-align: left;
+        }
+        
+        .message-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+            opacity: 0.5;
+        }
+        
+        .message-text {
+            color: #fff;
+            font-size: 15px;
+            line-height: 1.5;
+            padding: 12px 16px;
+            border-radius: 12px;
+            display: inline-block;
+            max-width: 85%;
+            word-break: break-word;
+        }
+        
+        .user .message-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .assistant .message-text {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .mic-button {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 36px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .mic-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+        }
+        
+        .mic-button:active,
+        .mic-button.recording {
+            transform: scale(0.95);
+            background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
+            box-shadow: 0 10px 30px rgba(255, 71, 87, 0.4);
+        }
+        
+        .mic-button.recording::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid #ff4757;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        
+        .mic-hint {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+        }
+        
+        .secondary-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        
+        .btn-secondary {
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .audio-visualizer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            height: 30px;
+            margin-bottom: 16px;
+        }
+        
+        .visualizer-bar {
+            width: 4px;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 2px;
+            transition: height 0.1s ease;
+            height: 4px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .footer p {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 12px;
+        }
+        
+        .session-info {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-top: 12px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ Hermes 語音助手</h1>
+            <p class="subtitle">按住麥克風說話即可對話</p>
+        </div>
+        
+        <div class="status-bar">
+            <div class="connection-status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">正在連接...</span>
+            </div>
+            <div class="status-message" id="statusMessage"></div>
+        </div>
+        
+        <div class="audio-visualizer" id="visualizer">
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+            <div class="visualizer-bar"></div>
+        </div>
+        
+        <div class="transcript-area" id="transcriptArea">
+            <div class="transcript-message assistant">
+                <div class="message-label">系統</div>
+                <div class="message-text">準備就緒！按下麥克風開始說話 👋</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="mic-button" id="micButton" disabled>🎤</button>
+            <p class="mic-hint" id="micHint">連接服務器後即可使用</p>
+            
+            <div class="secondary-buttons">
+                <button class="btn-secondary" id="resetBtn">🔄 重新開始</button>
+                <button class="btn-secondary" id="muteBtn">🔊 靜音</button>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Hermes Voice Chat v1.0 | Groq STT + MiniMax LLM + MiniMax TTS</p>
+            <div class="session-info" id="sessionInfo">等待連接...</div>
+        </div>
+    </div>
+    
+    <script>
+        // ============================================================
+        // Voice Chat Web Client
+        // ============================================================
+        
+        class VoiceChatClient {
+            constructor() {
+                this.ws = null;
+                this.sessionId = null;
+                this.isRecording = false;
+                this.isMuted = false;
+                this.audioContext = null;
+                this.mediaStream = null;
+                this.audioChunks = [];
+                
+                // DOM Elements
+                this.micButton = document.getElementById('micButton');
+                this.statusDot = document.getElementById('statusDot');
+                this.statusText = document.getElementById('statusText');
+                this.statusMessage = document.getElementById('statusMessage');
+                this.transcriptArea = document.getElementById('transcriptArea');
+                this.micHint = document.getElementById('micHint');
+                this.sessionInfo = document.getElementById('sessionInfo');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.muteBtn = document.getElementById('muteBtn');
+                this.visualizerBars = document.querySelectorAll('.visualizer-bar');
+                
+                this.init();
+            }
+            
+            async init() {
+                this.connect();
+                this.bindEvents();
+            }
+            
+            bindEvents() {
+                // Mic button - mouse events for hold-to-talk
+                this.micButton.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    this.startRecording();
+                });
+                
+                this.micButton.addEventListener('mouseup', (e) => {
+                    e.preventDefault();
+                    this.stopRecording();
+                });
+                
+                this.micButton.addEventListener('mouseleave', (e) => {
+                    if (this.isRecording) {
+                        this.stopRecording();
+                    }
+                });
+                
+                // Touch events for mobile
+                this.micButton.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    this.startRecording();
+                });
+                
+                this.micButton.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    this.stopRecording();
+                });
+                
+                // Secondary buttons
+                this.resetBtn.addEventListener('click', () => this.resetConversation());
+                this.muteBtn.addEventListener('click', () => this.toggleMute());
+                
+                // Keyboard shortcut
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space' && !e.repeat && document.activeElement.tagName !== 'INPUT') {
+                        e.preventDefault();
+                        this.startRecording();
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
+                        e.preventDefault();
+                        this.stopRecording();
+                    }
+                });
+            }
+            
+            async connect() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws/voice`;
+                
+                this.updateStatus('connecting', '正在連接...');
+                
+                try {
+                    this.ws = new WebSocket(wsUrl);
+                    
+                    this.ws.onopen = () => {
+                        console.log('WebSocket connected');
+                        this.updateStatus('connected', '已連接');
+                        this.micButton.disabled = false;
+                        this.micHint.textContent = '按住麥克風說話';
+                    };
+                    
+                    this.ws.onclose = () => {
+                        console.log('WebSocket disconnected');
+                        this.updateStatus('disconnected', '連接已斷開');
+                        this.micButton.disabled = true;
+                        this.micHint.textContent = '連接已斷開，請刷新頁面';
+                        
+                        // Attempt reconnect after 3 seconds
+                        setTimeout(() => this.connect(), 3000);
+                    };
+                    
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        this.updateStatus('error', '連接錯誤');
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        this.handleMessage(event.data);
+                    };
+                    
+                } catch (error) {
+                    console.error('Connection error:', error);
+                    this.updateStatus('error', '無法連接到服務器');
+                    setTimeout(() => this.connect(), 3000);
+                }
+            }
+            
+            handleMessage(data) {
+                try {
+                    const msg = JSON.parse(data);
+                    
+                    switch (msg.type) {
+                        case 'connected':
+                            this.sessionId = msg.session_id;
+                            this.sessionInfo.textContent = `Session: ${this.sessionId}`;
+                            this.setStatusMessage(msg.message);
+                            break;
+                            
+                        case 'transcript':
+                            this.addTranscriptMessage(msg.text, msg.direction || 'assistant');
+                            break;
+                            
+                        case 'audio':
+                            this.playAudio(msg.data, msg.format);
+                            break;
+
+                        case 'audio_chunk':
+                            // Streaming audio chunks — queue and play sequentially
+                            this.queueAudioChunk(msg.data, msg.format, msg.final || false);
+                            break;
+                            
+                        case 'status':
+                            this.setStatusMessage(msg.message);
+                            break;
+                            
+                        case 'error':
+                            this.setStatusMessage(msg.message);
+                            this.addTranscriptMessage(msg.message, 'system');
+                            break;
+                            
+                        case 'pong':
+                            // Heartbeat response
+                            break;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse message:', e);
+                }
+            }
+            
+            async startRecording() {
+                if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                    this.setStatusMessage('請先連接到服務器');
+                    return;
+                }
+                
+                if (this.isRecording) return;
+                
+                try {
+                    // Get microphone access
+                    this.mediaStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            sampleRate: 16000
+                        }
+                    });
+                    
+                    // Create audio context for visualization
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const source = this.audioContext.createMediaStreamSource(this.mediaStream);
+                    this.analyser = this.audioContext.createAnalyser();
+                    this.analyser.fftSize = 256;
+                    source.connect(this.analyser);
+                    
+                    // Start visualization
+                    this.visualize();
+                    
+                    // Create recorder - use WAV if supported, fallback to webm
+                    const canRecordWav = MediaRecorder.isTypeSupported('audio/wav');
+                    const mimeType = canRecordWav ? 'audio/wav' : 'audio/webm';
+                    this.mediaRecorder = new MediaRecorder(this.mediaStream, {
+                        mimeType: mimeType
+                    });
+                    this.recordingWav = canRecordWav;
+                    console.log('Recording MIME:', mimeType);
+                    
+                    this.audioChunks = [];
+                    
+                    this.mediaRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) {
+                            this.audioChunks.push(e.data);
+                            console.log(`ondataavailable: chunk ${this.audioChunks.length}, size=${e.data.size}`);
+                        }
+                    };
+
+                    this.mediaRecorder.onstop = async () => {
+                        console.log('onstop: START — chunks:', this.audioChunks.length);
+                        const audioBlob = new Blob(this.audioChunks, { type: mimeType });
+                        console.log('onstop: blob created, size=', audioBlob.size);
+
+                        if (this.recordingWav) {
+                            // Already WAV - send directly
+                            const arrayBuffer = await audioBlob.arrayBuffer();
+                            const base64 = this.arrayBufferToBase64(arrayBuffer);
+
+                            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                                this.ws.send(JSON.stringify({
+                                    type: 'audio_chunk',
+                                    data: base64,
+                                    format: 'wav'
+                                }));
+                            }
+                        } else {
+                            // Convert webm to WAV using AudioContext
+                            try {
+                                const arrayBuffer = await audioBlob.arrayBuffer();
+                                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                                // Convert to WAV
+                                const wavData = this.audioBufferToWav(audioBuffer);
+                                const base64 = this.arrayBufferToBase64(wavData);
+
+                                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                                    this.ws.send(JSON.stringify({
+                                        type: 'audio_chunk',
+                                        data: base64,
+                                        format: 'wav'
+                                    }));
+                                }
+                                audioContext.close();
+                            } catch (err) {
+                                console.error('Audio conversion error:', err);
+                                // Fallback: send raw
+                                const arrayBuffer = await audioBlob.arrayBuffer();
+                                const base64 = this.arrayBufferToBase64(arrayBuffer);
+                                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                                    this.ws.send(JSON.stringify({
+                                        type: 'audio_chunk',
+                                        data: base64,
+                                        format: 'webm'
+                                    }));
+                                }
+                            }
+                        }
+
+                        // Clean up audio context
+                        if (this.audioContext) {
+                            this.audioContext.close();
+                            this.audioContext = null;
+                        }
+
+                        // Stop media stream tracks (done here so onstop can complete before cleanup)
+                        if (this.mediaStream) {
+                            this.mediaStream.getTracks().forEach(track => track.stop());
+                            this.mediaStream = null;
+                        }
+
+                        // Signal server to process accumulated audio
+                        console.log('onstop: ws state before flush:', this.ws?.readyState);
+                        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                            this.ws.send(JSON.stringify({ type: 'flush' }));
+                            console.log('onstop: flush SENT');
+                        } else {
+                            console.log('onstop: ws not open, state=', this.ws?.readyState);
+                        }
+                    };
+
+                    // Heartbeat: send ping every 10s to keep Cloudflare Tunnel alive
+                    this.pingInterval = setInterval(() => {
+                        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                            this.ws.send(JSON.stringify({ type: 'ping' }));
+                            console.log('ping sent');
+                        }
+                    }, 10000);
+
+                    this.mediaRecorder.start(100);  // Collect data every 100ms
+                    this.isRecording = true;
+                    this.micButton.classList.add('recording');
+                    this.setStatusMessage('錄音中... 請說話');
+                    
+                } catch (error) {
+                    console.error('Failed to start recording:', error);
+                    this.setStatusMessage('無法訪問麥克風，請確認權限');
+                }
+            }
+            
+            stopRecording() {
+                if (!this.isRecording) return;
+                console.log('stopRecording called — recorder state:', this.mediaRecorder?.state);
+
+                this.isRecording = false;
+                this.micButton.classList.remove('recording');
+                this.setStatusMessage('處理中...');
+
+                // Only stop the recorder — the onstop handler will clean up the stream
+                // DO NOT stop the mediaStream here; onstop needs it to finish sending audio
+                if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                    this.mediaRecorder.stop();
+                }
+
+                // Reset visualizer
+                this.visualizerBars.forEach(bar => bar.style.height = '4px');
+            }
+
+            arrayBufferToBase64(buffer) {
+                let binary = '';
+                const bytes = new Uint8Array(buffer);
+                const chunkSize = 8192;
+                for (let i = 0; i < bytes.length; i += chunkSize) {
+                    const chunk = bytes.subarray(i, i + chunkSize);
+                    binary += String.fromCharCode.apply(null, chunk);
+                }
+                return btoa(binary);
+            }
+
+            // Convert AudioBuffer to WAV format
+            audioBufferToWav(buffer) {
+                const numChannels = buffer.numberOfChannels;
+                const sampleRate = buffer.sampleRate;
+                const format = 1; // PCM
+                const bitDepth = 16;
+
+                let interleaved;
+                if (numChannels === 2) {
+                    const left = buffer.getChannelData(0);
+                    const right = buffer.getChannelData(1);
+                    interleaved = new Float32Array(left.length + right.length);
+                    for (let i = 0; i < left.length; i++) {
+                        interleaved[i * 2] = left[i];
+                        interleaved[i * 2 + 1] = right[i];
+                    }
+                } else {
+                    interleaved = buffer.getChannelData(0);
+                }
+
+                const dataLength = interleaved.length * (bitDepth / 8);
+                const headerLength = 44;
+                const arrayBuffer = new ArrayBuffer(headerLength + dataLength);
+                const view = new DataView(arrayBuffer);
+
+                // RIFF header
+                this.writeString(view, 0, 'RIFF');
+                view.setUint32(4, 36 + dataLength, true);
+                this.writeString(view, 8, 'WAVE');
+                // fmt chunk
+                this.writeString(view, 12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, format, true);
+                view.setUint16(22, numChannels, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, sampleRate * numChannels * (bitDepth / 8), true);
+                view.setUint16(32, numChannels * (bitDepth / 8), true);
+                view.setUint16(34, bitDepth, true);
+                // data chunk
+                this.writeString(view, 36, 'data');
+                view.setUint32(40, dataLength, true);
+
+                // Write PCM samples
+                const offset = 44;
+                for (let i = 0; i < interleaved.length; i++) {
+                    const sample = Math.max(-1, Math.min(1, interleaved[i]));
+                    view.setInt16(offset + i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+                }
+
+                return arrayBuffer;
+            }
+
+            writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+            
+            visualize() {
+                if (!this.isRecording || !this.analyser) return;
+                
+                const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+                this.analyser.getByteFrequencyData(dataArray);
+                
+                const bars = this.visualizerBars;
+                const step = Math.floor(dataArray.length / bars.length);
+                
+                for (let i = 0; i < bars.length; i++) {
+                    const value = dataArray[i * step];
+                    const height = Math.max(4, (value / 255) * 30);
+                    bars[i].style.height = `${height}px`;
+                }
+                
+                if (this.isRecording) {
+                    requestAnimationFrame(() => this.visualize());
+                }
+            }
+            
+            async playAudio(base64Data, format) {
+                if (this.isMuted) return;
+
+                try {
+                    console.log(`playAudio called: format=${format}, data_len=${base64Data?.length}`);
+
+                    const binaryString = atob(base64Data);
+                    const bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    console.log(`Decoded bytes: ${bytes.length}, first_bytes=${bytes[0]},${bytes[1]},${bytes[2]},${bytes[3]}`);
+
+                    // Fix MIME type for MP3
+                    let mimeType = `audio/${format}`;
+                    if (format === 'mp3') mimeType = 'audio/mpeg';
+                    if (format === 'wav') mimeType = 'audio/wav';
+                    console.log(`MIME type: ${mimeType}`);
+
+                    const blob = new Blob([bytes], { type: mimeType });
+                    console.log(`Blob size: ${blob.size}, type: ${blob.type}`);
+                    const url = URL.createObjectURL(blob);
+
+                    // Store URL for iOS play button fallback
+                    this.lastAudioUrl = url;
+
+                    const audio = new Audio(url);
+                    console.log('Audio element created, attempting play...');
+
+                    // Try immediate play (works on desktop Chrome)
+                    try {
+                        await audio.play();
+                        console.log('Audio playing OK');
+                    } catch (playError) {
+                        console.warn('Immediate play failed (iOS restriction):', playError.message);
+                        // iOS: add play button to last assistant message
+                        const assistantMsgs = this.transcriptArea.querySelectorAll('.transcript-message.assistant');
+                        if (assistantMsgs.length > 0) {
+                            const lastAssistant = assistantMsgs[assistantMsgs.length - 1];
+                            const existing = lastAssistant.querySelector('.play-audio-btn');
+                            if (!existing) {
+                                const playBtn = document.createElement('button');
+                                playBtn.className = 'play-audio-btn';
+                                playBtn.textContent = '▶️ 播放語音';
+                                playBtn.style.cssText = 'display:block; margin-top: 8px; padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); background: rgba(102,126,234,0.3); color: #fff; cursor: pointer; font-size: 13px;';
+                                playBtn.onclick = () => {
+                                    const a = new Audio(url);
+                                    a.play();
+                                    playBtn.textContent = '🔊 播放中...';
+                                    a.onended = () => { playBtn.textContent = '▶️ 播放語音'; };
+                                };
+                                lastAssistant.querySelector('.message-text').appendChild(playBtn);
+                            }
+                        }
+                    }
+
+                    audio.onended = () => {
+                        console.log('Audio playback ended');
+                        URL.revokeObjectURL(url);
+                    };
+
+                    audio.onerror = (e) => {
+                        console.error('Audio element error:', e, 'error code:', audio.error?.code, audio.error?.message);
+                    };
+                } catch (error) {
+                    console.error('Failed to play audio:', error);
+                }
+            }
+
+            // ---- Streaming audio queue for sentence-by-sentence playback ----
+            audioQueue = [];
+            isPlayingQueue = false;
+
+            queueAudioChunk(base64Data, format, isFinal) {
+                this.audioQueue.push({ base64Data, format, isFinal });
+                if (!this.isPlayingQueue) {
+                    this._playNextInQueue();
+                }
+            }
+
+            async _playNextInQueue() {
+                if (this.audioQueue.length === 0) {
+                    this.isPlayingQueue = false;
+                    return;
+                }
+                this.isPlayingQueue = true;
+                const { base64Data, format, isFinal } = this.audioQueue.shift();
+                await this.playAudio(base64Data, format);
+                // Play next chunk after a tiny gap
+                setTimeout(() => this._playNextInQueue(), 50);
+            }
+
+            addTranscriptMessage(text, direction) {
+                if (!text) return;
+                
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `transcript-message ${direction}`;
+                
+                const labelText = direction === 'user' ? '你' : 
+                                  direction === 'assistant' ? 'Hermes' : '系統';
+                
+                msgDiv.innerHTML = `
+                    <div class="message-label">${labelText}</div>
+                    <div class="message-text">${this.escapeHtml(text)}</div>
+                `;
+                
+                // Append message to DOM first
+                this.transcriptArea.appendChild(msgDiv);
+                this.transcriptArea.scrollTop = this.transcriptArea.scrollHeight;
+            }
+            
+            resetConversation() {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify({ type: 'reset' }));
+                }
+                
+                // Clear transcript except first message
+                while (this.transcriptArea.children.length > 1) {
+                    this.transcriptArea.removeChild(this.transcriptArea.lastChild);
+                }
+                
+                this.addTranscriptMessage('對話已重置', 'system');
+            }
+            
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                this.muteBtn.textContent = this.isMuted ? '🔇 取消靜音' : '🔊 靜音';
+                this.setStatusMessage(this.isMuted ? '已靜音' : '');
+            }
+            
+            updateStatus(status, text) {
+                this.statusDot.className = 'status-dot';
+                
+                switch (status) {
+                    case 'connected':
+                        this.statusDot.classList.add('connected');
+                        this.statusText.textContent = '已連接';
+                        break;
+                    case 'connecting':
+                        this.statusText.textContent = '正在連接...';
+                        break;
+                    case 'disconnected':
+                        this.statusText.textContent = '已斷開';
+                        break;
+                    case 'error':
+                        this.statusDot.classList.add('error');
+                        this.statusText.textContent = '連接錯誤';
+                        break;
+                }
+            }
+            
+            setStatusMessage(message) {
+                this.statusMessage.textContent = message;
+            }
+            
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+        
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new VoiceChatClient();
+        });
+        
+        // Heartbeat to keep connection alive
+        setInterval(() => {
+            const client = window.voiceChatClient;
+            if (client && client.ws && client.ws.readyState === WebSocket.OPEN) {
+                client.ws.send(JSON.stringify({ type: 'ping' }));
+            }
+        }, 30000);
+    </script>
+</body>
+</html>

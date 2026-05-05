@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OI viewer</title>
+  <style>
+    /* ================================================
+       全域
+    ================================================ */
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --surface2:  #242836;
+      --border:    #2e3347;
+      --accent:    #5e6ad2;
+      --accent2:   #7c5ce0;
+      --text:      #c8cce0;
+      --text-dim:  #6b7084;
+      --green:     #3ecf8e;
+      --red:       #f07178;
+      --yellow:    #ffe066;
+      --strike-bg: #2d3154;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      font-size: 13px;
+      min-height: 100vh;
+    }
+
+    /* ================================================
+       Header
+    ================================================ */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    header h1 span { color: var(--accent); }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .ctrl-group label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+    }
+
+    select, input, button {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 7px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    select:hover, button:hover {
+      border-color: var(--accent);
+      background: #2a2d3e;
+    }
+
+    select option { background: var(--surface2); }
+
+    input[type="text"] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 7px 12px;
+      border-radius: 6px;
+      min-width: 160px;
+    }
+    input[type="text"]:focus { outline: none; border-color: var(--accent); background: #2a2d3e; }
+
+    button.btn-load {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 7px 20px;
+    }
+
+    button.btn-load:hover { background: #4f5fc2; border-color: #4f5fc2; }
+
+    #info {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    /* product type badge */
+    #product-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    #product-badge.so { background: rgba(62,207,142,0.2); color: var(--green); }
+    #product-badge.io { background: rgba(96,165,250,0.2); color: #60a5fa; }
+
+    /* ================================================
+       表格區（凍結窗格：header固定，body可 scroll）
+    ================================================ */
+    .table-wrap {
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: calc(100vh - 160px);
+      padding: 16px 24px 40px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 1400px;
+      font-size: 12px;
+    }
+
+    thead th {
+      background: var(--surface);
+      color: var(--text-dim);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 5px 8px;
+      border: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      white-space: nowrap;
+      text-align: center;
+      user-select: none;
+    }
+
+    thead th.strike-col {
+      background: var(--strike-bg);
+      color: var(--yellow);
+      border-color: #4a4f7a;
+      font-size: 12px;
+    }
+
+    tbody tr:nth-child(odd)  { background: var(--bg); }
+    tbody tr:nth-child(even) { background: var(--surface); }
+    tbody tr:hover { background: #252836; }
+
+    tbody td {
+      padding: 5px 8px;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    tbody td:first-child { text-align: left; }
+
+    tbody td.strike-col {
+      background: var(--strike-bg) !important;
+      color: var(--yellow);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    /* 數值 */
+    .val-pos  { color: var(--green); }
+    .val-neg  { color: var(--red); }
+    .val-zero { color: var(--text-dim); }
+
+    /* 左邊界 highlight → 整行變色（文字變黃，背景各自顏色） */
+    .hl-call-deals   { background: rgba(62,207,142,0.18) !important; color: #ffe066 !important; }
+    .hl-put-deals    { background: rgba(96,165,250,0.18) !important; color: #ffe066 !important; }
+    .hl-call-gross   { background: rgba(251,146,60,0.18)  !important; color: #ffe066 !important; }
+    .hl-put-gross    { background: rgba(192,132,252,0.18) !important; color: #ffe066 !important; }
+
+    /* 同一行有多個 highlight（同時滿足多個條件） */
+    .hl-call-deals.hl-call-gross  { background: rgba(251,211,77,0.22) !important; color: #ffe066 !important; }
+    .hl-put-deals.hl-put-gross    { background: rgba(167,139,250,0.22) !important; color: #ffe066 !important; }
+
+    /* Top-3 格子：黃色粗體，紅色背景 */
+    .top-cell { background-color: var(--red) !important; color: #ffe066 !important; font-weight: 700 !important; }
+
+    /* ================================================
+       狀態訊息
+    ================================================ */
+    #status {
+      padding: 14px 24px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    #status.loading { color: var(--accent); }
+    #status.error   { color: var(--red); }
+    #status.ok      { color: var(--green); }
+
+    /* ================================================
+       Scrollbar
+    ================================================ */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    /* ================================================
+       Empty state
+    ================================================ */
+    .empty-msg {
+      padding: 40px 24px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ================================================
+     Header 控制列
+================================================ -->
+<header>
+  <h1>📊 <span>OI</span> Viewer</h1>
+
+  <div class="controls">
+
+    <!-- 產品代碼（textbox + datalist 自動建議） -->
+    <div class="ctrl-group">
+      <label>產品</label>
+      <input type="text" id="code-input" placeholder="HSI / 00700 …" list="product-datalist" autocomplete="off" />
+      <datalist id="product-datalist">
+        {% for p in products %}
+        <option value="{{ p.code }}" data-type="{{ p.type }}" data-label="{{ p.label }}">
+          {{ p.label }} [{{ p.type }}]
+        </option>
+        {% endfor %}
+      </datalist>
+    </div>
+
+    <!-- 日期 -->
+    <div class="ctrl-group">
+      <label>日期</label>
+      <select id="date-select" disabled>
+        <option value="">— 先輸入代碼 —</option>
+      </select>
+    </div>
+
+    <!-- 月份 -->
+    <div class="ctrl-group">
+      <label>月份</label>
+      <select id="month-select">
+        <option value="">全部</option>
+        {% for m in month_abbr_list %}
+        <option value="{{ m }}">{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- 年份 -->
+    <div class="ctrl-group">
+      <label>年份</label>
+      <select id="year-select">
+        <option value="">全部</option>
+        {% for y in year_list %}
+        <option value="{{ y }}">{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button class="btn-load" id="btn-load">🔍 載入</button>
+  </div>
+
+  <div id="product-badge" class="io">—</div>
+  <div id="info"></div>
+</header>
+
+<!-- ================================================
+     狀態列
+================================================ -->
+<div id="status">💡 輸入產品代碼、選擇日期，再點「載入」</div>
+
+<!-- ================================================
+     表格
+================================================ -->
+<div class="table-wrap" id="table-wrap" style="display:none">
+  <table id="so-table">
+    <thead id="table-head"></thead>
+    <tbody id="table-body"></tbody>
+  </table>
+</div>
+
+<!-- ================================================
+     JavaScript
+================================================ -->
+<script>
+  const codeInput  = document.getElementById('code-input');
+  const dateSel    = document.getElementById('date-select');
+  const monthSel   = document.getElementById('month-select');
+  const yearSel    = document.getElementById('year-select');
+  const btnLoad    = document.getElementById('btn-load');
+  const infoEl     = document.getElementById('info');
+  const badgeEl    = document.getElementById('product-badge');
+  const statusEl   = document.getElementById('status');
+  const tableWrap  = document.getElementById('table-wrap');
+  const theadEl    = document.getElementById('table-head');
+  const tbodyEl    = document.getElementById('table-body');
+
+  // 中文欄位名（由後端傳入）
+  const COL_CN = {{ col_names | tojson }};
+
+  // 當前選中的產品
+  let currentCode = '';
+  let currentType = '';  // 'SO' | 'IO'
+
+  // ── 更新 product badge ──────────────────────────
+  function updateBadge(type) {
+    if (type === 'SO') {
+      badgeEl.textContent = 'SO 股票期權';
+      badgeEl.className = 'so';
+    } else if (type === 'IO') {
+      badgeEl.textContent = 'IO 指數期權';
+      badgeEl.className = 'io';
+    } else {
+      badgeEl.textContent = '—';
+      badgeEl.className = '';
+    }
+  }
+
+  // ── 選了產品 → 載入日期 + 自動 Load ────────────
+  async function onCodeSelected(code) {
+    if (!code) return;
+    currentCode = code;
+
+    // 從 datalist 找 type
+    const allOptions = document.querySelectorAll('#product-datalist option');
+    let matchedType = '';
+    allOptions.forEach(opt => {
+      if (opt.value === code) matchedType = opt.dataset.type;
+    });
+    currentType = matchedType;
+    updateBadge(matchedType);
+
+    dateSel.innerHTML = '<option value="">載入中…</option>';
+    dateSel.disabled = true;
+
+    try {
+      const res  = await fetch(`/api/dates?code=${encodeURIComponent(code)}`);
+      const data = await res.json();
+
+      if (data.error) {
+        dateSel.innerHTML = '<option value="">找不到日期</option>';
+        setStatus('❌ ' + data.error, 'error');
+        return;
+      }
+
+      dateSel.innerHTML = '<option value="">— 請選擇日期 —</option>';
+      data.dates.forEach((d, i) => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = data.display[i] + (i === 0 ? ' ◀ 最新' : '');
+        if (i === 0) opt.selected = true;
+        dateSel.appendChild(opt);
+      });
+      dateSel.disabled = false;
+
+      // 自動設定當月/年份
+      const curMonth = {{ current_month | tojson }};
+      const curYear  = {{ current_year  | tojson }};
+      if (monthSel.querySelector(`option[value="${curMonth}"]`)) monthSel.value = curMonth;
+      if (yearSel.querySelector(`option[value="${curYear}"]`))  yearSel.value = curYear;
+
+      // 自動載入
+      loadData();
+    } catch (e) {
+      dateSel.innerHTML = '<option value="">載入失敗</option>';
+      setStatus('❌ 網路錯誤：' + e.message, 'error');
+    }
+  }
+
+  // ── code textbox：輸入後嘗試自動匹配 ──────────
+  // iOS Safari：input + blur 雙事件
+  function tryMatchCode(inputVal) {
+    const val = inputVal.trim().toUpperCase();
+    if (!val) return;
+    const allOptions = document.querySelectorAll('#product-datalist option');
+    let matched = null;
+    allOptions.forEach(opt => {
+      if (opt.value.toUpperCase() === val) matched = opt.value;
+    });
+    if (matched) {
+      codeInput.value = matched;
+      onCodeSelected(matched);
+    }
+  }
+
+  codeInput.addEventListener('input', () => {
+    tryMatchCode(codeInput.value);
+  });
+
+  codeInput.addEventListener('blur', () => {
+    tryMatchCode(codeInput.value);
+  });
+
+  // ── 載入按鈕 ────────────────────────────────────
+  btnLoad.addEventListener('click', loadData);
+
+  async function loadData() {
+    const code    = codeInput.value.trim();
+    const dateStr = dateSel.value;
+
+    if (!code || !dateStr) {
+      setStatus('⚠️ 請先輸入產品代碼及選擇日期', 'error');
+      return;
+    }
+
+    setStatus('⏳ 載入中…', 'loading');
+
+    try {
+      const params = new URLSearchParams({
+        code: code,
+        date: dateStr,
+        month_abbr: monthSel.value,
+        year: yearSel.value,
+      });
+      const res  = await fetch(`/api/data?${params.toString()}`);
+      const data = await res.json();
+
+      if (data.error) { setStatus('❌ ' + data.error, 'error'); return; }
+
+      renderTable(data);
+      const filterStr = [monthSel.value || '', yearSel.value || ''].filter(Boolean).join(' / ');
+      const typeLabel = data.type === 'SO' ? 'SO' : 'IO';
+      infoEl.textContent = `${data.code} [${typeLabel}] ｜ ${data.date_display} ｜ ${data.total_rows} 行${filterStr ? ' ｜ 篩選: ' + filterStr : ''}`;
+      setStatus(`✅ 顯示 ${data.total_rows} 行`, 'ok');
+    } catch (e) {
+      setStatus('❌ 載入失敗：' + e.message, 'error');
+    }
+  }
+
+  // ── 渲染表格 ────────────────────────────────────
+  function renderTable(data) {
+    const STRIKE_COLS = new Set(['strike']);
+    const CHANGE_COLS = new Set([
+      'call_price_change', 'put_price_change',
+      'call_turnover_change', 'put_turnover_change',
+      'call_net_change', 'put_net_change',
+      'call_gross_change', 'put_gross_change',
+    ]);
+    const RATIO_COLS  = new Set(['call_ratio', 'put_ratio']);
+
+    const getTopVals = (rows, colIdx) => {
+      const vals = rows.map(r => parseFloat(r[colIdx]) || 0);
+      const sorted = [...new Set(vals)].sort((a, b) => b - a);
+      return new Set(sorted.slice(0, 3));
+    };
+
+    const callTurnoverIdx = data.columns.indexOf('call_turnover');
+    const putTurnoverIdx  = data.columns.indexOf('put_turnover');
+    const callGrossIdx    = data.columns.indexOf('call_gross');
+    const putGrossIdx     = data.columns.indexOf('put_gross');
+
+    const topCallTurnover = getTopVals(data.rows, callTurnoverIdx);
+    const topPutTurnover  = getTopVals(data.rows, putTurnoverIdx);
+    const topCallGross    = getTopVals(data.rows, callGrossIdx);
+    const topPutGross     = getTopVals(data.rows, putGrossIdx);
+
+    theadEl.innerHTML = '';
+    const tr = document.createElement('tr');
+    data.columns.forEach(col => {
+      if (COL_CN[col] === null || COL_CN[col] === undefined) return;
+      const th = document.createElement('th');
+      th.textContent = COL_CN[col] || col;
+      if (STRIKE_COLS.has(col)) th.classList.add('strike-col');
+      tr.appendChild(th);
+    });
+    theadEl.appendChild(tr);
+
+    tbodyEl.innerHTML = '';
+    if (data.rows.length === 0) {
+      tbodyEl.innerHTML = '<tr><td colspan="99" style="text-align:center;color:var(--text-dim);padding:40px">🔍 沒有找到符合篩選條件的資料</td></tr>';
+      tableWrap.style.display = 'block';
+      return;
+    }
+
+    data.rows.forEach((row) => {
+      const tr = document.createElement('tr');
+      data.columns.forEach((col, i) => {
+        if (COL_CN[col] === null || COL_CN[col] === undefined) return;
+        const td = document.createElement('td');
+        let val = row[i];
+
+        const numVal = parseFloat(val) || 0;
+        if (i === callTurnoverIdx && topCallTurnover.has(numVal)) td.classList.add('top-cell');
+        if (i === putTurnoverIdx  && topPutTurnover.has(numVal))  td.classList.add('top-cell');
+        if (i === callGrossIdx    && topCallGross.has(numVal))     td.classList.add('top-cell');
+        if (i === putGrossIdx     && topPutGross.has(numVal))      td.classList.add('top-cell');
+
+        if (val === '' || val === null || val === undefined ||
+            (typeof val === 'number' && isNaN(val))) {
+          td.textContent = '—';
+        } else {
+          if (typeof val === 'number' && !RATIO_COLS.has(col)) {
+            if (Number.isInteger(val)) {
+              td.textContent = val.toLocaleString('en-US');
+            } else {
+              td.textContent = val.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              });
+            }
+            if (CHANGE_COLS.has(col)) {
+              if (val > 0)      td.classList.add('val-pos');
+              else if (val < 0) td.classList.add('val-neg');
+              else              td.classList.add('val-zero');
+            }
+          } else {
+            td.textContent = val;
+          }
+        }
+
+        if (STRIKE_COLS.has(col)) td.classList.add('strike-col');
+        tr.appendChild(td);
+      });
+      tbodyEl.appendChild(tr);
+    });
+
+    tableWrap.style.display = 'block';
+    statusEl.textContent = '';
+  }
+
+  function setStatus(msg, cls) {
+    statusEl.textContent = msg;
+    statusEl.className = cls || '';
+  }
+
+  // ── 預設：HSI + 自動載入 ────────────────────────
+  codeInput.value = 'HSI';
+  onCodeSelected('HSI');
+</script>
+</body>
+</html>
