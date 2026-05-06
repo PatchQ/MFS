@@ -1,8 +1,8 @@
+import yfinance as yf
 import pandas as pd
 import numpy as np
 import time as t
 import concurrent.futures as cf
-import yfinance as yf
 import os
 import sys
 import platform
@@ -39,13 +39,13 @@ from AI.ZPrediction import *
 
 PROD = True
 
-IFPATH = "../SData/HKEX/IF/"
-IOPATH = "../SData/HKEX/IO/"
-SOPATH = "../SData/HKEX/SO/"
+IFPATH = "/root/GitHub/SData/HKEX/IF/"
+IOPATH = "/root/GitHub/SData/HKEX/IO/"
+SOPATH = "/root/GitHub/SData/HKEX/SO/"
 
 DATADATE = "2024-01-01"
-PATH = "../SData/YFData/"
-OUTPATH = "../SData/P_YFData/"
+PATH = "/root/GitHub/SData/YFData/"
+OUTPATH = "/root/GitHub/SData/P_YFData/"
 
 #PATH = "../SData/FYFdata/"
 #OUTPATH = "../SData/FP_YFdata/"

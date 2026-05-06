@@ -12,7 +12,14 @@ import numpy as np
 import mplfinance as mpf
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.font_manager as fm
 from datetime import datetime, timedelta
+
+# 設定中文字體（使用文泉驛正黑）
+fm.fontManager.addfont('/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc')
+zh_font = fm.FontProperties(fname='/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc')
+plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False
 
 # ============ 第一部分：一目均衡表計算 ============
 
@@ -284,7 +291,7 @@ def plot_ichimoku_combinations(df, signals, ticker):
                       where=df['Cloud_Upper'] < df['Cloud_Lower'],
                       color='lightcoral', alpha=0.3, label='Cloud (Bearish)')
     ax1.set_title('Ichimoku Kinko Hyo', fontsize=12)
-    ax1.legend(loc='upper left')
+    ax1.legend(loc='upper left', prop=zh_font)
     ax1.grid(True, alpha=0.3)
     
     # -------- 第二張圖：RSI + MACD --------
@@ -295,7 +302,7 @@ def plot_ichimoku_combinations(df, signals, ticker):
     ax2.axhline(y=50, color='gray', linestyle=':', alpha=0.5)
     ax2.fill_between(df.index, 30, 70, alpha=0.1, color='gray')
     ax2.set_title('RSI (Relative Strength Index)', fontsize=12)
-    ax2.legend(loc='upper left')
+    ax2.legend(loc='upper left', prop=zh_font)
     ax2.grid(True, alpha=0.3)
     ax2.set_ylim(0, 100)
     
@@ -307,7 +314,7 @@ def plot_ichimoku_combinations(df, signals, ticker):
     ax3.bar(df.index, df['MACD_Histogram'], color=colors, alpha=0.5, label='MACD Histogram')
     ax3.axhline(y=0, color='gray', linestyle='-', alpha=0.5)
     ax3.set_title('MACD (Moving Average Convergence Divergence)', fontsize=12)
-    ax3.legend(loc='upper left')
+    ax3.legend(loc='upper left', prop=zh_font)
     ax3.grid(True, alpha=0.3)
     
     plt.tight_layout()
@@ -344,7 +351,7 @@ def plot_ichimoku_combinations(df, signals, ticker):
     # 合併圖例
     lines1, labels1 = ax.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+    ax.legend(lines1 + lines2, labels1 + labels2, loc='upper left', prop=zh_font)
     
     plt.tight_layout()
     plt.savefig('HERMES/Skill/combined_signals.png', dpi=150, bbox_inches='tight')
@@ -421,7 +428,7 @@ def main():
     print('=' * 50)
     
     # 設定股票代碼
-    ticker = '3393.HK'
+    ticker = '9992.HK'
     
     print(f'\n📥 正在下載 {ticker} 歷史數據...')
     

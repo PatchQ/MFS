@@ -1,0 +1,234 @@
+//@version=5
+// ============================================================
+// 🌤️ Ichimoku + Golden Combinations (TradingView Pine Script)
+// ============================================================
+// 等價於 ichimoku_combinations.py 的完整計算邏輯
+// 
+// 參數對照：
+//   Ichimoku : Tenkan=34, Kijun=5, SenkouB=52, CloudShift=26
+//   RSI      : period=14
+//   MACD     : fast=12, slow=26, signal=9
+//   MA       : SMA 49, SMA 233
+//   Signal   : RSI×0.3 + MACD×0.4 + MA×0.3  → Combined [-1, +1]
+// ============================================================
+
+strategy("Ichimoku Golden Combinations", overlay=true, precision=2)
+
+// ──────────────────────────────────────────────
+// 參數設定
+// ──────────────────────────────────────────────
+ichTenkanLen  = input.int(34,  "Ichimoku - Tenkan (Conversion) Length",  minval=1)
+ichKijunLen   = input.int(5,   "Ichimoku - Kijun (Base) Length",          minval=1)
+ichSenkouBLen = input.int(52,  "Ichimoku - Senkou B Length",              minval=1)
+ichShift      = input.int(26,  "Ichimoku - Cloud Shift (Forward)",       minval=1)
+
+rsiLen        = input.int(14,  "RSI Length",  minval=1)
+macdFast      = input.int(12,  "MACD Fast EMA", minval=1)
+macdSlow      = input.int(26,  "MACD Slow EMA", minval=1)
+macdSignalLen = input.int(9,   "MACD Signal Length", minval=1)
+
+sma49Len      = input.int(49,  "SMA Short Length",  minval=1)
+sma233Len     = input.int(233, "SMA Long Length",   minval=1)
+
+// ──────────────────────────────────────────────
+// 1. Ichimoku 計算
+//    Python 邏輯：
+//      Tenkan    = (HHV(H,34) + LLV(L,34)) / 2
+//      Kijun     = (HHV(H,5)  + LLV(L,5))  / 2
+//      SenkouA   = shift(Tenkan+Kijun)/2,  +26)
+//      SenkouB   = shift((HHV(H,52)+LLV(L,52))/2, +26)
+//      CloudUp   = max(SenkouA, SenkouB)
+//      CloudLow  = min(SenkouA, SenkouB)
+// ──────────────────────────────────────────────
+
+// 轉換線 (Tenkan-sen)
+tenkanBase = (ta.highest(high, ichTenkanLen) + ta.lowest(low, ichTenkanLen)) / 2
+
+// 基準線 (Kijun-sen)
+kijunBase  = (ta.highest(high, ichKijunLen)  + ta.lowest(low,  ichKijunLen))  / 2
+
+// 先行上限 A (Senkou Span A) — 向後推移 ichShift 根 K 線
+senkouA_raw = (tenkanBase + kijunBase) / 2
+senkouA     = senkouA_raw[ichShift]
+
+// 先行下限 B (Senkou Span B) — 向後推移 ichShift 根 K 線
+senkouB_raw = (ta.highest(high, ichSenkouBLen) + ta.lowest(low, ichSenkouBLen)) / 2
+senkouB     = senkouB_raw[ichShift]
+
+// 雲層
+cloudUpper  = math.max(senkouA, senkouB)
+cloudLower  = math.min(senkouA, senkouB)
+
+// 遲行線 (Chikou Span) — 收盤價向前看 ichShift 根 K 線（即往後推移）
+chikouSpan  = close[-ichShift]
+
+// 當前雲層顏色（Python 用 fill_between 根據 CloudUpper vs CloudLower 判斷）
+cloudBullish = senkouA > senkouB
+
+// ──────────────────────────────────────────────
+// 2. RSI 計算 (ta.rsi = 標準 RSI)
+// ──────────────────────────────────────────────
+rsiVal = ta.rsi(close, rsiLen)
+
+// ──────────────────────────────────────────────
+// 3. MACD 計算 (ta.macd = 標準 MACD)
+// ──────────────────────────────────────────────
+[macdLine, signalLine, hist] = ta.macd(close, macdFast, macdSlow, macdSignalLen)
+
+// ──────────────────────────────────────────────
+// 4. 移動平均線 SMA
+// ──────────────────────────────────────────────
+sma49  = ta.sma(close, sma49Len)
+sma233 = ta.sma(close, sma233Len)
+
+// ──────────────────────────────────────────────
+// 5. 位置判斷（Python: above_cloud / below_cloud / in_cloud）
+// ──────────────────────────────────────────────
+aboveCloud = close > cloudUpper
+belowCloud = close < cloudLower
+inCloud    = not aboveCloud and not belowCloud
+
+// ──────────────────────────────────────────────
+// 6. 三個組合信號（等價 Python generate_signals()）
+//
+// 【組合一：Ichimoku + RSI】
+//   +1.0 : aboveCloud AND RSI > 70
+//   +0.5 : aboveCloud AND RSI <= 70 AND RSI > 50
+//   -1.0 : belowCloud AND RSI < 30
+//   -0.5 : belowCloud AND RSI >= 30 AND RSI < 50
+//    0.0 : 其餘
+//
+// 【組合二：Ichimoku + MACD】
+//   +1.0 : Tenkan>Kijun AND MACD>Signal AND aboveCloud (三個全部)
+//   +0.5 : 任兩個條件符合（不重疊 +1.0 的部分）
+//   -1.0 : Tenkan<Kijun AND MACD<Signal AND belowCloud (三個全部)
+//   -0.5 : 任兩個條件符合（不重疊 -1.0 的部分）
+//
+// 【組合三：Ichimoku + MA】
+//   +1.0 : aboveCloud AND close>SMA49 AND SMA49>SMA233
+//   +0.5 : aboveCloud AND close>SMA49
+//   -1.0 : belowCloud AND close<SMA49 AND SMA49<SMA233
+//   -0.5 : belowCloud AND close<SMA49
+// ──────────────────────────────────────────────
+
+// ── 組合一：Ichimoku + RSI ──
+signal1 = 0.0
+signal1 := aboveCloud and rsiVal > 70  ?  1.0 :
+            aboveCloud and rsiVal <= 70 and rsiVal > 50  ?  0.5 :
+            belowCloud and rsiVal < 30  ? -1.0 :
+            belowCloud and rsiVal >= 30 and rsiVal < 50  ? -0.5 :
+            0.0
+
+// ── 組合二：Ichimoku + MACD ──
+tenkanAboveKijun = tenkanBase > kijunBase
+tenkanBelowKijun = tenkanBase < kijunBase
+macdAboveSignal  = macdLine > signalLine
+macdBelowSignal = macdLine < signalLine
+
+// 三條件全部滿足（最強信號）
+buy2Strong  = tenkanAboveKijun and macdAboveSignal and aboveCloud
+sell2Strong = tenkanBelowKijun and macdBelowSignal and belowCloud
+
+// 任兩個條件（輕微信號，排除已經是強信號的部分）
+buy2Weak  = (tenkanAboveKijun and macdAboveSignal) or
+           (tenkanAboveKijun and aboveCloud)        or
+           (macdAboveSignal  and aboveCloud)
+
+sell2Weak = (tenkanBelowKijun and macdBelowSignal) or
+           (tenkanBelowKijun and belowCloud)        or
+           (macdBelowSignal  and belowCloud)
+
+signal2 = 0.0
+signal2 := buy2Strong  ?  1.0 :
+            buy2Weak   ?  0.5 :
+            sell2Strong ? -1.0 :
+            sell2Weak  ? -0.5 :
+            0.0
+
+// ── 組合三：Ichimoku + MA ──
+maBullish = sma49 > sma233
+maBearish = sma49 < sma233
+
+signal3 = 0.0
+signal3 := aboveCloud and close > sma49 and maBullish ?  1.0 :
+            aboveCloud and close > sma49               ?  0.5 :
+            belowCloud and close < sma49 and maBearish ? -1.0 :
+            belowCloud and close < sma49               ? -0.5 :
+            0.0
+
+// ── 綜合信號：加權平均 ──
+combinedSignal = signal1 * 0.3 + signal2 * 0.4 + signal3 * 0.3
+
+// ──────────────────────────────────────────────
+// 7. 繪製圖表（Overlay = true 時的視覺化）
+// ──────────────────────────────────────────────
+
+// Ichimoku 雲層（fill_between 等價：Cloud）
+pCloudA = plot(cloudUpper, "Cloud Upper", color=color.new(color.green, 0), linewidth=1)
+pCloudB = plot(cloudLower, "Cloud Lower", color=color.new(color.red,   0), linewidth=1)
+fill(pCloudA, pCloudB,
+     title="Cloud Fill",
+     color = cloudBullish ? color.new(color.green, 85) : color.new(color.red, 85))
+
+// 基準線
+plot(kijunBase,  "Kijun-sen",  color=color.new(color.blue,   30), linewidth=1)
+plot(tenkanBase, "Tenkan-sen", color=color.new(color.orange, 30), linewidth=1)
+
+// 綜合信號（副圖顯示，底層 Pane）
+plot(combinedSignal, "Combined Signal",
+     color = combinedSignal > 0 ? color.new(color.green, 0) : color.new(color.red, 0),
+     linewidth=2, style=plot.style_line, trackprice=true, join=true)
+
+// 買賣區間背景
+bgcolor(combinedSignal > 0.1 ? color.new(color.green, 90) : na, title="Bullish Zone")
+bgcolor(combinedSignal < -0.1 ? color.new(color.red, 90) : na, title="Bearish Zone")
+
+// ──────────────────────────────────────────────
+// 8. 訊號標記（plotshape）
+// ──────────────────────────────────────────────
+plotshape(combinedSignal >= 0.5, title="Strong Buy",  location=location.belowbar,
+     color=color.new(color.green, 0), style=shape.triangleup,   size=size.small, text="BUY")
+plotshape(combinedSignal <= -0.5, title="Strong Sell", location=location.abovebar,
+     color=color.new(color.red,   0), style=shape.triangledown, size=size.small, text="SELL")
+
+// ──────────────────────────────────────────────
+// 9. 警示框（Dynamic Label，等價 Python console 输出）
+// ──────────────────────────────────────────────
+var table infoTable = table.new(position.top_right, 2, 7, bgcolor=color.new(color.gray, 90))
+if barstate.islast
+    table.cell(infoTable, 0, 0, "▌ Ichimoku Golden Combo", text_color=color.white)
+    table.cell(infoTable, 1, 0, str.tostring(close, format.mintick), text_color=color.white)
+    table.cell(infoTable, 0, 1, "RSI(14)",                text_color=color.white)
+    table.cell(infoTable, 1, 1, str.tostring(rsiVal, "#.00"),  text_color=color.white)
+    table.cell(infoTable, 0, 2, "MACD",                  text_color=color.white)
+    table.cell(infoTable, 1, 2, str.tostring(macdLine,  "#.00"), text_color=color.white)
+    table.cell(infoTable, 0, 3, "Cloud Position",       text_color=color.white)
+    table.cell(infoTable, 1, 3, aboveCloud ? "▲ Above" : belowCloud ? "▼ Below" : "◆ In Cloud",
+               text_color=color.white)
+    table.cell(infoTable, 0, 4, "Signal 1 (RSI)",        text_color=color.white)
+    table.cell(infoTable, 1, 4, str.tostring(signal1, "#.#"), text_color=color.white)
+    table.cell(infoTable, 0, 5, "Signal 2 (MACD)",       text_color=color.white)
+    table.cell(infoTable, 1, 5, str.tostring(signal2, "#.#"), text_color=color.white)
+    table.cell(infoTable, 0, 6, "Combined",              text_color=color.white)
+    table.cell(infoTable, 1, 6, str.tostring(combinedSignal, "#.##"),
+               text_color = combinedSignal > 0 ? color.green : color.red)
+
+// ──────────────────────────────────────────────
+// 10. 移動平均線（非 Overlay，獨立 Pane）
+// ──────────────────────────────────────────────
+plot(sma49,  "SMA 49",  color=color.new(color.blue, 40), linewidth=1)
+plot(sma233, "SMA 233", color=color.new(color.purple, 40), linewidth=1)
+
+// ──────────────────────────────────────────────
+// 11. 策略止損 / 框架（可選啟用）
+// ──────────────────────────────────────────────
+longCondition  = combinedSignal >= 0.5
+shortCondition = combinedSignal <= -0.5
+
+if (longCondition and strategy.position_size <= 0)
+    strategy.entry(id="Long",  direction=strategy.long)
+
+if (shortCondition and strategy.position_size >= 0)
+    strategy.entry(id="Short", direction=strategy.short)
+
+// 註：標準止損/風險管理請自行加入 strategy.exit()

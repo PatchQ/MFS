@@ -1,5 +1,6 @@
 import sys
 import os
+from pathlib import Path
 
 # Add the project root to the Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -13,8 +14,8 @@ def extract_data(odate):
 
     zip_filename = f"{cc.IOPATH}DATA/{odate}.zip"
 
-    extract_dir = cc.Path.cwd().parent / "SData/HKEX/IO/TEMP"
-    extract_dir.mkdir(exist_ok=True)
+    extract_dir = Path("/root/GitHub/SData/HKEX/IO/TEMP")
+    extract_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         with cc.zipfile.ZipFile(zip_filename, 'r') as zip_ref:            
@@ -63,11 +64,11 @@ def extract_data(odate):
 
     for op in oplist:
 
-        op_dir = cc.Path.cwd().parent / f"SData/HKEX/IO/{op}"
-        op_dir.mkdir(exist_ok=True)
+        op_dir = Path(f"/root/GitHub/SData/HKEX/IO/{op}")
+        op_dir.mkdir(parents=True, exist_ok=True)
 
         tempdf = df_op_selected.loc[df_op_selected['series'] == op]
-        tempdf.to_csv(f"{cc.IFPATH}\{op}\{op}_{odate}.csv", index=False)
+        tempdf.to_csv(f"/root/GitHub/SData/HKEX/IF/{op}/{op}_{odate}.csv", index=False)
     
 
     # 可選：清理暫存檔案

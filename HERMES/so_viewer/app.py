@@ -7,8 +7,9 @@ HKEX Option Viewer — Stock & Index Options
 import os
 import glob
 import re
+import pandas as pd
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
@@ -17,7 +18,8 @@ app = Flask(__name__)
 # 路徑設定
 # ============================================================
 SO_ROOT = Path("/root/GitHub/SData/HKEX/SO")
-IO_ROOT = Path("/root/GitHub/MFS/SData/HKEX/IO")
+IO_ROOT = Path("/root/GitHub/SData/HKEX/IO")
+SP_ROOT = Path("/root/GitHub/SData/HKEX/SP")
 
 # ============================================================
 # 固定月份列表（與 year 組合形成完整到期日）
@@ -77,9 +79,8 @@ def is_so_code(code):
 
 def get_product_list():
     """
-    回傳所有可用產品（SO + IO），每項：
-    { code, type: 'SO'|'IO', label }
-    label: SO → '代碼 名稱'，IO → '代碼'
+    回傳所有可用產品（SO + IO + IS），每項：
+    { code, type: 'SO'|'IO'|'IS', label }
     """
     products = []
 
@@ -97,7 +98,7 @@ def get_product_list():
                         "label": f"{code} {name}"
                     })
 
-    # IO（指數期權）— 只允許這5個
+    # IO（指數期權）— HSI, MHI, HTI, HHI, MCH
     IO_INDICES = ["HSI", "MHI", "HTI", "HHI", "MCH"]
     for idx in IO_INDICES:
         products.append({
@@ -106,15 +107,11 @@ def get_product_list():
             "label": idx
         })
 
-    # SO 按數字排序，IO 按固定順序放尾後
-    so_products = sorted([p for p in products if p["type"] == "SO"],
-                         key=lambda x: int(x["code"]))
-    io_products = [p for p in products if p["type"] == "IO"]
-    return so_products + io_products
+    return products
 
 def get_available_dates(product_dir_or_index, product_type, date_str=None):
     """
-    SO: product_dir_or_index = '00700_騰訊'，從 SO_ROOT/下找 csv
+    SO: product_dir_or_index = '0700_TCH'，從 SO_ROOT/下找 csv
     IO: product_dir_or_index = 'HSI'，從 IO_ROOT/HSI/ 下找 csv
     回傳 ['20260430', '20260504', ...]，倒序
     """
@@ -124,7 +121,6 @@ def get_available_dates(product_dir_or_index, product_type, date_str=None):
         stock_path = SO_ROOT / product_dir_or_index
         if not stock_path.exists():
             return dates
-        name = product_dir_or_index.split('_')[1] if '_' in product_dir_or_index else product_dir_or_index
         for f in stock_path.glob("*.csv"):
             m = re.search(r'(\d{8})\.csv$', f.name)
             if m:
@@ -142,11 +138,18 @@ def get_available_dates(product_dir_or_index, product_type, date_str=None):
     dates.sort(reverse=True)
     return dates
 
+def normalize_so_code(code):
+    """SO 代碼：5位→4位，4位直接回傳"""
+    code = code.strip()
+    if code.isdigit() and len(code) == 5:
+        return f"{int(code):04d}"
+    return code  # 已是4位或非純數字
+
 def resolve_product(code):
     """
     根據產品代碼解析出 (type, dir_or_index, name_for_csv)
-    - SO: ('SO', '00700_騰訊', '00700')  → csv: {name}_{date}.csv = 騰訊_20260430.csv
-    - IO: ('IO', 'HSI', 'HSI')           → csv: HSI_20260430.csv
+    - SO: ('SO', '0700_TCH', 'TCH')  → csv: TCH_20260430.csv
+    - IO: ('IO', 'HSI', 'HSI')        → csv: HSI_20260430.csv
     """
     code = code.strip()
 
@@ -154,10 +157,12 @@ def resolve_product(code):
         return ("IO", code, code)
 
     elif is_so_code(code):
+        # 5位→4位標準化（00700 → 0700）
+        std_code = normalize_so_code(code)
         # 在 SO_ROOT 找到對應目錄（目錄格式：0700_TCH）
         if SO_ROOT.exists():
             for d in SO_ROOT.iterdir():
-                if d.is_dir() and d.name.startswith(code + "_"):
+                if d.is_dir() and d.name.startswith(std_code + "_"):
                     # d.name = '0700_TCH' → short_name = 'TCH'
                     short_name = d.name.split('_', 1)[1]
                     return ("SO", d.name, short_name)
@@ -253,7 +258,6 @@ def api_data():
         return jsonify({"error": f"找不到檔案：{csv_path}"}), 404
 
     try:
-        import pandas as pd
         import numpy as np
 
         df = pd.read_csv(csv_path)
@@ -283,6 +287,132 @@ def api_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+# ============================================================
+# SP 現貨股價 API（支援 CSV fallback + yfinance 即時拉取）
+# ============================================================
+import threading
+import time as _t
+
+# yfinance 全局鎖
+_yf_lock = threading.Lock()
+_MAX_RETRIES = 3
+_RETRY_DELAY = 2  # 秒
+
+# In-memory cache: (code, date_str) → (result_dict, timestamp)
+_sp_cache: dict[tuple[str, str], tuple[dict, float]] = {}
+_CACHE_TTL = 300  # 5分鐘
+
+
+# IO 指數的 Yahoo Finance 代碼對照
+# 格式：'CODE' → yf_code；'CODE+MONTH+YR' → yf_code（如 HSIU26）
+_IO_YF_CODES: dict[str, str] = {
+    # 現貨（HTI keep 現貨）
+    "HTI": "HSTECH.HK",
+    # 期貨月合約
+    "HSIU26": "^HSI",  "HSIZ26": "^HSI",
+    "HSIU25": "^HSI",  "HSIZ25": "^HSI",
+    "HHIU26": "^HSCE", "HHIZ26": "^HSCE",
+    "HHIU25": "^HSCE", "HHIZ25": "^HSCE",
+    # 默認：HSI/HHI → 現貨（舊代碼 fallback）
+    "HSI":  "^HSI",
+    "HHI":  "^HSCE",
+    "MHI":  "^HSI",
+    "MCH":  "^HSCE",
+}
+
+def _fetch_sp_from_yf(code: str, date_str: str) -> dict | None:
+    """
+    用 yfinance 即時拉取股票現貨 OHLCV。
+    SO 股票：'0700' → '0700.HK'
+    IO 期貨/指數：'HSIU26' → '^HSI'、'HHIU26' → '^HSCE'、'HTI' → 'HSTECH.HK'
+    """
+    import yfinance as yf
+
+    # 直接查 mapping；所有 IO 代碼都喺呢度
+    upper_code = code.upper()
+    if upper_code in _IO_YF_CODES:
+        yf_code = _IO_YF_CODES[upper_code]
+    else:
+        yf_code = f"{int(code):04d}.HK"
+
+    dt = datetime.strptime(date_str, "%Y%m%d")
+    start_str = dt.strftime("%Y-%m-%d")
+    end_str = (dt + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    for attempt in range(1, _MAX_RETRIES + 1):
+        with _yf_lock:
+            try:
+                # HSTECH.HK 需要用 yf.download() 避免 MultiIndex 問題
+                if yf_code == "HSTECH.HK":
+                    data = yf.download(yf_code, start=start_str, end=end_str, auto_adjust=False)
+                    if data is not None and not data.empty:
+                        if isinstance(data.columns, pd.MultiIndex):
+                            data.columns = data.columns.get_level_values(0)
+                else:
+                    stock = yf.Ticker(yf_code)
+                    data = stock.history(start=start_str, end=end_str, auto_adjust=False)
+            except Exception as e:
+                print(f"[SP yf] Error {yf_code} (attempt {attempt}): {e}")
+                data = None
+
+        if data is None or data.empty:
+            if attempt < _MAX_RETRIES:
+                wait = _RETRY_DELAY * (2 ** (attempt - 1))
+                print(f"[SP yf] {yf_code} rate limited，{wait}s 後重試")
+                _t.sleep(wait)
+                continue
+            return None
+
+    if data.empty:
+        return None
+
+    row = data.iloc[-1]
+    return {
+        "code": code,
+        "date": date_str,
+        "date_display": parse_date_display(date_str),
+        "open": float(row["Open"]) if pd.notna(row["Open"]) else None,
+        "high": float(row["High"]) if pd.notna(row["High"]) else None,
+        "low": float(row["Low"]) if pd.notna(row["Low"]) else None,
+        "close": float(row["Close"]) if pd.notna(row["Close"]) else None,
+        "volume": int(row["Volume"]) if pd.notna(row["Volume"]) else None,
+        "adj_close": float(row["Adj Close"]) if pd.notna(row["Adj Close"]) else None,
+    }
+
+
+@app.route("/api/sp", methods=["GET"])
+def api_sp():
+    """
+    GET /api/sp?code=00700&date=20260504  (SO 股票現貨)
+    GET /api/sp?code=HSI&date=20260505    (IO 指數現貨)
+    全部直接用 yfinance 即時拉取（附 5min cache）
+    """
+    code = request.args.get("code", "").strip()
+    date_str = request.args.get("date", "").strip()
+
+    if not code:
+        return jsonify({"error": "缺少 code 參數"}), 400
+    if not date_str:
+        return jsonify({"error": "缺少 date 參數"}), 400
+
+    # 1. 檢查 in-memory cache（5分鐘 TTL）
+    cache_key = (code, date_str)
+    now = _t.time()
+    if cache_key in _sp_cache:
+        result, ts = _sp_cache[cache_key]
+        if now - ts < _CACHE_TTL:
+            return jsonify(result)
+
+    # 2. 用 yfinance 即時拉取
+    result = _fetch_sp_from_yf(code, date_str)
+    if result:
+        _sp_cache[cache_key] = (result, now)
+        return jsonify(result)
+
+    return jsonify({"error": f"找不到股價數據（{date_str}）"}), 404
+
+
 # ============================================================
 # 啟動
 # ============================================================
@@ -292,6 +422,6 @@ if __name__ == "__main__":
     print("  HKEX Option Viewer（SO + IO）")
     print(f"  SO Root: {SO_ROOT}")
     print(f"  IO Root: {IO_ROOT}")
-    print(f"  URL:     http://0.0.0.0:5050")
+    print(f"  URL:     http://0.0.0.0:80")
     print("=" * 60)
-    app.run(host="0.0.0.0", port=5050, debug=False)
+    app.run(host="0.0.0.0", port=80, debug=False)

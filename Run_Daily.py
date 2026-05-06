@@ -5,7 +5,9 @@ import os
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
-import UTIL.CommonConfig as cc  
+import glob
+import os
+import UTIL.CommonConfig as cc
 from HEX.AA_GetIndustryList import getIndustryList
 from HEX.AA_GetStockListData import getStockListData
 from UTIL.LW_Collect import YFgetAll
@@ -16,8 +18,8 @@ from ProcessAI import CalAI
 if __name__ == '__main__':
 
     # 清空上次的信號輸出
-    for f in cc.glob.glob("Data/Result/*.csv"):
-        cc.os.remove(f)
+    for f in glob.glob("Data/Result/*.csv"):
+        os.remove(f)
 
     start = cc.t.perf_counter()
     

@@ -305,6 +305,33 @@
 
   <div id="product-badge" class="io">—</div>
   <div id="info"></div>
+
+  <!-- 股價面板（SO 專用）-->
+  <div id="sp-panel" style="display:none; margin-left:auto; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12px; min-width:200px;">
+    <div style="color:var(--text-dim); font-size:10px; margin-bottom:4px;">📈 <span id="sp-label">—</span></div>
+    <div style="display:flex; gap:16px; align-items:center;">
+      <div style="text-align:center;">
+        <div style="font-size:10px;color:var(--text-dim)">開</div>
+        <div id="sp-open" style="font-size:15px;font-weight:700;color:var(--text)">—</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:10px;color:var(--text-dim)">高</div>
+        <div id="sp-high" style="font-size:15px;font-weight:700;color:var(--green)">—</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:10px;color:var(--text-dim)">低</div>
+        <div id="sp-low" style="font-size:15px;font-weight:700;color:var(--red)">—</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:10px;color:var(--text-dim)">收</div>
+        <div id="sp-close" style="font-size:18px;font-weight:700;color:#fff">—</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:10px;color:var(--text-dim)">成交量</div>
+        <div id="sp-vol" style="font-size:11px;color:var(--text-dim)">—</div>
+      </div>
+    </div>
+  </div>
 </header>
 
 <!-- ================================================
@@ -437,6 +464,9 @@
   // ── 載入按鈕 ────────────────────────────────────
   btnLoad.addEventListener('click', loadData);
 
+  // 日期切換 → 自動重新載入（SO/IS 需更新現貨面板）
+  dateSel.addEventListener('change', loadData);
+
   async function loadData() {
     const code    = codeInput.value.trim();
     const dateStr = dateSel.value;
@@ -465,6 +495,15 @@
       const typeLabel = data.type === 'SO' ? 'SO' : 'IO';
       infoEl.textContent = `${data.code} [${typeLabel}] ｜ ${data.date_display} ｜ ${data.total_rows} 行${filterStr ? ' ｜ 篩選: ' + filterStr : ''}`;
       setStatus(`✅ 顯示 ${data.total_rows} 行`, 'ok');
+
+      // SO 股票 → 顯示現貨；IO 指數 → 期貨現貨（MHI/MCH 唔顯示）
+      // 注意：HSI/HHI 月期貨在 Yahoo Finance 已 delist，改用 ^HSI / ^HSCE 現貨代替
+      const ioNoSp = ['MHI', 'MCH'].includes(code);
+      if (data.type === 'SO' || (data.type === 'IO' && !ioNoSp)) {
+        loadSPPrice(code, dateStr);
+      } else {
+        document.getElementById('sp-panel').style.display = 'none';
+      }
     } catch (e) {
       setStatus('❌ 載入失敗：' + e.message, 'error');
     }
@@ -559,6 +598,56 @@
 
     tableWrap.style.display = 'block';
     statusEl.textContent = '';
+  }
+
+  // ── 載入股票現貨價面板 ─────────────────────────────
+  // SO 股票：直接用 code（如 0700）
+  // IO 指數：HSI/HHI → ^HSI / ^HSCE 現貨；HTI → HSTECH.HK 現貨；MHI/MCH → 唔顯示
+  async function loadSPPrice(code, dateStr) {
+    const panel = document.getElementById('sp-panel');
+
+    // 判斷是否 IO 指數（用於 skip 或 label）
+    const ioCodes = ['HSI', 'HHI', 'HTI', 'MHI', 'MCH'];
+    const isIO = ioCodes.includes(code);
+    const ioSkip = ['MHI', 'MCH'].includes(code);
+
+    if (ioSkip) { panel.style.display = 'none'; return; }
+
+    try {
+      const res = await fetch(`/api/sp?code=${encodeURIComponent(code)}&date=${encodeURIComponent(dateStr)}`);
+      const sp = await res.json();
+
+      if (sp.error) {
+        panel.style.display = 'none';
+        return;
+      }
+
+      const fmt = (v) => {
+        if (!v && v !== 0) return '—';
+        const f = parseFloat(v);
+        if (isNaN(f)) return '—';
+        return f.toFixed(2);
+      };
+      const fmtVol = (v) => {
+        if (!v) return '—';
+        const f = parseFloat(v);
+        if (isNaN(f)) return '—';
+        if (f >= 1e6) return (f / 1e6).toFixed(1) + 'M';
+        if (f >= 1e3) return (f / 1e3).toFixed(0) + 'K';
+        return f.toString();
+      };
+
+      document.getElementById('sp-label').textContent = isIO ? `${code} 現貨` : `${code} 現貨`;
+      document.getElementById('sp-open').textContent  = fmt(sp.open);
+      document.getElementById('sp-high').textContent  = fmt(sp.high);
+      document.getElementById('sp-low').textContent   = fmt(sp.low);
+      document.getElementById('sp-close').textContent = fmt(sp.close);
+      document.getElementById('sp-vol').textContent   = fmtVol(sp.volume);
+
+      panel.style.display = 'flex';
+    } catch (e) {
+      panel.style.display = 'none';
+    }
   }
 
   function setStatus(msg, cls) {
