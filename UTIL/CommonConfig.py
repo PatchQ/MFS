@@ -44,8 +44,8 @@ IOPATH = "/root/GitHub/SData/HKEX/IO/"
 SOPATH = "/root/GitHub/SData/HKEX/SO/"
 
 DATADATE = "2024-01-01"
-PATH = "/root/GitHub/SData/YFData/"
-OUTPATH = "/root/GitHub/SData/P_YFData/"
+PATH = "/root/GitHub/SData/FYFData/"
+OUTPATH = "/root/GitHub/SData/P_FYFData/"
 
 #PATH = "../SData/FYFdata/"
 #OUTPATH = "../SData/FP_YFdata/"

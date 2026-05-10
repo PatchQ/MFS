@@ -30,8 +30,8 @@ if __name__ == '__main__':
     ProcessTA("L",ai="False")
     ProcessTA("M",ai="False")
     
-    CalAI("L")
-    CalAI("M")
+    #CalAI("L")
+    #CalAI("M")
     
     finish = cc.t.perf_counter()
     print(f'It took {round(finish-start,2)} second(s) to finish.')

@@ -1,10 +1,9 @@
 """
 RunOI_Daily.py — HKEX OI 每日整合下載與解析
-整合四個房間：
+整合三個房間：
   1. IndexOption  (IO 指數期權)
   2. StockOption  (SO 股票期權)
   3. IndexFuture  (IF 指數期貨)
-  4. StockPrice   (SP 股票現貨)
 
 用法：
   python RunOI_Daily.py                        # 自動判斷日期（收盤前用昨日，收盤後用今日）
@@ -34,8 +33,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 IOPATH = Path("/root/GitHub/SData/HKEX/IO")
 SOPATH = Path("/root/GitHub/SData/HKEX/SO")
 IFPATH = Path("/root/GitHub/SData/HKEX/IF")
-SPPATH = Path("/root/GitHub/SData/HKEX/SP")
-SOLIST_PATH = Path("/root/GitHub/SData/HKEX/SO/solist.csv")
 
 # ============================================================
 # Room 1：IndexOption（IO 指數期權）
@@ -351,23 +348,6 @@ def ProcessIF(sdate, edate):
         list(cc.tqdm(executor.map(if_extract_data, dates, chunksize=1), total=len(dates)))
 
 # ============================================================
-# Room 4：StockPrice（SP 股票現貨）
-# ============================================================
-def ProcessSP(sdate, edate):
-    """下載股票現貨 — 每股票一次 API call 拿完整區間"""
-    import HEX.StockPrice as sp
-    print("\n" + "=" * 50)
-    print("  Room 4：StockPrice（SP 股票現貨）")
-    print("=" * 50)
-
-    stock_list = sp.load_stock_list()
-    print(f"  從 solist.csv 載入 {len(stock_list)} 隻股票")
-    print(f"  日期區間：{sdate} ~ {edate}")
-
-    sp.process_download(sdate, edate, stock_list)
-
-
-# ============================================================
 # 主程式
 # ============================================================
 if __name__ == "__main__":
@@ -405,9 +385,6 @@ if __name__ == "__main__":
 
     # Room 3 依賴 Room 1 的 zip
     ProcessIF(sdate, edate)
-
-    # Room 4 股票現貨
-    ProcessSP(sdate, edate)
 
     finish = cc.t.perf_counter()
     print("\n" + "=" * 50)

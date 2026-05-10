@@ -1,0 +1,290 @@
+//@version=5
+indicator("HK 子行業熱力圖", overlay=true, max_lines_count=500)
+
+// ============================================================
+// 設定
+// ============================================================
+iMaxStocks  = input.int(500, "最大股票數量", minval=10, maxval=1000)
+iRefresh    = input.int(60, "刷新間隔(秒)", minval=10, maxval=300)
+iShowTable  = input.bool(true, "顯示行業資金流向表")
+iShowLabel  = input.bool(true, "顯示熱力圖標籤")
+
+// ============================================================
+// 子行業關鍵詞映射
+// ============================================================
+// 科技
+TECH_WORDS = array.from("軟件", "半導體", "電子", "科技", "互聯網", "電商", "雲計算", "AI", "人工智能", "晶片", "騰訊", "阿里", "百度", "京東", "美團", "小米", "聯想", "中芯", "華為")
+// 金融
+FIN_WORDS  = array.from("銀行", "保險", "證券", "資產管理", "金融", "信貸", "支付", "滙豐", "渣打", "中銀", "恒生", "友邦", "平安", "中人壽")
+// 地產
+RE_WORDS   = array.from("地產", "房地產", "發展", "置業", "園區", "置地", "長實", "新地", "恒地", "信和", "嘉里")
+// 零售消費
+RET_WORDS  = array.from("零售", "消費", "食品", "餐飲", "飲料", "服飾", "百貨", "超市", "周大福", "海底撈", "百勝")
+// 工業製造
+IND_WORDS  = array.from("製造", "工業", "機械", "設備", "汽車", "零件", "化工", "原材料", "比亞迪", "吉利", "東風")
+// 能源
+ENG_WORDS  = array.from("能源", "石油", "燃氣", "電力", "新能源", "太陽能", "風電", "油", "中石油", "中石化", "中海油", "電盈")
+// 電訊
+TEL_WORDS  = array.from("電訊", "通信", "網絡", "光纖", "基站", "中移動", "聯通", "電盈")
+// 媒體娛樂
+MED_WORDS  = array.from("媒體", "影視", "廣告", "娛樂", "遊戲", "旅遊", "酒店", "電視廣播", " Peacock", "惠康", "澳博", "銀娛", "金沙")
+// 醫療健康
+HEA_WORDS  = array.from("醫療", "健康", "製藥", "生物", "醫院", "藥", "中藥", "石藥", "國藥", "華潤醫藥", "微創", "京東健康")
+// 交通物流
+TRA_WORDS  = array.from("交通", "物流", "航運", "港口", "航空", "鐵路", "公路", "中鐵", "中車", "中外運", "招商局", "港鐵")
+// 物業服務
+PRO_WORDS  = array.from("物業", "管理", "服務", "保安", "清潔", "顧問", "仲量聯行", "戴德梁行")
+// 其他
+OTH_WORDS  = array.from("重工", "建築", "水泥", "鋼鐵", "紡織", "農業", "林業", "牧業", "漁業")
+
+// ============================================================
+// 行業分類函數
+// ============================================================
+matchWords(arr, txt) =>
+    result = false
+    for i = 0 to array.size(arr) - 1
+        if array.get(arr, i) != "" and str.contains(txt, array.get(arr, i))
+            result := true
+            break
+    result
+
+classifySector(name) =>
+    result = "其他"
+    if matchWords(TECH_WORDS, name)
+        result := "科技"
+    else if matchWords(FIN_WORDS, name)
+        result := "金融"
+    else if matchWords(RE_WORDS, name)
+        result := "地產"
+    else if matchWords(RET_WORDS, name)
+        result := "零售消費"
+    else if matchWords(IND_WORDS, name)
+        result := "工業製造"
+    else if matchWords(ENG_WORDS, name)
+        result := "能源"
+    else if matchWords(TEL_WORDS, name)
+        result := "電訊"
+    else if matchWords(MED_WORDS, name)
+        result := "媒體娛樂"
+    else if matchWords(HEA_WORDS, name)
+        result := "醫療健康"
+    else if matchWords(TRA_WORDS, name)
+        result := "交通物流"
+    else if matchWords(PRO_WORDS, name)
+        result := "物業服務"
+    result
+
+// ============================================================
+// 股票代碼轉換 (e.g. "0700" -> "0700.HK")
+// ============================================================
+toTVSym(code) =>
+    codeStr = str.replace_all(code, ".HK", "")
+    codeStr + ".HK"
+
+// ============================================================
+// 數據結構
+// ============================================================
+var int[] gRisingCount = array.new_int(12, 0)
+var int[] gFallingCount = array.new_int(12, 0)
+var int[] gTotalCount = array.new_int(12, 0)
+var float[] gTotalChange = array.new_float(12, 0.0)
+var int[] gSectorIndex = array.new_int()  // 股票對應的行業索引
+var string[] gStockSyms = array.new_string()  // 股票代碼列表
+var float[] gStockChange = array.new_float()  // 股票漲跌%
+
+SECTOR_NAMES = array.from("科技", "金融", "地產", "零售消費", "工業製造", "能源", "電訊", "媒體娛樂", "醫療健康", "交通物流", "物業服務", "其他")
+SECTOR_COLORS = array.from(color.blue, color.green, color.orange, color.purple, color.brown, color.red, color.teal, color.maroon, color.lime, color.gray, color.black, color.silver)
+
+// ============================================================
+// 這裡需要手動輸入股票列表和行業分類
+// 由於 Pine Script 限制，無法自動掃描
+// ============================================================
+ STOCKS_COUNT = input.int(20, "手動設定股票數量", minval=1, maxval=500)
+
+ var string[500] stockCodes = array.new_string(500, "")
+ var string[500] stockNames = array.new_string(500, "")
+ var int[500]    stockSectors = array.new_int(500, 11)  // 預設"其他"
+
+ // 示範股票（你可以在這裡替換為實際股票）
+ if barstate.isfirst
+    // 示例：騰訊
+    array.set(stockCodes, 0, "0700")
+    array.set(stockNames, 0, "騰訊控股")
+    array.set(stockSectors, 0, 0)  // 科技
+    
+    // 示例：滙豐
+    array.set(stockCodes, 1, "0005")
+    array.set(stockNames, 1, "滙豐控股")
+    array.set(stockSectors, 1, 1)  // 金融
+    
+    // 示例：長實
+    array.set(stockCodes, 2, "1113")
+    array.set(stockNames, 2, "長實集團")
+    array.set(stockSectors, 2, 2)  // 地產
+    
+    // 示例：美團
+    array.set(stockCodes, 3, "3690")
+    array.set(stockNames, 3, "美團")
+    array.set(stockSectors, 3, 0)  // 科技
+    
+    // 示例：比亞迪
+    array.set(stockCodes, 4, "1211")
+    array.set(stockNames, 4, "比亞迪")
+    array.set(stockSectors, 4, 4)  // 工業製造
+    
+    // 示例：中海油
+    array.set(stockCodes, 5, "0883")
+    array.set(stockNames, 5, "中海油")
+    array.set(stockSectors, 5, 5)  // 能源
+    
+    // 示例：中移動
+    array.set(stockCodes, 6, "0941")
+    array.set(stockNames, 6, "中移動")
+    array.set(stockSectors, 6, 6)  // 電訊
+    
+    // 示例：銀河娛樂
+    array.set(stockCodes, 7, "0027")
+    array.set(stockNames, 7, "銀河娛樂")
+    array.set(stockSectors, 7, 7)  // 媒體娛樂
+    
+    // 示例：京東健康
+    array.set(stockCodes, 8, "6618")
+    array.set(stockNames, 8, "京東健康")
+    array.set(stockSectors, 8, 8)  // 醫療健康
+    
+    // 示例：港鐵
+    array.set(stockCodes, 9, "0066")
+    array.set(stockNames, 9, "港鐵公司")
+    array.set(stockSectors, 9, 9)  // 交通物流
+    
+    // 示例：仲量聯行
+    array.set(stockCodes, 10, "1879")
+    array.set(stockNames, 10, "仲量聯行")
+    array.set(stockSectors, 10, 10)  // 物業服務
+    
+    // 示例：阿里巴巴
+    array.set(stockCodes, 11, "9988")
+    array.set(stockNames, 11, "阿里巴巴")
+    array.set(stockSectors, 11, 0)  // 科技
+    
+    // 示例：恒生銀行
+    array.set(stockCodes, 12, "0011")
+    array.set(stockNames, 12, "恒生銀行")
+    array.set(stockSectors, 12, 1)  // 金融
+    
+    // 示例：新地
+    array.set(stockCodes, 13, "0016")
+    array.set(stockNames, 13, "新地")
+    array.set(stockSectors, 13, 2)  // 地產
+    
+    // 示例：百勝中國
+    array.set(stockCodes, 14, "9987")
+    array.set(stockNames, 14, "百勝中國")
+    array.set(stockSectors, 14, 3)  // 零售消費
+    
+    // 示例：中芯
+    array.set(stockCodes, 15, "0981")
+    array.set(stockNames, 15, "中芯國際")
+    array.set(stockSectors, 15, 0)  // 科技
+    
+    // 示例：平安
+    array.set(stockCodes, 16, "2318")
+    array.set(stockNames, 16, "平安保險")
+    array.set(stockSectors, 16, 1)  // 金融
+    
+    // 示例：中石化
+    array.set(stockCodes, 17, "0386")
+    array.set(stockNames, 17, "中石化")
+    array.set(stockSectors, 17, 5)  // 能源
+    
+    // 示例：聯通
+    array.set(stockCodes, 18, "0762")
+    array.set(stockNames, 18, "中國聯通")
+    array.set(stockSectors, 18, 6)  // 電訊
+    
+    // 示例：國藥
+    array.set(stockCodes, 19, "1177")
+    array.set(stockNames, 19, "國藥控股")
+    array.set(stockSectors, 19, 8)  // 醫療健康
+
+// ============================================================
+// 顏色輔助
+// ============================================================
+getHeatColor(ratio) =>
+    if ratio > 0.6
+        color.new(color.green, int((1 - ratio) * 80))
+    else if ratio < 0.4
+        color.new(color.red, int(ratio * 80))
+    else
+        color.new(color.gray, 40)
+
+// ============================================================
+// 主邏輯
+// ============================================================
+if barstate.islast and iShowTable
+    // 重置計數
+    for i = 0 to 11
+        array.set(gRisingCount, i, 0)
+        array.set(gFallingCount, i, 0)
+        array.set(gTotalCount, i, 0)
+        array.set(gTotalChange, i, 0.0)
+    
+    // 遍歷股票（需要使用 request.security 獲取價格數據）
+    for i = 0 to STOCKS_COUNT - 1
+        sym = toTVSym(array.get(stockCodes, i))
+        [close, change] = request.security(sym, "D", [close, ta.change(close)])
+        
+        if not na(change)
+            secIdx = array.get(stockSectors, i)
+            array.set(gTotalCount, secIdx, array.get(gTotalCount, secIdx) + 1)
+            array.set(gTotalChange, secIdx, array.get(gTotalChange, secIdx) + change)
+            
+            if change > 0
+                array.set(gRisingCount, secIdx, array.get(gRisingCount, secIdx) + 1)
+            else if change < 0
+                array.set(gFallingCount, secIdx, array.get(gFallingCount, secIdx) + 1)
+    
+    // 繪製表格
+    var table heatTable = table.new(
+         position.top_right, 
+         4, 14, 
+         bgcolor=color.new(color.black, 85),
+         border_width=1,
+         border_color=color.new(color.white, 50)
+    )
+    
+    // 表頭
+    table.cell(heatTable, 0, 0, "子行業", 
+         text_color=color.white, 
+         text_size=size.small,
+         bgcolor=color.new(color.navy, 30))
+    table.cell(heatTable, 1, 0, "↑", 
+         text_color=color.white, 
+         text_size=size.small,
+         bgcolor=color.new(color.green, 30))
+    table.cell(heatTable, 2, 0, "↓", 
+         text_color=color.white, 
+         text_size=size.small,
+         bgcolor=color.new(color.red, 30))
+    table.cell(heatTable, 3, 0, "比率", 
+         text_color=color.white, 
+         text_size=size.small,
+         bgcolor=color.new(color.blue, 30))
+    
+    // 數據行
+    for i = 0 to 11
+        total = array.get(gTotalCount, i)
+        if total > 0
+            rising = array.get(gRisingCount, i)
+            falling = array.get(gFallingCount, i)
+            ratio = rising / total
+            col = getHeatColor(ratio)
+            
+            table.cell(heatTable, 0, i+1, array.get(SECTOR_NAMES, i), 
+                 text_color=color.white, text_size=size.small, bgcolor=col)
+            table.cell(heatTable, 1, i+1, str.tostring(rising), 
+                 text_color=color.white, text_size=size.small, bgcolor=col)
+            table.cell(heatTable, 2, i+1, str.tostring(falling), 
+                 text_color=color.white, text_size=size.small, bgcolor=col)
+            table.cell(heatTable, 3, i+1, str.tostring(math.round(ratio * 100)) + "%", 
+                 text_color=color.white, text_size=size.small, bgcolor=col)
