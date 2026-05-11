@@ -42,9 +42,13 @@ toTVSym(code) =>
     str.replace_all(code, ".HK", "")
 
 // ============================================================
-// 股票列表初始化
+// 股票列表
 // ============================================================
 STOCKS_COUNT = input.int(50, "股票數量", minval=1, maxval=500)
+
+stockCodes = array.new_string(500, "")
+stockNames = array.new_string(500, "")
+stockSectors = array.new_int(500, 11)
 
 initStocks() =>
     // 科技 0-9
@@ -127,12 +131,6 @@ initStocks() =>
     array.set(stockCodes, 96, "6098");  array.set(stockNames, 96, "碧桂園服務"); array.set(stockSectors, 96, 10)
     array.set(stockCodes, 97, "3319");  array.set(stockNames, 97, "雅生活");      array.set(stockSectors, 97, 10)
 
-// 宣告數組
-stockCodes   = array.new_string(500, "")
-stockNames   = array.new_string(500, "")
-stockSectors = array.new_int(500, 11)
-
-// 初始化股票列表
 if barstate.isfirst
     initStocks()
 
@@ -143,7 +141,7 @@ var float[] stockClose    = array.new_float(500, na)
 var float[] stockPrevClose = array.new_float(500, na)
 var float[] stockPctChg  = array.new_float(500, 0.0)
 var float[] stockVolume   = array.new_float(500, 0.0)
-var bool[]   stockValid  = array.new_bool(500, false)
+var bool[]   stockValid   = array.new_bool(500, false)
 
 // 行業聚合
 var int[] risingCount  = array.new_int(12, 0)
@@ -153,7 +151,7 @@ var float[] totalChange= array.new_float(12, 0.0)
 var float[] totalVol   = array.new_float(12, 0.0)
 
 // ============================================================
-// 讀取所有股票數據（每根柱都執行）
+// 讀取所有股票數據（每根柱都執行，解決CW10003）
 // ============================================================
 for i = 0 to 11
     array.set(risingCount, i, 0)
@@ -212,7 +210,7 @@ if barstate.islast and iShowTable
         border_color=color.new(color.white, 20)
     )
     
-    // 表頭（藍色頂部 row）
+    // 表頭
     table.cell(heatTable, 0, 0, "子行業", 
         text_color=color.white, text_size=size.small,
         bgcolor=color.new(#0D47A1, 0))
@@ -229,7 +227,7 @@ if barstate.islast and iShowTable
         text_color=color.white, text_size=size.small,
         bgcolor=color.new(#1565C0, 0))
     
-    // 數據行（黑色背景，文字顏色表示狀態）
+    // 數據行
     for i = 0 to 11
         total = array.get(totalCount, i)
         rising = array.get(risingCount, i)
@@ -241,7 +239,6 @@ if barstate.islast and iShowTable
             avgChange = array.get(totalChange, i) / total
             secCol = getSectorColor(i)
             
-            // 熱力圖背景色
             bgCol = ratio > 0.6 ? color.new(#00C853, 0) : ratio < 0.4 ? color.new(#FF1744, 0) : color.new(#78909C, 0)
             
             table.cell(heatTable, 0, i+1, array.get(SECTOR_NAMES, i), 
@@ -266,7 +263,6 @@ if barstate.islast and iShowGauge
     table.cell(gaugeTable, 2, 0, "跌", text_color=#FF5252, text_size=size.small, bgcolor=color.new(#FF1744, 0))
     table.cell(gaugeTable, 3, 0, "方向", text_color=color.white, text_size=size.small, bgcolor=color.new(#7B1FA2, 0))
     
-    // 總結行
     totalRising = array.sum(risingCount)
     totalFalling = array.sum(fallingCount)
     totalStocks = array.sum(totalCount)
