@@ -1,0 +1,306 @@
+//@version=6
+
+indicator("HK 子行業熱力圖 v2", overlay=true, max_lines_count=500)
+
+// ============================================================
+// 設定
+// ============================================================
+iMaxStocks  = input.int(50, "股票數量", minval=10, maxval=500)
+iShowTable  = input.bool(true, "顯示行業資金流向表")
+iShowGauge  = input.bool(true, "顯示行業漲跌儀表")
+
+// ============================================================
+// 子行業關鍵詞
+// ============================================================
+TECH = array.from("軟件", "半導體", "電子", "科技", "互聯網", "電商", "雲計算", "AI", "人工智能", "晶片", "騰訊", "阿里", "百度", "京東", "美團", "小米", "聯想", "中芯", "華為", "商湯", "科大訊飛")
+FIN  = array.from("銀行", "保險", "證券", "資產管理", "金融", "信貸", "支付", "滙豐", "渣打", "中銀", "恒生", "友邦", "平安", "中人壽", "太保", "太平", "中人保", "民銀", "信銀", "興業", "招商")
+RE   = array.from("地產", "房地產", "發展", "置業", "園區", "置地", "長實", "新地", "恒地", "信和", "嘉里", "恒隆", "九倉", "希慎", "太古地產", "新世界", "華潤置地", "龍湖", "碧桂園", "萬科", "中國恒大")
+RET  = array.from("零售", "消費", "食品", "餐飲", "飲料", "服飾", "百貨", "超市", "周大福", "海底撈", "百勝", "九毛九", "呷哺", "奈雪", "海底撈", "名創優品", "滔博", "達芙妮")
+IND  = array.from("製造", "工業", "機械", "設備", "汽車", "零件", "化工", "原材料", "比亞迪", "吉利", "東風", "長城汽車", "廣汽", "上汽", "北汽", "東風", "重汽", "濰柴", "三一", "中聯重科")
+ENG  = array.from("能源", "石油", "燃氣", "電力", "新能源", "太陽能", "風電", "油", "中石油", "中石化", "中海油", "電盈", "華能", "華電", "國電", "大唐", "龍源", "光大環境")
+TEL  = array.from("電訊", "通信", "網絡", "光纖", "基站", "中移動", "聯通", "電盈", "中國電信", "中國鐵塔")
+MED  = array.from("媒體", "影視", "廣告", "娛網", "娛樂", "遊戲", "旅遊", "酒店", " Peacock", "惠康", "澳博", "銀娛", "金沙", "永利澳門", "美高梅", "新濠國際", "賭權", "博彩")
+HEA  = array.from("醫療", "健康", "製藥", "生物", "醫院", "藥", "中藥", "石藥", "國藥", "華潤醫藥", "微創", "京東健康", "阿里健康", "平安好醫生", "春雨醫生", "恒大健康", "愛爾眼科", "通策醫療")
+TRA  = array.from("交通", "物流", "航運", "港口", "航空", "鐵路", "公路", "中鐵", "中車", "中外運", "招商局", "港鐵", "深圳國際", "北京首都", "中國國航", "東方航空", "南方航空", "海豐國際", "中遠海控")
+PRO  = array.from("物業", "管理", "服務", "保安", "清潔", "顧問", "仲量聯行", "戴德梁行", "第一太平", "彩生活", "中海物業", "綠城服務", "雅生活", "保利物業")
+
+SECTOR_NAMES  = array.from("科技", "金融", "地產", "零售消費", "工業製造", "能源", "電訊", "媒體娛樂", "醫療健康", "交通物流", "物業服務", "其他")
+SECTOR_COLORS = array.from(color.blue, color.green, color.orange, color.purple, color.silver, color.red, color.teal, color.maroon, color.lime, color.gray, color.black, color.silver)
+
+// ============================================================
+// 函數定義
+// ============================================================
+matchWords(arr, txt) =>
+    result = false
+    for i = 0 to array.size(arr) - 1
+        if array.get(arr, i) != "" and str.contains(txt, array.get(arr, i))
+            result := true
+            break
+    result
+
+toTVSym(code) =>
+    str.replace_all(code, ".HK", "")
+
+// ============================================================
+// 股票列表初始化
+// ============================================================
+STOCKS_COUNT = input.int(50, "股票數量", minval=1, maxval=500)
+
+initStocks() =>
+    // 科技 0-9
+    array.set(stockCodes, 0, "0700");  array.set(stockNames, 0, "騰訊控股");   array.set(stockSectors, 0, 0)
+    array.set(stockCodes, 1, "9988");  array.set(stockNames, 1, "阿里巴巴");   array.set(stockSectors, 1, 0)
+    array.set(stockCodes, 2, "3690");  array.set(stockNames, 2, "美團");        array.set(stockSectors, 2, 0)
+    array.set(stockCodes, 3, "0981");  array.set(stockNames, 3, "中芯國際");   array.set(stockSectors, 3, 0)
+    array.set(stockCodes, 4, "1810");  array.set(stockNames, 4, "小米集團");   array.set(stockSectors, 4, 0)
+    array.set(stockCodes, 5, "2380");  array.set(stockNames, 5, "嗶哩嗶哩");   array.set(stockSectors, 5, 0)
+    array.set(stockCodes, 6, "9961");  array.set(stockNames, 6, "京東物流");   array.set(stockSectors, 6, 0)
+    array.set(stockCodes, 7, "6629");  array.set(stockNames, 7, "科大訊飛");   array.set(stockSectors, 7, 0)
+    array.set(stockCodes, 8, "0020");  array.set(stockNames, 8, "商湯");        array.set(stockSectors, 8, 0)
+    array.set(stockCodes, 9, "3888");  array.set(stockNames, 9, "金山軟件");   array.set(stockSectors, 9, 0)
+    
+    // 金融 10-19
+    array.set(stockCodes, 10, "0005");  array.set(stockNames, 10, "滙豐控股");   array.set(stockSectors, 10, 1)
+    array.set(stockCodes, 11, "0011");  array.set(stockNames, 11, "恒生銀行");   array.set(stockSectors, 11, 1)
+    array.set(stockCodes, 12, "2318");  array.set(stockNames, 12, "平安保險");   array.set(stockSectors, 12, 1)
+    array.set(stockCodes, 13, "2628");  array.set(stockNames, 13, "中國人壽");   array.set(stockSectors, 13, 1)
+    array.set(stockCodes, 14, "3968");  array.set(stockNames, 14, "招商銀行");   array.set(stockSectors, 14, 1)
+    array.set(stockCodes, 15, "0939");  array.set(stockNames, 15, "建設銀行");   array.set(stockSectors, 15, 1)
+    array.set(stockCodes, 16, "3988");  array.set(stockNames, 16, "中國銀行");   array.set(stockSectors, 16, 1)
+    array.set(stockCodes, 17, "1288");  array.set(stockNames, 17, "農業銀行");   array.set(stockSectors, 17, 1)
+    array.set(stockCodes, 18, "2328");  array.set(stockNames, 18, "中國保險");   array.set(stockSectors, 18, 1)
+    array.set(stockCodes, 19, "6618");  array.set(stockNames, 19, "京東健康");   array.set(stockSectors, 19, 1)
+    
+    // 地產 20-29
+    array.set(stockCodes, 20, "0016");  array.set(stockNames, 20, "新鴻基地產"); array.set(stockSectors, 20, 2)
+    array.set(stockCodes, 21, "1113");  array.set(stockNames, 21, "長實集團");   array.set(stockSectors, 21, 2)
+    array.set(stockCodes, 22, "0012");  array.set(stockNames, 22, "恒大地產");   array.set(stockSectors, 22, 2)
+    array.set(stockCodes, 23, "1109");  array.set(stockNames, 23, "華潤置地");   array.set(stockSectors, 23, 2)
+    array.set(stockCodes, 24, "1997");  array.set(stockNames, 24, "九龍倉置業"); array.set(stockSectors, 24, 2)
+    array.set(stockCodes, 25, "0823");  array.set(stockNames, 25, "領地");        array.set(stockSectors, 25, 2)
+    array.set(stockCodes, 26, "9602");  array.set(stockNames, 26, "龍湖集團");   array.set(stockSectors, 26, 2)
+    
+    // 零售消費 30-39
+    array.set(stockCodes, 30, "9987");  array.set(stockNames, 30, "百勝中國");   array.set(stockSectors, 30, 3)
+    array.set(stockCodes, 31, "3690");  array.set(stockNames, 31, "美團");        array.set(stockSectors, 31, 3)
+    array.set(stockCodes, 32, "1929");  array.set(stockNames, 32, "周大福");     array.set(stockSectors, 32, 3)
+    array.set(stockCodes, 33, "6862");  array.set(stockNames, 33, "海底撈");     array.set(stockSectors, 33, 3)
+    array.set(stockCodes, 34, "2150");  array.set(stockNames, 34, "奈雪的茶");   array.set(stockSectors, 34, 3)
+    
+    // 工業製造 40-49
+    array.set(stockCodes, 40, "1211");  array.set(stockNames, 40, "比亞迪");     array.set(stockSectors, 40, 4)
+    array.set(stockCodes, 41, "1756");  array.set(stockNames, 41, "吉利汽車");    array.set(stockSectors, 41, 4)
+    array.set(stockCodes, 42, "2333");  array.set(stockNames, 42, "長城汽車");   array.set(stockSectors, 42, 4)
+    array.set(stockCodes, 43, "2238");  array.set(stockNames, 43, "廣汽集團");   array.set(stockSectors, 43, 4)
+    array.set(stockCodes, 44, "0386");  array.set(stockNames, 44, "中石化");      array.set(stockSectors, 44, 4)
+    
+    // 能源 50-59
+    array.set(stockCodes, 50, "0883");  array.set(stockNames, 50, "中海油");     array.set(stockSectors, 50, 5)
+    array.set(stockCodes, 51, "0857");  array.set(stockNames, 51, "中石油");     array.set(stockSectors, 51, 5)
+    array.set(stockCodes, 52, "1038");  array.set(stockNames, 52, "長江基建");   array.set(stockSectors, 52, 5)
+    
+    // 電訊 60-69
+    array.set(stockCodes, 60, "0941");  array.set(stockNames, 60, "中移動");     array.set(stockSectors, 60, 6)
+    array.set(stockCodes, 61, "0762");  array.set(stockNames, 61, "中國聯通");   array.set(stockSectors, 61, 6)
+    array.set(stockCodes, 62, "0728");  array.set(stockNames, 62, "中國電信");   array.set(stockSectors, 62, 6)
+    
+    // 媒體娛樂 70-79
+    array.set(stockCodes, 70, "0027");  array.set(stockNames, 70, "銀河娛樂");   array.set(stockSectors, 70, 7)
+    array.set(stockCodes, 71, "1928");  array.set(stockNames, 71, "金沙中國");   array.set(stockSectors, 71, 7)
+    array.set(stockCodes, 72, "2282");  array.set(stockNames, 72, "美高梅");      array.set(stockSectors, 72, 7)
+    array.set(stockCodes, 73, "0700");  array.set(stockNames, 73, "騰訊");        array.set(stockSectors, 73, 7)
+    
+    // 醫療健康 80-89
+    array.set(stockCodes, 80, "1177");  array.set(stockNames, 80, "國藥控股");   array.set(stockSectors, 80, 8)
+    array.set(stockCodes, 81, "6618");  array.set(stockNames, 81, "京東健康");   array.set(stockSectors, 81, 8)
+    array.set(stockCodes, 82, "0241");  array.set(stockNames, 82, "阿里健康");   array.set(stockSectors, 82, 8)
+    array.set(stockCodes, 83, "1093");  array.set(stockNames, 83, "石藥集團");   array.set(stockSectors, 83, 8)
+    
+    // 交通物流 90-99
+    array.set(stockCodes, 90, "0066");  array.set(stockNames, 90, "港鐵公司");   array.set(stockSectors, 90, 9)
+    array.set(stockCodes, 91, "0257");  array.set(stockNames, 91, "中外運");      array.set(stockSectors, 91, 9)
+    array.set(stockCodes, 92, "0659");  array.set(stockNames, 92, "中遠海控");   array.set(stockSectors, 92, 9)
+    array.set(stockCodes, 93, "0753");  array.set(stockNames, 93, "中國國航");    array.set(stockSectors, 93, 9)
+    
+    // 物業服務 100-109
+    array.set(stockCodes, 95, "1879");  array.set(stockNames, 95, "仲量聯行");   array.set(stockSectors, 95, 10)
+    array.set(stockCodes, 96, "6098");  array.set(stockNames, 96, "碧桂園服務"); array.set(stockSectors, 96, 10)
+    array.set(stockCodes, 97, "3319");  array.set(stockNames, 97, "雅生活");      array.set(stockSectors, 97, 10)
+
+// 宣告數組
+stockCodes   = array.new_string(500, "")
+stockNames   = array.new_string(500, "")
+stockSectors = array.new_int(500, 11)
+
+// 初始化股票列表
+if barstate.isfirst
+    initStocks()
+
+// ============================================================
+// 全域數據存儲（每根柱都更新）
+// ============================================================
+var float[] stockClose    = array.new_float(500, na)
+var float[] stockPrevClose = array.new_float(500, na)
+var float[] stockPctChg  = array.new_float(500, 0.0)
+var float[] stockVolume   = array.new_float(500, 0.0)
+var bool[]   stockValid  = array.new_bool(500, false)
+
+// 行業聚合
+var int[] risingCount  = array.new_int(12, 0)
+var int[] fallingCount = array.new_int(12, 0)
+var int[] totalCount   = array.new_int(12, 0)
+var float[] totalChange= array.new_float(12, 0.0)
+var float[] totalVol   = array.new_float(12, 0.0)
+
+// ============================================================
+// 讀取所有股票數據（每根柱都執行）
+// ============================================================
+for i = 0 to 11
+    array.set(risingCount, i, 0)
+    array.set(fallingCount, i, 0)
+    array.set(totalCount, i, 0)
+    array.set(totalChange, i, 0.0)
+    array.set(totalVol, i, 0.0)
+
+for i = 0 to STOCKS_COUNT - 1
+    sym = toTVSym(array.get(stockCodes, i))
+    
+    if sym == "0000" or sym == ""
+        continue
+    
+    [c, o, v, h, l] = request.security(sym, "D", [close, open, volume, high, low])
+    
+    prevClose = array.get(stockPrevClose, i)
+    change = na(prevClose) ? 0.0 : c - prevClose
+    pctChange = c > 0 and not na(prevClose) and prevClose != 0 ? (change / prevClose) * 100 : 0.0
+    
+    array.set(stockClose, i, c)
+    array.set(stockPrevClose, i, c)
+    array.set(stockPctChg, i, pctChange)
+    array.set(stockVolume, i, v)
+    
+    if not na(c) and c > 0
+        array.set(stockValid, i, true)
+        
+        secIdx = array.get(stockSectors, i)
+        array.set(totalCount, secIdx, array.get(totalCount, secIdx) + 1)
+        array.set(totalChange, secIdx, array.get(totalChange, secIdx) + pctChange)
+        array.set(totalVol, secIdx, array.get(totalVol, secIdx) + v)
+        
+        if pctChange > 0
+            array.set(risingCount, secIdx, array.get(risingCount, secIdx) + 1)
+        else if pctChange < 0
+            array.set(fallingCount, secIdx, array.get(fallingCount, secIdx) + 1)
+    else
+        array.set(stockValid, i, false)
+
+// ============================================================
+// 顏色函數
+// ============================================================
+getSectorColor(idx) =>
+    array.get(SECTOR_COLORS, idx)
+
+// ============================================================
+// 表格顯示（黑色背景）
+// ============================================================
+if barstate.islast and iShowTable
+    var table heatTable = table.new(
+        position.top_right, 
+        5, 14, 
+        bgcolor=color.black,
+        border_width=1,
+        border_color=color.new(color.white, 20)
+    )
+    
+    // 表頭（藍色頂部 row）
+    table.cell(heatTable, 0, 0, "子行業", 
+        text_color=color.white, text_size=size.small,
+        bgcolor=color.new(#0D47A1, 0))
+    table.cell(heatTable, 1, 0, "↑ 升", 
+        text_color=#00E676, text_size=size.small,
+        bgcolor=color.new(#00C853, 0))
+    table.cell(heatTable, 2, 0, "↓ 跌", 
+        text_color=#FF5252, text_size=size.small,
+        bgcolor=color.new(#FF1744, 0))
+    table.cell(heatTable, 3, 0, "淨升跌", 
+        text_color=color.white, text_size=size.small,
+        bgcolor=color.new(#7B1FA2, 0))
+    table.cell(heatTable, 4, 0, "板塊%", 
+        text_color=color.white, text_size=size.small,
+        bgcolor=color.new(#1565C0, 0))
+    
+    // 數據行（黑色背景，文字顏色表示狀態）
+    for i = 0 to 11
+        total = array.get(totalCount, i)
+        rising = array.get(risingCount, i)
+        falling = array.get(fallingCount, i)
+        
+        if total > 0
+            ratio = rising / total
+            netChange = rising - falling
+            avgChange = array.get(totalChange, i) / total
+            secCol = getSectorColor(i)
+            
+            // 熱力圖背景色
+            bgCol = ratio > 0.6 ? color.new(#00C853, 0) : ratio < 0.4 ? color.new(#FF1744, 0) : color.new(#78909C, 0)
+            
+            table.cell(heatTable, 0, i+1, array.get(SECTOR_NAMES, i), 
+                text_color=color.white, text_size=size.small, bgcolor=bgCol)
+            table.cell(heatTable, 1, i+1, str.tostring(rising), 
+                text_color=#00E676, text_size=size.small, bgcolor=bgCol)
+            table.cell(heatTable, 2, i+1, str.tostring(falling), 
+                text_color=#FF5252, text_size=size.small, bgcolor=bgCol)
+            table.cell(heatTable, 3, i+1, (netChange > 0 ? "+" : "") + str.tostring(netChange), 
+                text_color=netChange > 0 ? #00E676 : #FF5252, text_size=size.small, bgcolor=bgCol)
+            table.cell(heatTable, 4, i+1, (avgChange > 0 ? "▲" : avgChange < 0 ? "▼" : "─") + str.tostring(math.round(avgChange, 2)) + "%", 
+                text_color=avgChange > 0 ? #00E676 : #FF5252, text_size=size.small, bgcolor=bgCol)
+
+// ============================================================
+// 行業指數儀表盤（黑色背景）
+// ============================================================
+if barstate.islast and iShowGauge
+    var table gaugeTable = table.new(position.top_left, 4, 5, bgcolor=color.black)
+    
+    table.cell(gaugeTable, 0, 0, "熱力圖", text_color=color.white, text_size=size.small, bgcolor=color.new(#0D47A1, 0))
+    table.cell(gaugeTable, 1, 0, "升", text_color=#00E676, text_size=size.small, bgcolor=color.new(#00C853, 0))
+    table.cell(gaugeTable, 2, 0, "跌", text_color=#FF5252, text_size=size.small, bgcolor=color.new(#FF1744, 0))
+    table.cell(gaugeTable, 3, 0, "方向", text_color=color.white, text_size=size.small, bgcolor=color.new(#7B1FA2, 0))
+    
+    // 總結行
+    totalRising = array.sum(risingCount)
+    totalFalling = array.sum(fallingCount)
+    totalStocks = array.sum(totalCount)
+    overallRatio = totalStocks > 0 ? totalRising / totalStocks : 0.5
+    
+    overallCol = overallRatio > 0.55 ? color.new(#00C853, 0) : overallRatio < 0.45 ? color.new(#FF1744, 0) : color.new(#78909C, 0)
+    
+    table.cell(gaugeTable, 0, 1, "全市場", text_color=color.white, text_size=size.small, bgcolor=overallCol)
+    table.cell(gaugeTable, 1, 1, str.tostring(totalRising), text_color=#00E676, text_size=size.small, bgcolor=overallCol)
+    table.cell(gaugeTable, 2, 1, str.tostring(totalFalling), text_color=#FF5252, text_size=size.small, bgcolor=overallCol)
+    table.cell(gaugeTable, 3, 1, overallRatio > 0.5 ? "▲ 多頭" : "▼ 空頭", 
+        text_color=overallRatio > 0.5 ? #00E676 : #FF5252, text_size=size.small, bgcolor=overallCol)
+
+// ============================================================
+// 繪製板塊標籤
+// ============================================================
+if barstate.islast and iShowGauge
+    var float maxAvg = -999.0
+    var float minAvg = 999.0
+    var int maxIdx = 0
+    var int minIdx = 0
+    
+    for i = 0 to 11
+        total = array.get(totalCount, i)
+        if total > 0
+            avg = array.get(totalChange, i) / total
+            if avg > maxAvg
+                maxAvg := avg
+                maxIdx := i
+            if avg < minAvg
+                minAvg := avg
+                minIdx := i
+    
+    if maxAvg > 0
+        label.new(bar_index - 5, high, "🚀 " + array.get(SECTOR_NAMES, maxIdx) + " ▲" + str.tostring(math.round(maxAvg, 1)) + "%", color=color.new(#00C853, 70), textcolor=color.white, size=size.small, style=label.style_label_down)
+    if minAvg < 0
+        label.new(bar_index - 5, low, "💎 " + array.get(SECTOR_NAMES, minIdx) + " ▼" + str.tostring(math.round(math.abs(minAvg), 1)) + "%", color=color.new(#FF1744, 70), textcolor=color.white, size=size.small, style=label.style_label_up)
