@@ -26,11 +26,15 @@ def Prediction(modelname,model,df,sno,stype,tdate,fulldata):
                      "FISHER_SIGNAL", "FISHER_STRENGTH"]
                      #"BreakoutQuality","FalseBreakout","PreHighCount"]
         
-        pp.drop(columns=[c for c in drop_cols if c in pp.columns], inplace=True)                
-        pp = pp.replace([cc.np.inf, -cc.np.inf], cc.np.nan)
+        pp.drop(columns=[c for c in drop_cols if c in pp.columns], inplace=True)
+        pp.replace([cc.np.inf, -cc.np.inf], cc.np.nan, inplace=True)
         pp = pp.apply(cc.pd.to_numeric, errors='coerce')
-        
-        
+        # 確保與模型訓練時的特徵一致：補充缺失欄位，移除多餘欄位
+        for col in ['Dividends', 'Stock Splits']:
+            if col not in pp.columns:
+                pp[col] = 0.0
+        # 只保留模型见过的特征（去除 Date.1、sno 等多余列）
+        pp = pp[[c for c in model.feature_names_in_ if c in pp.columns]]
         proba = model.predict_proba(pp)
 
         if proba.shape[1] > 1:

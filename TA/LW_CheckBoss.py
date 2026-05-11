@@ -70,6 +70,9 @@ def checkBoss(df, sno, stype, swing_analysis, params=None):
     swing_analysis = swing_analysis.reset_index(drop=True)
     swing_analysis['Date'] = pd.to_datetime(swing_analysis['Date'])
 
+    # 去除重複索引（intraday 數據會產生同一日期多筆，會導致 df.loc[date, col] 回傳 Series 而非純量）
+    df = df[~df.index.duplicated(keep='last')]
+
     # 初始化必要的欄位
     cols_to_init = [
         'classification', 'BOSS_PATTERN', 'LLLow', 'LLDate', 'HHClose', 'HHDate', 'HHHigh',
@@ -118,13 +121,20 @@ def checkBoss(df, sno, stype, swing_analysis, params=None):
     
     # 使用 pd.Index.intersection 來安全更新
     valid_dates = df.index.intersection(sa_indexed.index)
+    # 去重（兩端都要去）：intraday 數據導致同一日期多筆，df 和 sa_indexed 都可能有重複
+    # keep='last' 保留最後一筆，確保兩邊一致
+    sa_indexed_dedup = sa_indexed[~sa_indexed.index.duplicated(keep='last')]
+    df_dedup = df[~df.index.duplicated(keep='last')]
+    valid_dates_dedup = valid_dates[~valid_dates.duplicated(keep='last')]
     for col in ['PATTERN', 'LLLow', 'LLDate', 'HHClose', 'HHDate', 'HHHigh']:
         target_col = col if col != 'PATTERN' else 'BOSS_PATTERN'
-        value = sa_indexed.loc[valid_dates, col]
+        value = sa_indexed_dedup.loc[valid_dates_dedup, col]
         # 字串欄位：將 NaN/NaT 替換為空字串，避免 ExtensionDtype 嚴格檢查
         if target_col in ('BOSS_PATTERN', 'LLDate', 'HHDate'):
             value = ['' if pd.isna(v) else str(v) for v in value]
-        df.loc[valid_dates, target_col] = value
+        df_dedup.loc[valid_dates_dedup, target_col] = value
+    # 將去重後的結果寫回原始 df（只更新有效日期區間）
+    df.loc[df_dedup.index, df_dedup.columns] = df_dedup
 
     # 計算波動率 (HHHigh - LLLow) / LLLow
     mask_has_boss = df['BOSS_PATTERN'] != ""

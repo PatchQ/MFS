@@ -2,7 +2,11 @@
 """
 Voice Chat Server - Real-time Voice Pipeline
 ============================================
-Stages: WebSocket Server with Deepgram STT + MiniMax LLM + MiniMax TTS
+Stages: WebSocket Server with ElevenLabs STT + MiniMax LLM + Edge TTS
+
+STT: ElevenLabs Scribe v2 (Cantonese yue)
+LLM: MiniMax-M2.7
+TTS: Edge TTS (primary) + MiniMax TTS (fallback)
 
 WebSocket Endpoint: ws://localhost:8765/voice
 HTTP Endpoint: http://localhost:8765 (for the voice chat web page)
@@ -42,6 +46,7 @@ MINIMAX_API_KEY = os.environ.get("MINIMAX_CN_API_KEY", os.environ.get("MINIMAX_A
 MINIMAX_BASE_URL = "https://api.minimaxi.com"
 MINIMAX_GROUP_ID = os.environ.get("MINIMAX_GROUP_ID", "")
 DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY", "")
+ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
 
 # Sentence-ending punctuation for Chinese/English streaming TTS
 SENTENCE_ENDINGS = frozenset("。！？.!?；;")
@@ -182,49 +187,57 @@ async def groq_stt_full(audio_bytes: bytes, duration_ms: int, sample_rate: int =
             pass
 
 
-async def deepgram_stt(audio_bytes: bytes, sample_rate: int = 16000) -> Optional[str]:
+async def elevenlabs_stt(audio_bytes: bytes, sample_rate: int = 16000) -> Optional[str]:
     """
-    Transcribe audio using Deepgram API.
-    Browser sends webm/opus, Deepgram accepts it directly.
+    Transcribe audio using ElevenLabs Scribe v2 API.
+    Supports Cantonese (yue) and other languages.
     """
-    if not DEEPGRAM_API_KEY:
-        LOGGER.warning("Deepgram API key not configured")
+    if not ELEVENLABS_API_KEY:
+        LOGGER.warning("ElevenLabs API key not configured")
         return None
 
     import aiohttp
 
-    url = "https://api.deepgram.com/v1/listen"
+    url = "https://api.elevenlabs.io/v1/speech-to-text"
     headers = {
-        "Authorization": f"Token {DEEPGRAM_API_KEY}",
-        "Content-Type": "audio/wav",
-    }
-    params = {
-        "model": "nova-2",
-        "language": "zh-HK",
-        "smart_format": "true",
-        "punctuate": "true",
+        "xi-api-key": ELEVENLABS_API_KEY,
     }
 
     try:
+        # ElevenLabs expects multipart form data with audio file
+        form_data = aiohttp.FormData()
+        form_data.add_field(
+            "file",
+            audio_bytes,
+            filename="audio.wav",
+            content_type="audio/wav"
+        )
+        form_data.add_field("model_id", "scribe_v2")
+        form_data.add_field("language", "yue")  # Cantonese
+
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, data=audio_bytes, params=params,
+            async with session.post(url, headers=headers, data=form_data,
                                     timeout=aiohttp.ClientTimeout(total=30)) as resp:
                 if resp.status == 200:
                     result = await resp.json()
                     try:
-                        transcript = result["results"]["channels"][0]["alternatives"][0]["transcript"]
-                        LOGGER.info(f"Deepgram STT: {transcript[:100]}")
-                        return transcript.strip()
+                        transcript = result.get("text", "").strip()
+                        LOGGER.info(f"ElevenLabs STT: {transcript[:100]}")
+                        return transcript if transcript else None
                     except (KeyError, IndexError) as e:
-                        LOGGER.warning(f"Deepgram response parse error: {e}")
+                        LOGGER.warning(f"ElevenLabs response parse error: {e}")
                         return None
                 else:
                     error_text = await resp.text()
-                    LOGGER.warning(f"Deepgram STT error {resp.status}: {error_text[:200]}")
+                    LOGGER.warning(f"ElevenLabs STT error {resp.status}: {error_text[:200]}")
                     return None
     except Exception as e:
-        LOGGER.error(f"Deepgram STT exception: {e}")
+        LOGGER.error(f"ElevenLabs STT exception: {e}")
         return None
+
+
+# Alias for backward compatibility
+deepgram_stt = elevenlabs_stt
 
 
 # ============================================================================
@@ -953,7 +966,7 @@ async def health():
     """Health check endpoint."""
     return {
         "status": "ok",
-        "deepgram_configured": bool(DEEPGRAM_API_KEY),
+        "elevenlabs_configured": bool(ELEVENLABS_API_KEY),
         "minimax_configured": bool(MINIMAX_API_KEY),
     }
 
@@ -1008,7 +1021,7 @@ def main():
 ║  HTTP:       http://{args.host}:{args.port}                         ║
 ║  WebSocket:  ws://{args.host}:{args.port}/ws/voice              ║
 ╠═══════════════════════════════════════════════════════════════╣
-║  Deepgram STT: {'✅ Configured' if DEEPGRAM_API_KEY else '❌ Not configured':<30}         ║
+║  ElevenLabs STT: {'✅ Configured' if ELEVENLABS_API_KEY else '❌ Not configured':<28}         ║
 ║  MiniMax LLM: {'✅ Configured' if MINIMAX_API_KEY else '❌ Not configured':<30}         ║
 ╚═══════════════════════════════════════════════════════════════╝
     """)
