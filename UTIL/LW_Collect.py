@@ -7,40 +7,108 @@ sys.path.append(project_root)
 
 import UTIL.CommonConfig as cc  
 
+import requests
+from datetime import datetime, timedelta
+
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+}
+
 def getYFDaily(sno, sdate):
     try:
-        stock = cc.yf.Ticker(sno)
-                        
-        data = stock.history(start=sdate, auto_adjust=False)
-        
-        if data.empty:
+        # 轉換股票代碼格式：00700.HK
+        if '.' not in sno:
+            ticker = f"{int(sno):04d}.HK"
+        else:
+            ticker = sno
+
+        # 用 Yahoo Finance API 直接拉取（避免 yfinance 被 429）
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=60d"
+        resp = requests.get(url, headers=HEADERS, timeout=10)
+
+        if resp.status_code != 200:
+            print(f"Get {sno} HTTP Error: {resp.status_code}")
             return None
 
-        data = data[data['Volume'] > 0]
-        data.insert(0,"sno", sno)
-        data = data.reset_index()        
-        data['Date'] = cc.pd.to_datetime(data['Date']).dt.date        
-        
-        return data
-        
+        data = resp.json()
+        result = data.get("chart", {}).get("result")
+        if not result:
+            return None
+
+        timestamps = result[0].get("timestamp", [])
+        quote = result[0]["indicators"]["quote"][0]
+
+        if not timestamps:
+            return None
+
+        # 構建 DataFrame
+        import pandas as pd
+        df = pd.DataFrame({
+            'Date': pd.to_datetime(timestamps, unit='s'),
+            'Open': quote['open'],
+            'High': quote['high'],
+            'Low': quote['low'],
+            'Close': quote['close'],
+            'Volume': quote['volume'],
+        })
+        df['Date'] = df['Date'].dt.date
+
+        # 過濾指定日期之後的數據
+        sdate_dt = datetime.strptime(sdate, '%Y-%m-%d').date()
+        df = df[df['Date'] >= sdate_dt]
+        df = df[df['Volume'] > 0]
+        df.insert(0, "sno", sno.replace('.HK','').lstrip('0') or '0')
+
+        if df.empty:
+            return None
+
+        return df.reset_index(drop=True)
+
     except Exception as e:
         print(f"Get {sno} Data Error: {str(e)}")
         return None
 
-def getYFAll(sno,stype,period):      
 
-    ticker = cc.yf.Ticker(sno)
-
-    if period=="max":
-        outputlist = ticker.history(period=period,auto_adjust=False)
+def getYFAll(sno, stype, period):
+    # 轉換股票代碼格式
+    if '.' not in sno:
+        ticker = f"{int(sno):04d}.HK"
     else:
-        outputlist = ticker.history(start=cc.DATADATE,end="2125-12-31",auto_adjust=False)
-    
-    outputlist.index = cc.pd.to_datetime(cc.pd.to_datetime(outputlist.index).strftime('%Y%m%d'))
-    outputlist = outputlist[outputlist['Volume'] > 0]
-    outputlist.insert(0,"sno", sno)    
+        ticker = sno
 
-    if len(outputlist)>0:
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=max"
+    resp = requests.get(url, headers=HEADERS, timeout=10)
+
+    if resp.status_code != 200:
+        print(f"Get {sno} HTTP Error: {resp.status_code}")
+        return
+
+    data = resp.json()
+    result = data.get("chart", {}).get("result")
+    if not result:
+        return
+
+    timestamps = result[0].get("timestamp", [])
+    quote = result[0]["indicators"]["quote"][0]
+
+    if not timestamps:
+        return
+
+    import pandas as pd
+    outputlist = pd.DataFrame({
+        'Date': pd.to_datetime(timestamps, unit='s'),
+        'Open': quote['open'],
+        'High': quote['high'],
+        'Low': quote['low'],
+        'Close': quote['close'],
+        'Volume': quote['volume'],
+        'Adj Close': quote.get('adjclose', [None]*len(timestamps)),
+    })
+    outputlist.index = pd.to_datetime(outputlist['Date'].dt.strftime('%Y%m%d'))
+    outputlist = outputlist[outputlist['Volume'] > 0]
+    outputlist.insert(0, "sno", sno)
+
+    if len(outputlist) > 0:
         outputlist.to_csv(cc.PATH+"/"+stype+"/"+sno+".csv")
 
 def getDataDaily(sno,stype):        

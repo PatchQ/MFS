@@ -321,64 +321,87 @@ _IO_YF_CODES: dict[str, str] = {
     "MCH":  "^HSCE",
 }
 
+# Yahoo Finance API HTTP headers（用正常瀏覽器 User-Agent 避免被拒）
+_YF_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+}
+
+
 def _fetch_sp_from_yf(code: str, date_str: str) -> dict | None:
     """
-    用 yfinance 即時拉取股票現貨 OHLCV。
+    用 requests 直接調用 Yahoo Finance API，取代 yfinance（yfinance 的預設
+    User-Agent 容易被識別為爬蟲而被 429）。
     SO 股票：'0700' → '0700.HK'
     IO 期貨/指數：'HSIU26' → '^HSI'、'HHIU26' → '^HSCE'、'HTI' → 'HSTECH.HK'
     """
-    import yfinance as yf
+    import requests as _req
 
-    # 直接查 mapping；所有 IO 代碼都喺呢度
     upper_code = code.upper()
     if upper_code in _IO_YF_CODES:
         yf_code = _IO_YF_CODES[upper_code]
     else:
         yf_code = f"{int(code):04d}.HK"
 
+    # Yahoo Finance 查詢日期區間（取指定日期的數據）
     dt = datetime.strptime(date_str, "%Y%m%d")
-    start_str = dt.strftime("%Y-%m-%d")
-    end_str = (dt + timedelta(days=1)).strftime("%Y-%m-%d")
+    # range=10d 確保能拿到指定的日期數據
+    range_str = "10d"
+    interval = "1d"
+
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{_req.utils.quote(yf_code)}?interval={interval}&range={range_str}"
 
     for attempt in range(1, _MAX_RETRIES + 1):
-        with _yf_lock:
-            try:
-                # HSTECH.HK 需要用 yf.download() 避免 MultiIndex 問題
-                if yf_code == "HSTECH.HK":
-                    data = yf.download(yf_code, start=start_str, end=end_str, auto_adjust=False)
-                    if data is not None and not data.empty:
-                        if isinstance(data.columns, pd.MultiIndex):
-                            data.columns = data.columns.get_level_values(0)
-                else:
-                    stock = yf.Ticker(yf_code)
-                    data = stock.history(start=start_str, end=end_str, auto_adjust=False)
-            except Exception as e:
-                print(f"[SP yf] Error {yf_code} (attempt {attempt}): {e}")
-                data = None
+        try:
+            resp = _req.get(url, headers=_YF_HEADERS, timeout=10)
+            if resp.status_code == 429:
+                if attempt < _MAX_RETRIES:
+                    wait = _RETRY_DELAY * (2 ** (attempt - 1))
+                    print(f"[SP API] {yf_code} rate limited (429)，{wait}s 後重試")
+                    _t.sleep(wait)
+                    continue
+                return None
+            if resp.status_code != 200:
+                print(f"[SP API] {yf_code} HTTP {resp.status_code}")
+                return None
 
-        if data is None or data.empty:
+            data = resp.json()
+            result = data.get("chart", {}).get("result")
+            if not result:
+                return None
+
+            meta = result[0]["meta"]
+            timestamps = result[0].get("timestamp", [])
+            quote = result[0]["indicators"]["quote"][0]
+
+            # 在 timestamp 列表中找到最接近指定日期的記錄
+            target_ts = dt.timestamp()
+            closest_idx = min(range(len(timestamps)), key=lambda i: abs(timestamps[i] - target_ts))
+
+            row = {k: quote[k][closest_idx] for k in ["open", "high", "low", "close", "volume"]}
+            adj_close = None
+            if "adjclose" in result[0]["indicators"]:
+                adj_close = result[0]["indicators"]["adjclose"][0]["adjclose"][closest_idx]
+
+            return {
+                "code": code,
+                "date": date_str,
+                "date_display": parse_date_display(date_str),
+                "open": float(row["open"]) if row["open"] is not None else None,
+                "high": float(row["high"]) if row["high"] is not None else None,
+                "low": float(row["low"]) if row["low"] is not None else None,
+                "close": float(row["close"]) if row["close"] is not None else None,
+                "volume": int(row["volume"]) if row["volume"] is not None else None,
+                "adj_close": float(adj_close) if adj_close is not None else None,
+            }
+
+        except Exception as e:
+            print(f"[SP API] Error {yf_code} (attempt {attempt}): {e}")
             if attempt < _MAX_RETRIES:
-                wait = _RETRY_DELAY * (2 ** (attempt - 1))
-                print(f"[SP yf] {yf_code} rate limited，{wait}s 後重試")
-                _t.sleep(wait)
+                _t.sleep(_RETRY_DELAY * (2 ** (attempt - 1)))
                 continue
             return None
 
-    if data.empty:
-        return None
-
-    row = data.iloc[-1]
-    return {
-        "code": code,
-        "date": date_str,
-        "date_display": parse_date_display(date_str),
-        "open": float(row["Open"]) if pd.notna(row["Open"]) else None,
-        "high": float(row["High"]) if pd.notna(row["High"]) else None,
-        "low": float(row["Low"]) if pd.notna(row["Low"]) else None,
-        "close": float(row["Close"]) if pd.notna(row["Close"]) else None,
-        "volume": int(row["Volume"]) if pd.notna(row["Volume"]) else None,
-        "adj_close": float(row["Adj Close"]) if pd.notna(row["Adj Close"]) else None,
-    }
+    return None
 
 
 @app.route("/api/sp", methods=["GET"])
