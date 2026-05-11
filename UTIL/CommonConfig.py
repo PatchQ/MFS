@@ -47,8 +47,8 @@ DATADATE = "2024-01-01"
 PATH = "/root/GitHub/SData/YFData/"
 OUTPATH = "/root/GitHub/SData/P_YFData/"
 
-#PATH = "../SData/FYFdata/"
-#OUTPATH = "../SData/FP_YFdata/"
+PATH = "/root/GitHub/SData/FYFData/"
+OUTPATH = "/root/GitHub/SData/FP_YFData/"
 
 #TALIST = ["BOSSB","HHHL","VCP","HFH","ICHIMOKU","GBS22C","BREAKOUT200","FISHER"]
 TALIST = ["BOSSB","HHHL","VCP","HFH","ICHIMOKU"]
