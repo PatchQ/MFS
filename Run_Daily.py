@@ -34,8 +34,8 @@ if __name__ == '__main__':
     YFgetAll("M",cc.DATADATE)
 
     #process Data
-    ProcessTA("L",ai="True")
-    ProcessTA("M",ai="True")
+    ProcessTA("L",ai="False")
+    ProcessTA("M",ai="False")
  
     YFSignal("L","BOSS2~BOSSB~BOSSCL1","30")
     YFSignal("M","BOSS2~BOSSB~BOSSCL1","30")

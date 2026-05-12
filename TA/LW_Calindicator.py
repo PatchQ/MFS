@@ -3,7 +3,7 @@ import numpy as np
 
 def convertData(df):
 
-    numeric_cols = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
+    numeric_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
     df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
     df.dropna(subset=numeric_cols, how='all', inplace=True)
     df.ffill(inplace=True)
