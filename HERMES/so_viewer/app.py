@@ -9,7 +9,8 @@ import glob
 import re
 import pandas as pd
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import calendar
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
@@ -342,13 +343,15 @@ def _fetch_sp_from_yf(code: str, date_str: str) -> dict | None:
     else:
         yf_code = f"{int(code):04d}.HK"
 
-    # Yahoo Finance 查詢日期區間（取指定日期的數據）
+    # Yahoo Finance 查詢日期區間（用 period1/period2 取代 range=10d）
+    # HKT 00:00 → UTC 前一日 16:00（因為 HKT = UTC+8）
     dt = datetime.strptime(date_str, "%Y%m%d")
-    # range=10d 確保能拿到指定的日期數據
-    range_str = "10d"
+    utc_dt = dt - timedelta(hours=8)  # HKT → UTC
+    period1 = int(utc_dt.replace(tzinfo=timezone.utc).timestamp())
+    period2 = period1 + 86400  # 下一日 00:00 UTC
     interval = "1d"
 
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{_req.utils.quote(yf_code)}?interval={interval}&range={range_str}"
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{_req.utils.quote(yf_code)}?interval={interval}&period1={period1}&period2={period2}"
 
     for attempt in range(1, _MAX_RETRIES + 1):
         try:

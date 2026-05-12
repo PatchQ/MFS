@@ -5,13 +5,17 @@ import os
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
-import UTIL.CommonConfig as cc  
+import UTIL.CommonConfig as cc
+
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+}
 
 def getYFDaily(sno, sdate):
     try:
         stock = cc.yf.Ticker(sno)
-                        
-        data = stock.history(start=sdate, auto_adjust=False)
+        # 用 yfinance 自己的 history，但綁定 headers 避免被 429
+        data = stock.history(start=sdate, auto_adjust=False, headers=HEADERS)
         
         if data.empty:
             return None
@@ -32,9 +36,9 @@ def getYFAll(sno,stype,period):
     ticker = cc.yf.Ticker(sno)
 
     if period=="max":
-        outputlist = ticker.history(period=period,auto_adjust=False)
+        outputlist = ticker.history(period=period, auto_adjust=False, headers=HEADERS)
     else:
-        outputlist = ticker.history(start=cc.DATADATE,end="2125-12-31",auto_adjust=False)
+        outputlist = ticker.history(start=cc.DATADATE, end="2125-12-31", auto_adjust=False, headers=HEADERS)
     
     outputlist.index = cc.pd.to_datetime(cc.pd.to_datetime(outputlist.index).strftime('%Y%m%d'))
     outputlist = outputlist[outputlist['Volume'] > 0]
