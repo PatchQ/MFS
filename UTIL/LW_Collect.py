@@ -9,11 +9,35 @@ sys.path.append(project_root)
 import UTIL.CommonConfig as cc
 
 import requests
+import time
 from datetime import datetime, timedelta, timezone
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 }
+
+def _get_with_retry(url, max_retries=3, base_timeout=30):
+    """
+    帶重試機制的 GET 請求。
+    - timeout 增加到 30 秒
+    - 失敗時最多重試 3 次，等 5/10/15 秒
+    """
+    last_err = None
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=base_timeout)
+            resp.raise_for_status()
+            return resp
+        except (requests.exceptions.ReadTimeout,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.HTTPError) as e:
+            last_err = e
+            if attempt < max_retries - 1:
+                wait = (attempt + 1) * 5
+                time.sleep(wait)
+            else:
+                raise
+    raise last_err
 
 def _YFgetAll_worker(sno, stype, period):
     """
@@ -38,7 +62,7 @@ def _YFgetAll_worker(sno, stype, period):
         period2 = int(utc_today.replace(tzinfo=timezone.utc).timestamp())
 
         url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&period1={period1}&period2={period2}"
-        resp = requests.get(url, headers=HEADERS, timeout=10)
+        resp = _get_with_retry(url)
 
         if resp.status_code != 200:
             print(f"Get {sno} HTTP Error: {resp.status_code}")
@@ -75,7 +99,7 @@ def _YFgetAll_worker(sno, stype, period):
         print(f"Get {sno} Error: {str(e)}")
 
 
-def YFgetAll(stype, period="20000101"):
+def YFgetAll(stype, period="2000-01-01"):
     STOCKLIST = cc.pd.read_csv("Data/stocklist_" + stype + ".csv", dtype=str)
     SLIST = STOCKLIST[["sno"]]
     SLIST = SLIST.assign(stype=stype + "")
