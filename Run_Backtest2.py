@@ -20,6 +20,8 @@ class run(Strategy):
     sl=0
     tp=0
     dd=0
+    hsi_data=None
+    hsi_trend_filter=False  # 是否啟用HSI趨勢過濾
     
     def init(self):
         self.highest_profit = 0
@@ -27,20 +29,40 @@ class run(Strategy):
         self.ishold = False
         self.tp2_price = 0
         self.cl_price = 0
-
+        
+        # 載入HSI趨勢數據
+        if run.hsi_data is None and run.hsi_trend_filter:
+            run.hsi_data = cc.getHSIData()
+    
     def next(self):
 
         if self.signal in self.data.df.columns:
             if self.data[self.signal][-1]:
-                self.buy()
-
-                self.ishold = True
-                self.holdingbars = 0
-                self.highest_profit = 0
-                if self.signal == "BOSSB":
-                    self.tp2_price = self.data.tp2_price[-1]
-                    self.cl_price = self.data.cl_price[-1]
-                #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
+                # HSI趨勢過濾：只有HSI在均線上方才做多
+                allow_buy = True
+                if run.hsi_trend_filter and run.hsi_data is not None:
+                    current_date = self.data.index[-1].strftime('%Y-%m-%d')
+                    try:
+                        if current_date in run.hsi_data.index:
+                            allow_buy = bool(run.hsi_data.loc[current_date, 'HSI_Uptrend'])
+                        else:
+                            # 嘗試找最接近的日期
+                            hsi_dates = pd.to_datetime(run.hsi_data.index)
+                            closest = hsi_dates[hsi_dates <= pd.Timestamp(current_date)]
+                            if len(closest) > 0:
+                                closest_date = closest[-1].strftime('%Y-%m-%d')
+                                allow_buy = bool(run.hsi_data.loc[closest_date, 'HSI_Uptrend'])
+                    except:
+                        allow_buy = True  # 出錯時默認允許
+                
+                if allow_buy:
+                    self.buy()
+                    self.ishold = True
+                    self.holdingbars = 0
+                    self.highest_profit = 0
+                    if self.signal == "BOSSB":
+                        self.tp2_price = self.data.tp2_price[-1]
+                        self.cl_price = self.data.cl_price[-1]
 
             if self.position:
                 current_pl = self.position.pl_pct
@@ -53,7 +75,6 @@ class run(Strategy):
                     self.position.close()
                     self.is_holding = False
                     self.holding_bars = 0                    
-                    #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
                     return
                 
 
@@ -64,14 +85,12 @@ class run(Strategy):
                         self.position.close()
                         self.is_holding = False
                         self.holding_bars = 0                    
-                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
                         return
                     
                     if self.data.Close[-1] > self.tp2_price:
                         self.position.close()
                         self.is_holding = False
                         self.holding_bars = 0                    
-                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
                         return
                     
                 else:
@@ -80,14 +99,12 @@ class run(Strategy):
                         self.position.close()
                         self.is_holding = False
                         self.holding_bars = 0                    
-                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
                         return
                     
                     if current_pl > self.tp:
                         self.position.close()
                         self.is_holding = False
                         self.holding_bars = 0                    
-                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
                         return
 
                                 
@@ -99,16 +116,14 @@ class run(Strategy):
                         self.position.close()
                         self.is_holding = False
                         self.holding_bars = 0                    
-                        #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
                         return
 
 
-def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
+def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd, hsi_trend_filter=False):
     
     tempdf = cc.pd.DataFrame()    
         
     df = cc.pd.read_csv(cc.FOUTPATH+"/"+stype+"/"+sno+".csv")
-    #df = df.loc[df["index"]>"2024-12-31"]        
 
     if len(df)!=0:
     
@@ -118,33 +133,32 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
         bt = Backtest(
             df, run, cash=200000,
             commission=0.002,
-            margin=1.0,  #margin = 0.02 (1/50=0.02) 50倍槓杆
+            margin=1.0,
             trade_on_close=False, 
             hedging=False,
-            exclusive_orders=False #確保同時只有一個訂單
-            #finalize_trades=True  #回測結束時平倉
+            exclusive_orders=False
         )
 
-        output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd)
+        output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd, hsi_trend_filter=hsi_trend_filter)
 
         if output['# Trades'] != 0:
 
             if cc.IS_WINDOWS:
                  bt.plot(filename=f'{cc.FOUTPATH}/BT/{signal}/{sno}.html',open_browser=False)
-                        
+                       
             # 收集主要指標               
-            tempdf['returns'] = [output['Return [%]']] #總收益率
+            tempdf['returns'] = [output['Return [%]']]
             tempdf['sno'] = str(sno).replace('P_','')
-            tempdf['final'] = [output['Equity Final [$]']] #最終淨值
-            tempdf['peak'] = [output['Equity Peak [$]']] #最高淨值
+            tempdf['final'] = [output['Equity Final [$]']]
+            tempdf['peak'] = [output['Equity Peak [$]']]
             tempdf['trades_counts'] = [output['# Trades']] 
             tempdf['win_rates'] = [output['Win Rate [%]']]
 
-            tempdf['RR'] = [output['Profit Factor']] #盈虧比(獲利因子)
-            tempdf['SQN'] = [output['SQN']] #策略表現綜合評分
-            tempdf['sharpe_ratios'] = [output['Sharpe Ratio']] #夏普比率(風險調整收益)
-            tempdf['sortino_ratios'] = [output['Sortino Ratio']] #索提諾比率(下行風調整收益)
-            tempdf['calmar_ratios'] = [output['Calmar Ratio']] #卡爾瑪比率(收益與最大回撤之比)
+            tempdf['RR'] = [output['Profit Factor']]
+            tempdf['SQN'] = [output['SQN']]
+            tempdf['sharpe_ratios'] = [output['Sharpe Ratio']]
+            tempdf['sortino_ratios'] = [output['Sortino Ratio']]
+            tempdf['calmar_ratios'] = [output['Calmar Ratio']]
             tempdf['avg_trade'] = [output['Avg. Trade [%]']]
             tempdf['best_trade'] = [output['Best Trade [%]']]
             tempdf['worst_trade'] = [output['Worst Trade [%]']]
@@ -156,14 +170,14 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
             tempdf['max_drawdownday'] = [output['Max. Drawdown Duration']]
             tempdf['avg_drawdownday'] = [output['Avg. Drawdown Duration']]
 
-            tempdf['buy_hold_return'] = [output['Buy & Hold Return [%]']] #買入持有策略收益率
-            tempdf['ann_return'] = [output['Return (Ann.) [%]']] #年化收益率
-            tempdf['volatility'] = [output['Volatility (Ann.) [%]']] #年化波動率
+            tempdf['buy_hold_return'] = [output['Buy & Hold Return [%]']]
+            tempdf['ann_return'] = [output['Return (Ann.) [%]']]
+            tempdf['volatility'] = [output['Volatility (Ann.) [%]']]
 
-    return tempdf  
-                            
+    return tempdf                         
 
-def processBT(stype, signal, max_holdbars, sl, tp, dd):
+
+def processBT(stype, signal, max_holdbars, sl, tp, dd, hsi_trend_filter=False):
 
     resultdf = cc.pd.DataFrame()
 
@@ -174,22 +188,21 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
     SLIST = SLIST.assign(max_holdbars=max_holdbars)
     SLIST = SLIST.assign(sl=sl)
     SLIST = SLIST.assign(tp=tp)
-    SLIST = SLIST.assign(dd=dd)    
+    SLIST = SLIST.assign(dd=dd)
+    SLIST = SLIST.assign(hsi_trend_filter=hsi_trend_filter)
     SLIST = SLIST[:]
     
     with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
         for tempdf in cc.tqdm(executor.map(runBacktest,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["max_holdbars"],
-                                        SLIST["sl"],SLIST["tp"],SLIST["dd"],chunksize=1),total=len(SLIST)):            
-            #tempdf = tempdf.dropna(axis=1, how="all")
-            #print(tempdf)
+                                        SLIST["sl"],SLIST["tp"],SLIST["dd"],SLIST["hsi_trend_filter"],chunksize=1),total=len(SLIST)):            
             if len(tempdf)>0:
                 resultdf = cc.pd.concat([tempdf, resultdf], ignore_index=True)
     
-    resultdf.to_csv(f'{cc.FOUTPATH}/BT/BT_{stype}_{signal}.csv', index=False)
+    resultdf.to_csv(f'{cc.FOUTPATH}/BT/BT_{stype}_{signal}_hsi{int(hsi_trend_filter)}.csv', index=False)
 
     if len(resultdf)>0:
         # 計算總體統計
-        print(f"\n=== {signal} : 整體回測統計 ({stype}) ===")
+        print(f"\n=== {signal} : 整體回測統計 ({stype}) HSI過濾={hsi_trend_filter} ===")
         print(f"平均報酬率: {cc.np.mean(resultdf['returns']):.2f}%")
         print(f"報酬率標準差: {cc.np.std(resultdf['returns']):.2f}%")
         print(f"平均最佳收益: {cc.np.mean(resultdf['best_trade']):.2f}%")
@@ -209,8 +222,9 @@ if __name__ == '__main__':
 
     max_holdbars = 100  # 最大持倉K線數
     sl = -5.0       # 止損百分比
-    tp = 10.0    # 止盈百分比
-    dd = 0.0     # 回撤
+    tp = 10.0       # 止盈百分比
+    dd = 0.0        # 回撤
+    hsi_trend_filter = True  # 啟用HSI趨勢過濾（跌市禁做多）
 
     start = cc.t.perf_counter()
 
@@ -218,11 +232,10 @@ if __name__ == '__main__':
     #     processBT("L", modelname, max_holdbars, sl, tp, dd)
     #     processBT("M", modelname, max_holdbars, sl, tp, dd)
 
-    processBT("H", "ICHIMOKU", max_holdbars, sl, tp, dd)
+    processBT("H", "ICHIMOKU", max_holdbars, sl, tp, dd, hsi_trend_filter)
 
     
     finish = cc.t.perf_counter()
     
     print(f'It took {round(finish-start,2)} second(s) to finish.')
-
 

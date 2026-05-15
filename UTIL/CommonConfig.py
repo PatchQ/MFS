@@ -53,6 +53,49 @@ OUTPATH = "../SData/P_YFData/"
 FPATH = "/root/GitHub/SData/FYFData/"
 FOUTPATH = "/root/GitHub/SData/FP_YFData/"
 
+# HSI 趨勢數據（用於市場趨勢過濾）
+_HSI_CACHE = None
+
+def getHSIData():
+    """獲取HSI歷史數據並計算EMA20"""
+    global _HSI_CACHE
+    if _HSI_CACHE is not None:
+        return _HSI_CACHE
+    
+    try:
+        # 嘗試從Yahoo Finance API獲取
+        import requests
+        url = 'https://query1.finance.yahoo.com/v8/finance/chart/^HSI'
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        params = {'period1': '1704067200', 'period2': '1735689600', 'interval': '1d'}
+        r = requests.get(url, headers=headers, params=params, timeout=10)
+        data = r.json()
+        result = data['chart']['result'][0]
+        timestamps = result['timestamp']
+        quotes = result['indicators']['quote'][0]
+        
+        df = pd.DataFrame({
+            'Date': pd.to_datetime(timestamps, unit='s').strftime('%Y-%m-%d'),
+            'Close': quotes['close']
+        })
+        df.set_index('Date', inplace=True)
+        df.index = pd.to_datetime(df.index)
+        
+        # 計算EMA20
+        df['EMA20'] = df['Close'].ewm(span=20, min_periods=1).mean()
+        df['HSI_Uptrend'] = df['Close'] > df['EMA20']
+        
+        _HSI_CACHE = df
+        print(f"HSI數據已載入: {len(df)} 行, {df.index[0].date()} 至 {df.index[-1].date()}")
+        return df
+    except Exception as e:
+        print(f"HSI數據獲取失敗: {e}")
+        return None
+
+# 市場趨勢過濾參數
+HSI_TREND_FILTER = True  # 是否啟用HSI趨勢過濾
+HSI_MIN_TREND_SCORE = 0  # HSI趨勢評分閾值（0=無要求，正值=必須漲勢）
+
 #TALIST = ["BOSSB","HHHL","VCP","HFH","ICHIMOKU","GBS22C","BREAKOUT200","FISHER"]
 TALIST = ["BOSSB","HHHL","VCP","HFH","ICHIMOKU"]
 #TALIST = ["ICHIMOKU","GBS22C","BREAKOUT200","FISHER"]
