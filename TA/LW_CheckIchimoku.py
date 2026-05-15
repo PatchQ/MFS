@@ -23,8 +23,10 @@ class IchimokuParams:
     SENKOU_B_PERIOD = 52    # 先行區間B週期
     DISPLACEMENT = 26       # 位移量
     
-    # --- 信號確認參數 (放寬以增加信號數量) ---
-    VOLUME_CONFIRM = 1.0     # 成交量確認倍數 (從2.0降至1.0，移除成交量確認)
+    # --- 信號確認參數 (加強過濾) ---
+    VOLUME_CONFIRM = 1.5     # 成交量確認倍數 (從1.0升至1.5)
+    RSI_PERIOD = 14          # RSI週期
+    RSI_FILTER = True        # 是否啟用RSI過濾
 
 
 # 預設參數實例
@@ -78,7 +80,7 @@ def checkIchimoku(df, sno, stype, params=None):
     cols_to_init = [
         'ICHIMOKU', 'ICHIMOKU_SIGNAL', 'ICHIMOKU_STRENGTH',
         'tenkan_sen', 'kijun_sen', 'senkou_a', 'senkou_b',
-        'cloud_top', 'cloud_bottom', 'tk_cross'
+        'cloud_top', 'cloud_bottom', 'tk_cross', 'RSI'
     ]
     for col in cols_to_init:
         if col not in df.columns:
@@ -131,6 +133,18 @@ def checkIchimoku(df, sno, stype, params=None):
     else:
         df['volume_ratio'] = 1.0
     
+    # RSI 計算
+    if params.RSI_FILTER:
+        delta = df['Close'].diff()
+        gain = delta.where(delta > 0, 0)
+        loss = -delta.where(delta < 0, 0)
+        avg_gain = gain.ewm(alpha=1/params.RSI_PERIOD, min_periods=params.RSI_PERIOD).mean()
+        avg_loss = loss.ewm(alpha=1/params.RSI_PERIOD, min_periods=params.RSI_PERIOD).mean()
+        rs = avg_gain / avg_loss
+        df['RSI'] = 100 - (100 / (1 + rs))
+    else:
+        df['RSI'] = 50  # 預設穿過中性值
+    
     # ==========================================
     # 步驟 3: 識別進場信號
     # ==========================================
@@ -149,11 +163,16 @@ def checkIchimoku(df, sno, stype, params=None):
     # 價格在雲圖中
     in_cloud = ~(above_cloud | below_cloud)
     
-    # 多頭信號: TK金叉 + 價格在雲圖上方 + 成交量確認
-    bullish_signal = df['tk_golden'].values & above_cloud & (volume_ratio >= params.VOLUME_CONFIRM)
+    # RSI 過濾：多頭需要RSI>50，空頭需要RSI<50
+    rsi = df['RSI'].values
+    rsi_bullish_filter = rsi > 50 if params.RSI_FILTER else True
+    rsi_bearish_filter = rsi < 50 if params.RSI_FILTER else True
     
-    # 空頭信號: TK死叉 + 價格在雲圖下方 + 成交量確認
-    bearish_signal = df['tk_death'].values & below_cloud & (volume_ratio >= params.VOLUME_CONFIRM)
+    # 多頭信號: TK金叉 + 價格在雲圖上方 + 成交量確認 + RSI過濾
+    bullish_signal = df['tk_golden'].values & above_cloud & (volume_ratio >= params.VOLUME_CONFIRM) & rsi_bullish_filter
+    
+    # 空頭信號: TK死叉 + 價格在雲圖下方 + 成交量確認 + RSI過濾
+    bearish_signal = df['tk_death'].values & below_cloud & (volume_ratio >= params.VOLUME_CONFIRM) & rsi_bearish_filter
     
     # 中性信號: TK金叉/死叉但價格在雲圖中
     tk_only_bullish = df['tk_golden'].values & in_cloud
@@ -163,16 +182,16 @@ def checkIchimoku(df, sno, stype, params=None):
     # 強多頭: 金叉 + 雲上 + 放量
     strong_bullish = bullish_signal
     # 中多頭: 金叉 + 雲上（無量）- 移除無量雲中金叉信號以減少假信號
-    medium_bullish = (df['tk_golden'].values & above_cloud & ~strong_bullish) & (volume_ratio >= params.VOLUME_CONFIRM)
+    medium_bullish = (df['tk_golden'].values & above_cloud & ~strong_bullish) & (volume_ratio >= params.VOLUME_CONFIRM) & rsi_bullish_filter
     # 弱多頭: 僅保留金叉 + 雲中 + 放量（移除無交叉的弱信號）
-    weak_bullish = tk_only_bullish & (volume_ratio >= params.VOLUME_CONFIRM) & ~(medium_bullish | strong_bullish)
+    weak_bullish = tk_only_bullish & (volume_ratio >= params.VOLUME_CONFIRM) & ~(medium_bullish | strong_bullish) & rsi_bullish_filter
     
     # 強空頭: 死叉 + 雲下 + 放量
     strong_bearish = bearish_signal
     # 中空頭: 死叉 + 雲下（無量）- 移除無量雲中死叉信號以減少假信號
-    medium_bearish = (df['tk_death'].values & below_cloud & ~strong_bearish) & (volume_ratio >= params.VOLUME_CONFIRM)
+    medium_bearish = (df['tk_death'].values & below_cloud & ~strong_bearish) & (volume_ratio >= params.VOLUME_CONFIRM) & rsi_bearish_filter
     # 弱空頭: 僅保留死叉 + 雲中 + 放量（移除無交叉的弱信號）
-    weak_bearish = tk_only_bearish & (volume_ratio >= params.VOLUME_CONFIRM) & ~(medium_bearish | strong_bearish)
+    weak_bearish = tk_only_bearish & (volume_ratio >= params.VOLUME_CONFIRM) & ~(medium_bearish | strong_bearish) & rsi_bearish_filter
     
     # 設置 ICHIMOKU 信號
     df['ICHIMOKU'] = False

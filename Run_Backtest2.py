@@ -30,19 +30,18 @@ class run(Strategy):
 
     def next(self):
 
-        if self.signal in self.data.df.columns:                 
-            if self.data[self.signal][-1] :#& self.data.EMA1:
-                #price = self.data.Close[-1]
-                #bsize = int(5000 / (price * 0.10))
+        if self.signal in self.data.df.columns:
+            if self.data[self.signal][-1]:
                 self.buy()
 
                 self.ishold = True
-                self.holdingbars = 0                
+                self.holdingbars = 0
                 self.highest_profit = 0
-                self.tp2_price = self.data.tp2_price[-1]
-                self.cl_price = self.data.cl_price[-1]
+                if self.signal == "BOSSB":
+                    self.tp2_price = self.data.tp2_price[-1]
+                    self.cl_price = self.data.cl_price[-1]
                 #print(self.data.index[-1], self.trades, self.position.pl_pct , self.position.size)
-            
+
             if self.position:
                 current_pl = self.position.pl_pct
 
@@ -209,8 +208,8 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
 if __name__ == '__main__':
 
     max_holdbars = 100  # 最大持倉K線數
-    sl = -10.0      # 止損百分比
-    tp = 20.0    # 止盈百分比
+    sl = -5.0       # 止損百分比
+    tp = 10.0    # 止盈百分比
     dd = 0.0     # 回撤
 
     start = cc.t.perf_counter()
@@ -219,8 +218,7 @@ if __name__ == '__main__':
     #     processBT("L", modelname, max_holdbars, sl, tp, dd)
     #     processBT("M", modelname, max_holdbars, sl, tp, dd)
 
-    for taname in cc.TALIST:        
-        processBT("H", taname, max_holdbars, sl, tp, dd)
+    processBT("H", "ICHIMOKU", max_holdbars, sl, tp, dd)
 
     
     finish = cc.t.perf_counter()
