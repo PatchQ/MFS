@@ -108,7 +108,7 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
     
     tempdf = cc.pd.DataFrame()    
         
-    df = cc.pd.read_csv(cc.OUTPATH+"/"+stype+"/"+sno+".csv")
+    df = cc.pd.read_csv(cc.FOUTPATH+"/"+stype+"/"+sno+".csv")
     #df = df.loc[df["index"]>"2024-12-31"]        
 
     if len(df)!=0:
@@ -131,7 +131,7 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
         if output['# Trades'] != 0:
 
             if cc.IS_WINDOWS:
-                 bt.plot(filename=f'{cc.OUTPATH}/BT/{signal}/{sno}.html',open_browser=False)
+                 bt.plot(filename=f'{cc.FOUTPATH}/BT/{signal}/{sno}.html',open_browser=False)
                         
             # 收集主要指標               
             tempdf['returns'] = [output['Return [%]']] #總收益率
@@ -168,7 +168,7 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
 
     resultdf = cc.pd.DataFrame()
 
-    snolist = list(map(lambda s: s.replace(".csv", ""), cc.os.listdir(cc.OUTPATH+"/"+stype)))
+    snolist = list(map(lambda s: s.replace(".csv", ""), cc.os.listdir(cc.FOUTPATH+"/"+stype)))
     SLIST = cc.pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST.assign(signal=signal+"")
@@ -186,7 +186,7 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
             if len(tempdf)>0:
                 resultdf = cc.pd.concat([tempdf, resultdf], ignore_index=True)
     
-    resultdf.to_csv(f'{cc.OUTPATH}/BT/BT_{stype}_{signal}.csv', index=False)
+    resultdf.to_csv(f'{cc.FOUTPATH}/BT/BT_{stype}_{signal}.csv', index=False)
 
     if len(resultdf)>0:
         # 計算總體統計
@@ -219,9 +219,8 @@ if __name__ == '__main__':
     #     processBT("L", modelname, max_holdbars, sl, tp, dd)
     #     processBT("M", modelname, max_holdbars, sl, tp, dd)
 
-    for taname in cc.TALIST:
-        processBT("L", taname, max_holdbars, sl, tp, dd)
-        processBT("M", taname, max_holdbars, sl, tp, dd)
+    for taname in cc.TALIST:        
+        processBT("H", taname, max_holdbars, sl, tp, dd)
 
     
     finish = cc.t.perf_counter()
