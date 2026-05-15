@@ -221,9 +221,9 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd, hsi_trend_filter=False):
 if __name__ == '__main__':
 
     max_holdbars = 100  # 最大持倉K線數
-    sl = 3.0        # 止損百分比（窄止損）
-    tp = 3.0        # 止盈百分比（1:1快進快出）
-    dd = 0.0        # 回撤
+    sl = -10.0       # 止損百分比
+    tp = 20.0        # 止盈百分比
+    dd = 0.0         # 回撤
     hsi_trend_filter = False  # 關閉HSI過濾
 
     start = cc.t.perf_counter()

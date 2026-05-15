@@ -24,9 +24,9 @@ class IchimokuParams:
     DISPLACEMENT = 26       # 位移量
     
     # --- 信號確認參數 ---
-    VOLUME_CONFIRM = 1.0     # 成交量確認倍數（移回默認）
+    VOLUME_CONFIRM = 1.0     # 成交量確認倍數
     RSI_PERIOD = 14          # RSI週期
-    RSI_FILTER = False       # 關閉RSI過濾（極簡方案）
+    RSI_FILTER = False       # 是否啟用RSI過濾（默認關閉）
 
 
 # 預設參數實例
