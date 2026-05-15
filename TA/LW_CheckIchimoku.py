@@ -23,10 +23,10 @@ class IchimokuParams:
     SENKOU_B_PERIOD = 52    # 先行區間B週期
     DISPLACEMENT = 26       # 位移量
     
-    # --- 信號確認參數 (加強過濾) ---
-    VOLUME_CONFIRM = 1.5     # 成交量確認倍數 (從1.0升至1.5)
+    # --- 信號確認參數 ---
+    VOLUME_CONFIRM = 1.0     # 成交量確認倍數（移回默認）
     RSI_PERIOD = 14          # RSI週期
-    RSI_FILTER = True        # 是否啟用RSI過濾
+    RSI_FILTER = False       # 關閉RSI過濾（極簡方案）
 
 
 # 預設參數實例
