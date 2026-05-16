@@ -23,10 +23,11 @@ class IchimokuParams:
     SENKOU_B_PERIOD = 52    # 先行區間B週期
     DISPLACEMENT = 26       # 位移量
     
-    # --- 信號確認參數 ---
-    VOLUME_CONFIRM = 1.0     # 成交量確認倍數
-    RSI_PERIOD = 14          # RSI週期
-    RSI_FILTER = False       # 是否啟用RSI過濾（默認關閉）
+    # --- ATR止損止盈參數（ICHIMOKU + ATR方案）---
+    ATR_PERIOD = 14            # ATR週期
+    ATR_MULTIPLIER_SL = 2.0    # 止損：2倍ATR
+    ATR_MULTIPLIER_TP = 3.0    # 止盈：3倍ATR
+    USE_ATR_STOP = True       # 使用ATR動態止損（替代固定百分比）
 
 
 # 預設參數實例
@@ -144,6 +145,33 @@ def checkIchimoku(df, sno, stype, params=None):
         df['RSI'] = 100 - (100 / (1 + rs))
     else:
         df['RSI'] = 50  # 預設穿過中性值
+    
+    # ATR 計算
+    if params.USE_ATR_STOP:
+        high = df['High'].values
+        low = df['Low'].values
+        close = df['Close'].values
+        
+        # True Range
+        tr1 = high - low
+        tr2 = np.abs(high - np.roll(close, 1))
+        tr3 = np.abs(low - np.roll(close, 1))
+        
+        # 處理第一根K線（沒有前一天收盤價）
+        tr = np.zeros(len(df))
+        tr[0] = tr1[0]
+        for i in range(1, len(df)):
+            tr[i] = max(tr1[i], max(tr2[i], tr3[i]))
+        
+        # ATR (14週期平滑)
+        atr = np.zeros(len(df))
+        atr[params.ATR_PERIOD-1] = np.mean(tr[0:params.ATR_PERIOD])
+        for i in range(params.ATR_PERIOD, len(df)):
+            atr[i] = (atr[i-1] * (params.ATR_PERIOD - 1) + tr[i]) / params.ATR_PERIOD
+        
+        df['ATR'] = atr
+        df['ATR_SL'] = atr * params.ATR_MULTIPLIER_SL  # 動態止損
+        df['ATR_TP'] = atr * params.ATR_MULTIPLIER_TP  # 動態止盈
     
     # ==========================================
     # 步驟 3: 識別進場信號

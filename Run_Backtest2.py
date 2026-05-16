@@ -22,6 +22,7 @@ class run(Strategy):
     dd=0
     hsi_data=None
     hsi_trend_filter=False  # 是否啟用HSI趨勢過濾
+    use_atr=False  # 是否使用ATR止損止盈
     
     def init(self):
         self.highest_profit = 0
@@ -78,34 +79,72 @@ class run(Strategy):
                     return
                 
 
-                 # 條件2：價格止損/止盈        
+# 條件2：價格止損/止盈
                 if self.signal == "BOSSB":
 
                     if self.data.Close[-1] < self.cl_price:
                         self.position.close()
                         self.is_holding = False
-                        self.holding_bars = 0                    
+                        self.holding_bars = 0
                         return
-                    
+
                     if self.data.Close[-1] > self.tp2_price:
                         self.position.close()
                         self.is_holding = False
-                        self.holding_bars = 0                    
+                        self.holding_bars = 0
                         return
-                    
+
                 else:
-                    # 條件2：百分比止損/止盈      
-                    if current_pl < self.sl:
-                        self.position.close()
-                        self.is_holding = False
-                        self.holding_bars = 0                    
-                        return
-                    
-                    if current_pl > self.tp:
-                        self.position.close()
-                        self.is_holding = False
-                        self.holding_bars = 0                    
-                        return
+                    # ATR止損止盈模式
+                    if run.use_atr and 'ATR_SL' in self.data.df.columns and 'ATR_TP' in self.data.df.columns:
+                        atr_sl = self.data['ATR_SL'][-1]
+                        atr_tp = self.data['ATR_TP'][-1]
+                        entry_price = self.position.entry_price
+                        
+                        # ATR止損（百分比轉換）
+                        if self.position.is_long:
+                            sl_price = entry_price * (1 - atr_sl)
+                            tp_price = entry_price * (1 + atr_tp)
+                        else:
+                            sl_price = entry_price * (1 + atr_sl)
+                            tp_price = entry_price * (1 - atr_tp)
+                        
+                        # 檢查是否觸及ATR止損/止盈
+                        if self.position.is_long:
+                            if self.data.Close[-1] <= sl_price:
+                                self.position.close()
+                                self.is_holding = False
+                                self.holding_bars = 0
+                                return
+                            if self.data.Close[-1] >= tp_price:
+                                self.position.close()
+                                self.is_holding = False
+                                self.holding_bars = 0
+                                return
+                        else:
+                            if self.data.Close[-1] >= sl_price:
+                                self.position.close()
+                                self.is_holding = False
+                                self.holding_bars = 0
+                                return
+                            if self.data.Close[-1] <= tp_price:
+                                self.position.close()
+                                self.is_holding = False
+                                self.holding_bars = 0
+                                return
+                    else:
+                        # 原有百分比止損止盈
+                        if current_pl < self.sl:
+                            self.position.close()
+                            self.is_holding = False
+                            self.holding_bars = 0
+                            return
+
+                        if current_pl > self.tp:
+                            self.position.close()
+                            self.is_holding = False
+                            self.holding_bars = 0
+                            return
 
                                 
                 # 條件3：追蹤止損（從最高點回撤N%）
@@ -119,7 +158,7 @@ class run(Strategy):
                         return
 
 
-def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd, hsi_trend_filter=False):
+def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd, hsi_trend_filter=False, use_atr=False):
     
     tempdf = cc.pd.DataFrame()    
         
@@ -139,7 +178,7 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd, hsi_trend_filter=F
             exclusive_orders=False
         )
 
-        output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd, hsi_trend_filter=hsi_trend_filter)
+        output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd, hsi_trend_filter=hsi_trend_filter, use_atr=use_atr)
 
         if output['# Trades'] != 0:
 
@@ -177,7 +216,7 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd, hsi_trend_filter=F
     return tempdf                         
 
 
-def processBT(stype, signal, max_holdbars, sl, tp, dd, hsi_trend_filter=False):
+def processBT(stype, signal, max_holdbars, sl, tp, dd, hsi_trend_filter=False, use_atr=False):
 
     resultdf = cc.pd.DataFrame()
 
@@ -190,19 +229,20 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd, hsi_trend_filter=False):
     SLIST = SLIST.assign(tp=tp)
     SLIST = SLIST.assign(dd=dd)
     SLIST = SLIST.assign(hsi_trend_filter=hsi_trend_filter)
+    SLIST = SLIST.assign(use_atr=use_atr)
     SLIST = SLIST[:]
     
     with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
         for tempdf in cc.tqdm(executor.map(runBacktest,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["max_holdbars"],
-                                        SLIST["sl"],SLIST["tp"],SLIST["dd"],SLIST["hsi_trend_filter"],chunksize=1),total=len(SLIST)):            
+                                        SLIST["sl"],SLIST["tp"],SLIST["dd"],SLIST["hsi_trend_filter"],SLIST["use_atr"],chunksize=1),total=len(SLIST)):            
             if len(tempdf)>0:
                 resultdf = cc.pd.concat([tempdf, resultdf], ignore_index=True)
     
-    resultdf.to_csv(f'{cc.FOUTPATH}/BT/BT_{stype}_{signal}_hsi{int(hsi_trend_filter)}.csv', index=False)
+    resultdf.to_csv(f'{cc.FOUTPATH}/BT/BT_{stype}_{signal}_hsi{int(hsi_trend_filter)}_atr{int(use_atr)}.csv', index=False)
 
     if len(resultdf)>0:
         # 計算總體統計
-        print(f"\n=== {signal} : 整體回測統計 ({stype}) HSI過濾={hsi_trend_filter} ===")
+        print(f"\n=== {signal} : 整體回測統計 ({stype}) HSI過濾={hsi_trend_filter} ATR={use_atr} ===")
         print(f"平均報酬率: {cc.np.mean(resultdf['returns']):.2f}%")
         print(f"報酬率標準差: {cc.np.std(resultdf['returns']):.2f}%")
         print(f"平均最佳收益: {cc.np.mean(resultdf['best_trade']):.2f}%")
@@ -221,10 +261,11 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd, hsi_trend_filter=False):
 if __name__ == '__main__':
 
     max_holdbars = 100  # 最大持倉K線數
-    sl = -10.0       # 止損百分比
-    tp = 20.0        # 止盈百分比
+    sl = -10.0       # 止損百分比（備用）
+    tp = 20.0        # 止盈百分比（備用）
     dd = 0.0         # 回撤
     hsi_trend_filter = False  # 關閉HSI過濾
+    use_atr = True   # 啟用ATR止損止盈
 
     start = cc.t.perf_counter()
 
@@ -232,7 +273,7 @@ if __name__ == '__main__':
     #     processBT("L", modelname, max_holdbars, sl, tp, dd)
     #     processBT("M", modelname, max_holdbars, sl, tp, dd)
 
-    processBT("H", "ICHIMOKU", max_holdbars, sl, tp, dd, hsi_trend_filter)
+    processBT("H", "ICHIMOKU", max_holdbars, sl, tp, dd, hsi_trend_filter, use_atr)
 
     
     finish = cc.t.perf_counter()
