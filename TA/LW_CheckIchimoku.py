@@ -29,6 +29,17 @@ class IchimokuParams:
     ATR_MULTIPLIER_TP = 3.0    # 止盈：3倍ATR
     USE_ATR_STOP = True       # 使用ATR動態止損（替代固定百分比）
 
+    # --- RSI 過濾參數 ---
+    RSI_FILTER = False         # 是否使用RSI過濾
+    RSI_PERIOD = 14            # RSI週期
+
+    # --- HSI 市場趨勢過濾參數 ---
+    HSI_FILTER = False         # 是否使用HSI趨勢過濾
+    HSI_PERIOD = 20           # HSI均線週期
+
+    # --- 成交量確認參數 ---
+    VOLUME_CONFIRM = 1.5       # 成交量確認倍數（相對20日均量）
+
 
 # 預設參數實例
 _DEFAULT_PARAMS = IchimokuParams()
@@ -165,9 +176,11 @@ def checkIchimoku(df, sno, stype, params=None):
         
         # ATR (14週期平滑)
         atr = np.zeros(len(df))
-        atr[params.ATR_PERIOD-1] = np.mean(tr[0:params.ATR_PERIOD])
-        for i in range(params.ATR_PERIOD, len(df)):
-            atr[i] = (atr[i-1] * (params.ATR_PERIOD - 1) + tr[i]) / params.ATR_PERIOD
+        if len(df) >= params.ATR_PERIOD:
+            atr[params.ATR_PERIOD-1] = np.mean(tr[0:params.ATR_PERIOD])
+            for i in range(params.ATR_PERIOD, len(df)):
+                atr[i] = (atr[i-1] * (params.ATR_PERIOD - 1) + tr[i]) / params.ATR_PERIOD
+        # else: atr stays all zeros (insufficient data for ATR)
         
         df['ATR'] = atr
         df['ATR_SL'] = atr * params.ATR_MULTIPLIER_SL  # 動態止損

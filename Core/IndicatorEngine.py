@@ -508,7 +508,13 @@ class IndicatorEngine:
             # 嘗試從BaseIndicator注册表
             cls = BaseIndicator.get_registered(indicator_name)
             if cls:
-                indicator = cls(params=params)
+                # 檢查是類還是實例
+                if isinstance(cls, type):
+                    indicator = cls(params=params)
+                else:
+                    # 已經是實例，複製一份並更新params
+                    indicator = cls
+                    indicator.params.update(params or {})
 
         if indicator is None:
             raise ValueError(f"Indicator '{indicator_name}' not found")
@@ -540,11 +546,18 @@ class IndicatorEngine:
         Returns:
             添加指標列後的DataFrame
         """
+        original_cols = set(data.columns)
         result_df = self.run_indicator(data, indicator_name, params, **kwargs)
 
-        # 合併結果
+        # 合併結果 - 只取新增的列避免重複
         if isinstance(result_df, pd.DataFrame):
-            output = pd.concat([data, result_df], axis=1)
+            # 找出新增的列（避免重複）
+            new_cols = [c for c in result_df.columns if c not in original_cols]
+            if new_cols:
+                output = pd.concat([data, result_df[new_cols]], axis=1)
+            else:
+                # 如果沒有新列（如指標只修改現有列），直接返回result_df
+                output = result_df
         else:
             # 結果是Series
             col_name = output_col or indicator_name
