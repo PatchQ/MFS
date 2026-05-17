@@ -7,6 +7,10 @@ sys.path.append(project_root)
 
 import UTIL.CommonConfig as cc  
 
+# Core modules import
+from Core.MFSDataHub import MFSDataHub
+from Core.IndicatorEngine import IndicatorEngine
+
 def AnalyzeStock(sno,stype,ai):
 
     df = cc.pd.read_csv(cc.PATH+"/"+stype+"/"+sno+".csv",index_col=0) 
@@ -18,8 +22,16 @@ def AnalyzeStock(sno,stype,ai):
     #EMA
     df = cc.calEMA(df)
 
-    #HFH
-    df = cc.calHFH(df)
+    # Initialize Core modules
+    datahub = MFSDataHub()
+    engine = IndicatorEngine(datahub=datahub)
+
+    # HFH - 使用 IndicatorEngine 包裝器，降級到原有函數
+    hfh_result = engine.add_indicator(df.copy(), 'hf_h')
+    if hfh_result is not None and not hfh_result.empty:
+        df = hfh_result
+    else:
+        df = cc.calHFH(df)
 
     #cal HHHL
     HHLLdf = cc.calHHLL(df)
@@ -35,7 +47,13 @@ def AnalyzeStock(sno,stype,ai):
     df = cc.checkVCP(df)
 
     #2006 Indicators - Ichimoku, GBS22C, Breakout200, Fisher
-    df = cc.checkIchimoku(df, sno, stype)
+    # Ichimoku - 使用 IndicatorEngine 包裝器，降級到原有函數
+    ichimoku_result = engine.add_indicator(df.copy(), 'ichimoku', sno=sno, stype=stype)
+    if ichimoku_result is not None and not ichimoku_result.empty:
+        df = ichimoku_result
+    else:
+        df = cc.checkIchimoku(df, sno, stype)
+
     df = cc.checkGBS22C(df, sno, stype)
     df = cc.checkBreakout200(df, sno, stype)
     df = cc.checkFisher(df, sno, stype)
