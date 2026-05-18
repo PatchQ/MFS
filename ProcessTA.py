@@ -13,6 +13,10 @@ import UTIL.CommonConfig as cc
 from Core.MFSDataHub import MFSDataHub
 from Core.IndicatorEngine import IndicatorEngine
 
+# Module-level shared instances (created once, reused for all stocks)
+_datahub = MFSDataHub()
+_engine = IndicatorEngine(datahub=_datahub)
+
 
 def process_ta_json_stdin():
     """
@@ -69,15 +73,11 @@ def AnalyzeStock(sno,stype,ai):
     df = cc.extendData(df)
     df = cc.convertData(df)
 
-    #EMA
+    # EMA
     df = cc.calEMA(df)
 
-    # Initialize Core modules
-    datahub = MFSDataHub()
-    engine = IndicatorEngine(datahub=datahub)
-
-    # HFH - 使用 IndicatorEngine 包裝器，降級到原有函數
-    hfh_result = engine.add_indicator(df.copy(), 'hf_h')
+    # HFH - 使用模組級共享的 IndicatorEngine 實例
+    hfh_result = _engine.add_indicator(df.copy(), 'hf_h')
     if hfh_result is not None and not hfh_result.empty:
         df = hfh_result
     else:
@@ -97,8 +97,8 @@ def AnalyzeStock(sno,stype,ai):
     df = cc.checkVCP(df)
 
     #2006 Indicators - Ichimoku, GBS22C, Breakout200, Fisher
-    # Ichimoku - 使用 IndicatorEngine 包裝器，降級到原有函數
-    ichimoku_result = engine.add_indicator(df.copy(), 'ichimoku', sno=sno, stype=stype)
+    # Ichimoku - 使用模組級共享的 IndicatorEngine 實例
+    ichimoku_result = _engine.add_indicator(df.copy(), 'ichimoku', sno=sno, stype=stype)
     if ichimoku_result is not None and not ichimoku_result.empty:
         df = ichimoku_result
     else:

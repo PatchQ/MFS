@@ -78,8 +78,6 @@ def CalSingleAI(sno, stype, tdate, modelfunction):
 
 def ProcessAI(stype,modelfunction,tdate):
 
-   resultdf = cc.pd.DataFrame()
-
    snolist = list(map(lambda s: s.replace(".csv", ""), cc.os.listdir(cc.OUTPATH+"/"+stype)))
    SLIST = cc.pd.DataFrame(snolist, columns=["sno"])   
    SLIST = SLIST.assign(stype=stype+"")
@@ -88,9 +86,11 @@ def ProcessAI(stype,modelfunction,tdate):
 
     #print(SLIST)
 
+   results = []
    with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
        for tempdf in cc.tqdm(executor.map(modelfunction,SLIST["sno"],SLIST["stype"],SLIST["tdate"],chunksize=1),total=len(SLIST)):           
-           resultdf = cc.pd.concat([tempdf, resultdf], ignore_index=True)
+           results.append(tempdf)
+   resultdf = cc.pd.concat(results, ignore_index=True) if results else cc.pd.DataFrame()
 
    #resultdf.to_csv(f"data/{stype}_{model}.csv",index=False)    
 

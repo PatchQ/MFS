@@ -106,7 +106,7 @@ IS_WINDOWS = platform.system() == "Windows"
 IS_IOS = platform.system() == "Darwin"
 
 # 預設的 max_workers（可覆寫）
-DEFAULT_MAX_WORKERS = 5 if IS_IOS else 1
+DEFAULT_MAX_WORKERS = 5 if IS_IOS else (os.cpu_count() or 4)
 
 ExecutorType = cf.ThreadPoolExecutor if IS_IOS else cf.ProcessPoolExecutor
 

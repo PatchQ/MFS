@@ -80,9 +80,9 @@ def countBOSS(stype,signal,df,sdate,edate):
     groups = {}
     
     # 遍历DataFrame的每一行
-    for index, row in df.iterrows():
-        sno = row['sno']
-        bosstatus = row['BOSS_STATUS']
+    for row in df.itertuples(index=False):
+        sno = row.sno
+        bosstatus = row.BOSS_STATUS
         
         # 分割事件和日期
         event_parts = bosstatus.split('-')
