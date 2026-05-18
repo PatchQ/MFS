@@ -1,5 +1,7 @@
 import sys
 import os
+import json
+import argparse
 
 # Add the project root to the Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -10,6 +12,54 @@ import UTIL.CommonConfig as cc
 # Core modules import
 from Core.MFSDataHub import MFSDataHub
 from Core.IndicatorEngine import IndicatorEngine
+
+
+def process_ta_json_stdin():
+    """
+    JSON-line stdin/stdout 模式
+    
+    輸入格式（每行一個 JSON）:
+        {"sno": "0001.HK", "stype": "L", "tdate": "2024-01-01", "ai": "False"}
+    
+    輸出格式（每行一個 JSON）:
+        {"sno": "0001.HK", "stype": "L", "success": true, "signal": true, ...}
+    """
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        
+        try:
+            req = json.loads(line)
+            sno = req.get('sno')
+            stype = req.get('stype')
+            tdate = req.get('tdate')
+            ai = req.get('ai', 'False')
+            
+            # 調用原有邏輯（這裡調用 AnalyzeStock 處理單個股票）
+            AnalyzeStock(sno, stype, ai)
+            
+            # 輸出響應
+            response = {
+                'sno': sno,
+                'stype': stype,
+                'success': True,
+                'tdate': tdate,
+                'error': None
+            }
+            print(json.dumps(response, ensure_ascii=False))
+            sys.stdout.flush()
+            
+        except Exception as e:
+            # 輸出錯誤響應
+            response = {
+                'sno': req.get('sno', 'unknown'),
+                'stype': req.get('stype', 'L'),
+                'success': False,
+                'error': str(e)
+            }
+            print(json.dumps(response, ensure_ascii=False))
+            sys.stdout.flush()
 
 def AnalyzeStock(sno,stype,ai):
 
@@ -89,15 +139,25 @@ def ProcessTA(stype,ai):
 
 
 if __name__ == '__main__':
-    start = cc.t.perf_counter()
+    # 命令行參數解析
+    parser = argparse.ArgumentParser(description='ProcessTA - 技術分析')
+    parser.add_argument('--json-stdin', action='store_true', 
+                        help='JSON-line stdin/stdout 模式')
+    args = parser.parse_args()
+    
+    if args.json_stdin:
+        # JSON-line 模式
+        process_ta_json_stdin()
+    else:
+        # 原有模式
+        start = cc.t.perf_counter()
 
-    # ProcessTA("L",ai="True")    
-    # ProcessTA("M",ai="True")    
+        # ProcessTA("L",ai="True")    
+        # ProcessTA("M",ai="True")    
 
-    ProcessTA("L",ai="False") 
-    ProcessTA("M",ai="False")    
+        ProcessTA("L",ai="False") 
+        ProcessTA("M",ai="False")    
 
-
-    finish = cc.t.perf_counter()
-    print(f'It took {round(finish-start,2)} second(s) to finish.')
+        finish = cc.t.perf_counter()
+        print(f'It took {round(finish-start,2)} second(s) to finish.')
     
