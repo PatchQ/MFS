@@ -67,7 +67,7 @@ def getHSIData():
         import requests
         url = 'https://query1.finance.yahoo.com/v8/finance/chart/^HSI'
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        params = {'period1': '1704067200', 'period2': '1735689600', 'interval': '1d'}
+        params = {'period1': '946684800', 'period2': '1735689600', 'interval': '1d'}
         r = requests.get(url, headers=headers, params=params, timeout=10)
         data = r.json()
         result = data['chart']['result'][0]

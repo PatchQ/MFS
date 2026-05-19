@@ -38,9 +38,11 @@ class ModernStrategy(Strategy):
         # 初始化自定義追蹤狀態
         self.holdingbars = 0
         self.highest_profit_pct = 0.0
+        self._entry_relative_strength = None  # 進場時記錄相對強度
         
         # === 1. 計算 20 日均線 (趨勢持有用) ===
-        self.ema20 = self.data.Close.rolling(20).mean()
+        # 使用 self.data.df 來訪問底層 DataFrame
+        self.ema20 = self.data.df['Close'].rolling(20).mean()
         
         # === 3. HSI 過濾器：計算個股 vs HSI 相對強度 ===
         hsi_df = cc.getHSIData()
@@ -55,16 +57,16 @@ class ModernStrategy(Strategy):
 
     def is_strong_uptrend(self):
         """判斷是否處於強勢上升趨勢（用於趨勢持有）"""
-        if len(self.data.Close) < self.min_trend_bars:
+        if len(self.data.df) < self.min_trend_bars:
             return False
         
         current_price = self.data.Close[-1]
-        ema_value = self.ema20[-1]
+        ema_value = self.ema20.iloc[-1]
         
         # 計算有多少天在均線之上
         days_above = 0
         for i in range(-1, -self.min_trend_bars - 1, -1):
-            if self.data.Close[i] > self.ema20[i]:
+            if self.data.df['Close'].iloc[i] > self.ema20.iloc[i]:
                 days_above += 1
             else:
                 break
@@ -74,23 +76,31 @@ class ModernStrategy(Strategy):
 
     def is_market_confirmed(self):
         """判斷大盤是否確認上升（HSI 在 EMA20 之上）"""
-        if self.hsi_uptrend is True:
-            return True  # 沒有 HSI data 或明確上升
-        if self.hsi_uptrend is False or (hasattr(self, 'hsi_uptrend') and len(self.hsi_uptrend) > 0):
-            return self.hsi_uptrend[-1]
-        return True  # 預設允許
+        if self.hsi_aligned is None:
+            return True  # 沒有 HSI data 就預設允許
+        
+        current_idx = self.data.df.index[-1]
+        if current_idx not in self.hsi_aligned.index:
+            return True  # 沒有對應的 HSI 數據就預設允許
+        
+        # 直接計算當前 bar 的 HSI EMA20
+        current_hsi_close = self.hsi_aligned.loc[current_idx, 'Close']
+        # 計算最近 20 天的 HSI EMA20
+        hsi_series = self.hsi_aligned['Close'].loc[:current_idx]
+        ema20_value = hsi_series.ewm(span=20, min_periods=1).mean().iloc[-1]
+        
+        return current_hsi_close > ema20_value
 
-    def is_stock_stronger_than_market(self):
-        """判斷個股是否強於大盤（個股收益率 > HSI 收益率）"""
+    def calc_entry_relative_strength(self):
+        """在進場時計算相對強度（避免每個 bar 重新計算）"""
         if self.hsi_aligned is None:
             return True
         
-        if len(self.data.Close) < 20 or len(self.hsi_aligned) < 20:
+        if len(self.data.df) < 20 or len(self.hsi_aligned) < 20:
             return True
         
-        # 計算個股 20 日收益率
-        stock_return = (self.data.Close[-1] / self.data.Close[-20]) - 1 if len(self.data.Close) >= 20 else 0
-        # 計算 HSI 20 日收益率
+        # 計算進場時的 20 日收益率
+        stock_return = (self.data.Close[-1] / self.data.df['Close'].iloc[-20]) - 1
         hsi_return = (self.hsi_aligned['Close'].iloc[-1] / self.hsi_aligned['Close'].iloc[-20]) - 1
         
         # 個股收益率 > HSI 收益率視為強於大盤
@@ -136,7 +146,7 @@ class ModernStrategy(Strategy):
         # --- 空倉狀態下的進場邏輯 ---
         elif self.data[self.signal][-1]:
             # 【優化 3】HSI 過濾：只有在 HSI 上升且個股強於大盤時才能入場
-            if not (self.is_market_confirmed() and self.is_stock_stronger_than_market()):
+            if not (self.is_market_confirmed() and self.calc_entry_relative_strength()):
                 return
             
             # 計算止損止盈價格
@@ -150,7 +160,7 @@ class ModernStrategy(Strategy):
                     tp_price = current_close * (1 + self.tp / 100)
             
             # 執行買入
-            self.buy(sl=sl_price, tp=tp_price, sl_scope=1)
+            self.buy(sl=sl_price, tp=tp_price)
             
             # 重置計算變數
             self.holdingbars = 0
