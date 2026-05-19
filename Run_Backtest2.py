@@ -279,7 +279,7 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
     if len(resultdf)>0:
         print(f"\n=== {signal} : 整體回測統計 ({stype}) ===")
         print(f"平均報酬率: {cc.np.mean(resultdf['returns']):.2f}%")
-        print(f"平均勝率: {cc.np.mean(resultdf['win_rates']):.2f}%")
+        print(f"平均勝率: {(resultdf['win_rates'] * resultdf['trades_counts']).sum() / resultdf['trades_counts'].sum():.2f}%")
         print(f"平均盈虧比: {cc.np.mean(resultdf['RR']):.2f}")
         print(f"平均策略評分: {cc.np.mean(resultdf['SQN']):.2f}")
         print(f"總交易次數: {sum(resultdf['trades_counts'])}")
