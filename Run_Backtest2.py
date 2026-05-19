@@ -34,6 +34,9 @@ class ModernStrategy(Strategy):
         if self.is_bossb:
             self.tp2_price = self.data.tp2_price if 'tp2_price' in self.data.df.columns else None
             self.cl_price = self.data.cl_price if 'cl_price' in self.data.df.columns else None
+            # 進場時的固定止盈止損價（避免每根K線滑動）
+            self._entry_cl_price = None
+            self._entry_tp2_price = None
 
         # 初始化自定義追蹤狀態
         self.holdingbars = 0
@@ -151,9 +154,13 @@ class ModernStrategy(Strategy):
                     self.holdingbars = 0
                     return
             
-            # 條件 B：BOSSB 專用價格止損/止盈
+            # 條件 B：BOSSB 專用價格止損/止盈（使用進場時固定的價格）
             if self.is_bossb:
-                if current_close < self.cl_price[-1] or current_close > self.tp2_price[-1]:
+                if self._entry_cl_price is not None and current_close < self._entry_cl_price:
+                    self.position.close()
+                    self.holdingbars = 0
+                    return
+                if self._entry_tp2_price is not None and current_close > self._entry_tp2_price:
                     self.position.close()
                     self.holdingbars = 0
                     return
@@ -184,6 +191,11 @@ class ModernStrategy(Strategy):
             
             # 執行買入
             self.buy(sl=sl_price, tp=tp_price)
+            
+            # BOSSB：進場時鎖定止盈止損價格
+            if self.is_bossb:
+                self._entry_cl_price = self.cl_price[-1] if self.cl_price is not None else None
+                self._entry_tp2_price = self.tp2_price[-1] if self.tp2_price is not None else None
             
             # 記錄倉位調整係數（軟過濾 - 不減少交易次數，僅調整曝險）
             adjustment = self.calc_position_size_adjustment()
