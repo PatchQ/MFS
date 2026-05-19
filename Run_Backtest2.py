@@ -51,9 +51,15 @@ class ModernStrategy(Strategy):
             self.hsi_aligned = hsi_df.reindex(self.data.df.index, method='ffill')
             self.hsi_ema20 = self.hsi_aligned['Close'].rolling(20).mean()
             self.hsi_uptrend = self.hsi_aligned['Close'] > self.hsi_ema20
+            # === 軟過濾：計算 HSI ATR (20日高低差) ===
+            self.hsi_atr = self.hsi_aligned['Close'].rolling(20).std()
         else:
             self.hsi_aligned = None
             self.hsi_uptrend = True  # 沒有 HSI data 就預設允許
+            self.hsi_atr = None
+        
+        # 記錄倉位調整係數（用於事後分析）
+        self.position_adjustment_log = []
 
     def is_strong_uptrend(self):
         """判斷是否處於強勢上升趨勢（用於趨勢持有）"""
@@ -92,19 +98,36 @@ class ModernStrategy(Strategy):
         return current_hsi_close > ema20_value
 
     def calc_entry_relative_strength(self):
-        """在進場時計算相對強度（避免每個 bar 重新計算）"""
-        if self.hsi_aligned is None:
-            return True
+        """方案 B：完全移除 HSI 過濾，不做任何相對強度限制"""
+        return True
+
+    def calc_position_size_adjustment(self):
+        """
+        根據 HSI 信號強度計算倉位調整係數
+        hsi_signal = (HSI收盤 - EMA20) / ATR
+        position_ratio = 1 + hsi_signal * 0.5
+        範圍：0.5 ~ 1.5（最低半倉，最高1.5倍倉）
+        """
+        if self.hsi_aligned is None or self.hsi_atr is None:
+            return 1.0  # 沒有 HSI data 就返回預設值
         
-        if len(self.data.df) < 20 or len(self.hsi_aligned) < 20:
-            return True
+        current_idx = self.data.df.index[-1]
+        if current_idx not in self.hsi_aligned.index:
+            return 1.0
         
-        # 計算進場時的 20 日收益率
-        stock_return = (self.data.Close[-1] / self.data.df['Close'].iloc[-20]) - 1
-        hsi_return = (self.hsi_aligned['Close'].iloc[-1] / self.hsi_aligned['Close'].iloc[-20]) - 1
+        hsi_close = self.hsi_aligned.loc[current_idx, 'Close']
+        hsi_ema = self.hsi_ema20.iloc[-1] if len(self.hsi_ema20) > 0 else hsi_close
+        atr = self.hsi_atr.iloc[-1] if len(self.hsi_atr) > 0 else 1.0
         
-        # 個股收益率 > HSI 收益率視為強於大盤
-        return stock_return > hsi_return
+        # 避免 ATR 為 0 或過小
+        if atr <= 0:
+            return 1.0
+        
+        hsi_signal = (hsi_close - hsi_ema) / atr
+        position_ratio = 1 + hsi_signal * 0.5
+        
+        # 限制在 0.5 ~ 1.5 範圍內
+        return max(0.5, min(1.5, position_ratio))
 
     def next(self):
         # 如果資料中沒有指定的訊號欄位，直接跳過
@@ -161,6 +184,13 @@ class ModernStrategy(Strategy):
             
             # 執行買入
             self.buy(sl=sl_price, tp=tp_price)
+            
+            # 記錄倉位調整係數（軟過濾 - 不減少交易次數，僅調整曝險）
+            adjustment = self.calc_position_size_adjustment()
+            self.position_adjustment_log.append({
+                'date': str(self.data.df.index[-1]),
+                'adjustment': adjustment
+            })
             
             # 重置計算變數
             self.holdingbars = 0
