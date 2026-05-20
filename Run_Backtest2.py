@@ -14,195 +14,83 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 
 class ModernStrategy(Strategy):
-    # --- 1. 宣告策略參數 ---
+    # --- 1. 宣告策略參數 (讓 backtesting 庫能自動識別，方便未來做最佳化) ---
     signal = ""
     stype = ""
     max_holdbars = 0
-    min_trend_bars = 20  # 趨勢判斷：至少要在均線上多少天
-    sl = 0.0
-    tp = 0.0
-    dd = 0.0
+    sl = 0.0     # 預期傳入百分比，例如 -10.0 代表 -10%
+    tp = 0.0     # 預期傳入百分比，例如 20.0 代表 20%
+    dd = 0.0     # 預期傳入百分比，例如 5.0 代表回撤 5%
 
     def init(self):
-        # 初始化訊號
+        # --- 2. 初始化階段：綁定資料欄位，提升 next() 的執行效能 ---
         self.has_signal = self.signal in self.data.df.columns
         if self.has_signal:
+            # 取得訊號陣列
+            # 直接使用 self.data[self.signal] 而不是預先存儲引用
+            # 這樣可以確保總是獲取最新的信號值
             self.entry_signal = self.data[self.signal]
-        
-        # BOSSB 特殊判斷
+            
+        # 針對 BOSSB 的特殊判斷
         self.is_bossb = (self.signal == "BOSSB")
         if self.is_bossb:
             self.tp2_price = self.data.tp2_price if 'tp2_price' in self.data.df.columns else None
             self.cl_price = self.data.cl_price if 'cl_price' in self.data.df.columns else None
-            # 進場時的固定止盈止損價（避免每根K線滑動）
-            self._entry_cl_price = None
-            self._entry_tp2_price = None
 
         # 初始化自定義追蹤狀態
         self.holdingbars = 0
         self.highest_profit_pct = 0.0
-        self._entry_relative_strength = None  # 進場時記錄相對強度
-        
-        # === 1. 計算 20 日均線 (趨勢持有用) ===
-        # 使用 self.data.df 來訪問底層 DataFrame
-        self.ema20 = self.data.df['Close'].rolling(20).mean()
-        
-        # === 3. HSI 過濾器：計算個股 vs HSI 相對強度 ===
-        hsi_df = cc.getHSIData()
-        if hsi_df is not None:
-            # 對齊 HSI 到個股時間軸
-            self.hsi_aligned = hsi_df.reindex(self.data.df.index, method='ffill')
-            self.hsi_ema20 = self.hsi_aligned['Close'].rolling(20).mean()
-            self.hsi_uptrend = self.hsi_aligned['Close'] > self.hsi_ema20
-            # === 軟過濾：計算 HSI ATR (20日高低差) ===
-            self.hsi_atr = self.hsi_aligned['Close'].rolling(20).std()
-        else:
-            self.hsi_aligned = None
-            self.hsi_uptrend = True  # 沒有 HSI data 就預設允許
-            self.hsi_atr = None
-        
-        # 記錄倉位調整係數（用於事後分析）
-        self.position_adjustment_log = []
-
-    def is_strong_uptrend(self):
-        """判斷是否處於強勢上升趨勢（用於趨勢持有）"""
-        if len(self.data.df) < self.min_trend_bars:
-            return False
-        
-        current_price = self.data.Close[-1]
-        ema_value = self.ema20.iloc[-1]
-        
-        # 計算有多少天在均線之上
-        days_above = 0
-        for i in range(-1, -self.min_trend_bars - 1, -1):
-            if self.data.df['Close'].iloc[i] > self.ema20.iloc[i]:
-                days_above += 1
-            else:
-                break
-        
-        # 80% 時間在均線上視為強勢
-        return days_above >= self.min_trend_bars * 0.8
-
-    def is_market_confirmed(self):
-        """判斷大盤是否確認上升（HSI 在 EMA20 之上）"""
-        if self.hsi_aligned is None:
-            return True  # 沒有 HSI data 就預設允許
-        
-        current_idx = self.data.df.index[-1]
-        if current_idx not in self.hsi_aligned.index:
-            return True  # 沒有對應的 HSI 數據就預設允許
-        
-        # 直接計算當前 bar 的 HSI EMA20
-        current_hsi_close = self.hsi_aligned.loc[current_idx, 'Close']
-        # 計算最近 20 天的 HSI EMA20
-        hsi_series = self.hsi_aligned['Close'].loc[:current_idx]
-        ema20_value = hsi_series.ewm(span=20, min_periods=1).mean().iloc[-1]
-        
-        return current_hsi_close > ema20_value
-
-    def calc_entry_relative_strength(self):
-        """方案 B：完全移除 HSI 過濾，不做任何相對強度限制"""
-        return True
-
-    def calc_position_size_adjustment(self):
-        """
-        根據 HSI 信號強度計算倉位調整係數
-        hsi_signal = (HSI收盤 - EMA20) / ATR
-        position_ratio = 1 + hsi_signal * 0.5
-        範圍：0.5 ~ 1.5（最低半倉，最高1.5倍倉）
-        """
-        if self.hsi_aligned is None or self.hsi_atr is None:
-            return 1.0  # 沒有 HSI data 就返回預設值
-        
-        current_idx = self.data.df.index[-1]
-        if current_idx not in self.hsi_aligned.index:
-            return 1.0
-        
-        hsi_close = self.hsi_aligned.loc[current_idx, 'Close']
-        hsi_ema = self.hsi_ema20.iloc[-1] if len(self.hsi_ema20) > 0 else hsi_close
-        atr = self.hsi_atr.iloc[-1] if len(self.hsi_atr) > 0 else 1.0
-        
-        # 避免 ATR 為 0 或過小
-        if atr <= 0:
-            return 1.0
-        
-        hsi_signal = (hsi_close - hsi_ema) / atr
-        position_ratio = 1 + hsi_signal * 0.5
-        
-        # 限制在 0.5 ~ 1.5 範圍內
-        return max(0.5, min(1.5, position_ratio))
 
     def next(self):
-        # 如果資料中沒有指定的訊號欄位，直接跳過
+        # 如果資料中沒有我們指定的訊號欄位，直接跳過
         if not self.has_signal:
             return
 
         current_close = self.data.Close[-1]
 
-        # --- 已持倉狀態下的平倉邏輯 ---
+        # --- 3. 已持倉狀態下的平倉邏輯 ---
         if self.position:
             self.holdingbars += 1
+            # 將 backtesting 的小數轉為百分比 (例如 0.05 轉為 5.0)，方便與輸入的參數比較
             current_pl_pct = self.position.pl_pct * 100 
 
             # 條件 A：持倉時間到達上限 (Time-stop)
             if self.max_holdbars > 0 and self.holdingbars >= self.max_holdbars:
-                # 【優化 1】趨勢持有：強勢上升就繼續持有
-                if self.is_strong_uptrend():
-                    return  # 繼續持有，不平倉
-                else:
-                    self.position.close()
-                    self.holdingbars = 0
-                    return
+                self.position.close()
+                self.holdingbars = 0
+                return
             
-            # 條件 B：BOSSB 專用價格止損/止盈（使用進場時固定的價格）
+            # 條件 B：BOSSB 專用價格止損/止盈
             if self.is_bossb:
-                if self._entry_cl_price is not None and current_close < self._entry_cl_price:
-                    self.position.close()
-                    self.holdingbars = 0
-                    return
-                if self._entry_tp2_price is not None and current_close > self._entry_tp2_price:
+                if current_close < self.cl_price[-1] or current_close > self.tp2_price[-1]:
                     self.position.close()
                     self.holdingbars = 0
                     return
             
-            # 條件 C：追蹤止損 (Trailing Stop)
+            # 條件 C：追蹤止損 (Trailing Stop - 回撤超過 dd%)
             if self.dd > 0:
                 self.highest_profit_pct = max(self.highest_profit_pct, current_pl_pct)
+                # 如果最高獲利已經超過我們設定的回撤值，且當前獲利從最高點跌落超過 dd
                 if self.highest_profit_pct > self.dd and current_pl_pct < (self.highest_profit_pct - self.dd):
                     self.position.close()
                     self.holdingbars = 0
                     return
 
-        # --- 空倉狀態下的進場邏輯 ---
+        # --- 4. 空倉狀態下的進場邏輯 ---
         elif self.data[self.signal][-1]:
-            # 【優化 3】HSI 過濾：只有在 HSI 上升且個股強於大盤時才能入場
-            if not (self.is_market_confirmed() and self.calc_entry_relative_strength()):
-                return
-            
-            # 計算止損止盈價格
+            # 計算精確的止損(sl)與止盈(tp)「絕對價格」
             sl_price = None
             tp_price = None
             
+            # 使用內建的 sl/tp 參數進場，能讓回測引擎自動捕捉 K 線內的極值 (High/Low)
             if not self.is_bossb:
                 if self.sl < 0:
-                    sl_price = current_close * (1 + self.sl / 100)
+                    sl_price = current_close * (1 + self.sl / 100) # 計算止損價
                 if self.tp > 0:
-                    tp_price = current_close * (1 + self.tp / 100)
+                    tp_price = current_close * (1 + self.tp / 100) # 計算止盈價
             
             # 執行買入
             self.buy(sl=sl_price, tp=tp_price)
-            
-            # BOSSB：進場時鎖定止盈止損價格
-            if self.is_bossb:
-                self._entry_cl_price = self.cl_price[-1] if self.cl_price is not None else None
-                self._entry_tp2_price = self.tp2_price[-1] if self.tp2_price is not None else None
-            
-            # 記錄倉位調整係數（軟過濾 - 不減少交易次數，僅調整曝險）
-            adjustment = self.calc_position_size_adjustment()
-            self.position_adjustment_log.append({
-                'date': str(self.data.df.index[-1]),
-                'adjustment': adjustment
-            })
             
             # 重置計算變數
             self.holdingbars = 0
@@ -212,7 +100,7 @@ class ModernStrategy(Strategy):
 def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
     tempdf = cc.pd.DataFrame()    
     
-    file_path = f"{cc.OUTPATH}/{stype}/{sno}.csv"
+    file_path = f"{cc.FOUTPATH}/{stype}/{sno}.csv"
     if not os.path.exists(file_path):
         return tempdf
         
@@ -222,21 +110,23 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
         df.set_index("index" , inplace=True)
         df.index = cc.pd.to_datetime(df.index)
 
+        # 傳入更新後的 ModernStrategy
         bt = Backtest(
             df, ModernStrategy, cash=200000,
             commission=0.002,
             margin=1.0, 
             trade_on_close=False, 
             hedging=False,
-            exclusive_orders=True
+            exclusive_orders=True # 改為 True 確保同一時間只有一張單，符合原本邏輯
         )
 
         output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd)
 
         if output['# Trades'] != 0:
             if cc.IS_WINDOWS:
-                 bt.plot(filename=f'{cc.OUTPATH}/BT/{signal}/{sno}.html', open_browser=False)
-                       
+                 bt.plot(filename=f'{cc.FOUTPATH}/BT/{signal}/{sno}.html', open_browser=False)
+                        
+            # 收集主要指標               
             tempdf['returns'] = [output['Return [%]']] 
             tempdf['sno'] = str(sno).replace('P_','')
             tempdf['final'] = [output['Equity Final [$]']] 
@@ -266,11 +156,13 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
 
     return tempdf  
 
+                            
 
 def processBT(stype, signal, max_holdbars, sl, tp, dd):
+
     resultdf = cc.pd.DataFrame()
 
-    snolist = list(map(lambda s: s.replace(".csv", ""), cc.os.listdir(cc.OUTPATH+"/"+stype)))
+    snolist = list(map(lambda s: s.replace(".csv", ""), cc.os.listdir(cc.FOUTPATH+"/"+stype)))
     SLIST = cc.pd.DataFrame(snolist, columns=["sno"])
     SLIST = SLIST.assign(stype=stype+"")
     SLIST = SLIST.assign(signal=signal+"")
@@ -283,23 +175,43 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
     with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
         for tempdf in cc.tqdm(executor.map(runBacktest,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["max_holdbars"],
                                         SLIST["sl"],SLIST["tp"],SLIST["dd"],chunksize=1),total=len(SLIST)):            
+            #tempdf = tempdf.dropna(axis=1, how="all")
+            #print(tempdf)
             if len(tempdf)>0:
                 resultdf = cc.pd.concat([tempdf, resultdf], ignore_index=True)
     
-    resultdf.to_csv(f'{cc.OUTPATH}/BT/BT_{stype}_{signal}.csv', index=False)
+    resultdf.to_csv(f'{cc.FOUTPATH}/BT/BT_{stype}_{signal}.csv', index=False)
 
     if len(resultdf)>0:
+        # 計算總體統計
         print(f"\n=== {signal} : 整體回測統計 ({stype}) ===")
         print(f"平均報酬率: {cc.np.mean(resultdf['returns']):.2f}%")
-        print(f"平均勝率: {(resultdf['win_rates'] * resultdf['trades_counts']).sum() / resultdf['trades_counts'].sum():.2f}%")
+        print(f"報酬率標準差: {cc.np.std(resultdf['returns']):.2f}%")
+        print(f"平均最佳收益: {cc.np.mean(resultdf['best_trade']):.2f}%")
+        print(f"平均最差收益: {cc.np.mean(resultdf['worst_trade']):.2f}%")
         print(f"平均盈虧比: {cc.np.mean(resultdf['RR']):.2f}")
-        print(f"平均策略評分: {cc.np.mean(resultdf['SQN']):.2f}")
+        print(f"平均策略表現綜合評分: {cc.np.mean(resultdf['SQN']):.2f}")
+        print(f"平均夏普比率: {cc.np.mean(resultdf['sharpe_ratios']):.2f}")
+        print(f"平均索提諾比率: {cc.np.mean(resultdf['sortino_ratios']):.2f}")
+        print(f"平均卡爾瑪比率: {cc.np.mean(resultdf['calmar_ratios']):.2f}")
+        print(f"平均交易次數: {cc.np.mean(resultdf['trades_counts']):.1f}")
         print(f"總交易次數: {sum(resultdf['trades_counts'])}")
+        print(f"平均勝率: {cc.np.mean(resultdf['win_rates']):.2f}%")
     
     return resultdf
 
 
 def run_param_sweep(stype, signal, param_name, param_values, base_params):
+    """
+    參數掃描 - 測試不同參數值的效果
+    
+    參數:
+        stype: 股票類型
+        signal: 信號名稱
+        param_name: 參數名稱 (sl, tp, max_holdbars)
+        param_values: 參數值列表
+        base_params: 基礎參數字典
+    """
     results = []
     
     for val in param_values:
@@ -328,42 +240,33 @@ def run_param_sweep(stype, signal, param_name, param_values, base_params):
 
 
 if __name__ == '__main__':
-    # 暫存原始路徑
-    _orig_path = cc.PATH
-    _orig_outpath = cc.OUTPATH
-
-    # 切換到 Full 版本的路徑
-    cc.PATH = cc.FPATH
-    cc.OUTPATH = cc.FOUTPATH
-    
     # 回測參數
-    max_holdbars = 100
-    sl = -10.0
-    tp = 20.0
-    dd = 0.0
+    max_holdbars = 100  # 最大持倉K線數 (目前版本暫不使用)
+    sl = -10.0          # 止損百分比
+    tp = 20.0           # 止盈百分比
+    dd = 0.0            # 回撤 (目前版本簡化為止盈止損)
     
     start = cc.t.perf_counter()
     
     print("=" * 60)
-    print("VectorBT Backtest2 Starting...")
+    print("VectorBT Backtest Starting...")
     print("=" * 60)
-    print(f"Using FPATH: {cc.FPATH}")
-    print(f"Using FOUTPATH: {cc.OUTPATH}")
-    print(f"Trend Holding: enabled (min_trend_bars=20)")
-    print(f"HSI Filter: enabled (HSI uptrend + Stock stronger than market)")
     
+    # 回測 TA 信號
     for taname in cc.TALIST:
         print(f"\nProcessing: {taname}")
         processBT("L", taname, max_holdbars, sl, tp, dd)
         processBT("M", taname, max_holdbars, sl, tp, dd)
     
+    # 如果需要回測 ML 模型
+    # for modelname in cc.MODELLIST:
+    #     print(f"\nProcessing: {modelname}")
+    #     processBT("L", modelname, max_holdbars, sl, tp, dd)
+    #     processBT("M", modelname, max_holdbars, sl, tp, dd)
+    
     finish = cc.t.perf_counter()
     
     print(f"\nIt took {round(finish - start, 2)} second(s) to finish.")
-
-    # 恢復原始路徑
-    cc.PATH = _orig_path
-    cc.OUTPATH = _orig_outpath
     print("=" * 60)
-    print("VectorBT Backtest2 Completed!")
+    print("VectorBT Backtest Completed!")
     print("=" * 60)
