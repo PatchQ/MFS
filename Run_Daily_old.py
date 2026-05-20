@@ -10,7 +10,7 @@ import os
 import UTIL.CommonConfig as cc
 from HEX.AA_GetIndustryList import getIndustryList
 from HEX.AA_GetStockListData import getStockListData
-from UTIL.LW_Collect import YFgetAll, DS_YFgetAll
+from UTIL.LW_Collect import YFgetAll
 from UTIL.LW_FilterStock import YFSignal
 from ProcessTA import ProcessTA
 from ProcessAI import CalAI
@@ -29,9 +29,9 @@ if __name__ == '__main__':
     #get All number from AA
     #getStockListData()
 
-    #get History Data from YF (using DataSource Registry)  
-    DS_YFgetAll("L",cc.DATADATE)
-    DS_YFgetAll("M",cc.DATADATE)
+    #get History Data from YF   
+    YFgetAll("L",cc.DATADATE)
+    YFgetAll("M",cc.DATADATE)
 
     #process Data
     ProcessTA("L",ai="False")
