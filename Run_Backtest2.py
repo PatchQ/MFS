@@ -1,22 +1,34 @@
 import sys
 import os
 import warnings
+import logging
 
 # 加入專案根目錄到系統路徑
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
-import UTIL.CommonConfig as cc  
+import UTIL.CommonConfig as cc
 from backtesting import Backtest, Strategy
 import numpy as np
 
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=UserWarning)
 
+# --- 設定日誌（只記錄到檔案，不輸出到控制台） ---
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('backtest.log')
+    ]
+)
+logger = logging.getLogger(__name__)
+
 class ModernStrategy(Strategy):
     # --- 1. 宣告策略參數 (讓 backtesting 庫能自動識別，方便未來做最佳化) ---
     signal = ""
     stype = ""
+    sno = ""     # 股票編號
     max_holdbars = 0
     sl = 0.0     # 預期傳入百分比，例如 -10.0 代表 -10%
     tp = 0.0     # 預期傳入百分比，例如 20.0 代表 20%
@@ -30,12 +42,15 @@ class ModernStrategy(Strategy):
             # 直接使用 self.data[self.signal] 而不是預先存儲引用
             # 這樣可以確保總是獲取最新的信號值
             self.entry_signal = self.data[self.signal]
-            
+
         # 針對 BOSSB 的特殊判斷
         self.is_bossb = (self.signal == "BOSSB")
         if self.is_bossb:
-            self.tp2_price = self.data.tp2_price if 'tp2_price' in self.data.df.columns else None
-            self.cl_price = self.data.cl_price if 'cl_price' in self.data.df.columns else None
+            self.has_cl_price = 'cl_price' in self.data.df.columns
+            self.has_tp2_price = 'tp2_price' in self.data.df.columns
+            # BOSSB進場時記錄的止損/止盈價格（固定值）
+            self.entry_cl_price = None
+            self.entry_tp2_price = None
 
         # 初始化自定義追蹤狀態
         self.holdingbars = 0
@@ -52,58 +67,84 @@ class ModernStrategy(Strategy):
         if self.position:
             self.holdingbars += 1
             # 將 backtesting 的小數轉為百分比 (例如 0.05 轉為 5.0)，方便與輸入的參數比較
-            current_pl_pct = self.position.pl_pct * 100 
+            current_pl_pct = self.position.pl_pct * 100
 
             # 條件 A：持倉時間到達上限 (Time-stop)
             if self.max_holdbars > 0 and self.holdingbars >= self.max_holdbars:
+                held_bars = self.holdingbars
                 self.position.close()
                 self.holdingbars = 0
+                self.highest_profit_pct = 0.0
+                logger.info(f"[{self.sno}][Max Hold] 平倉 @ {current_close:.2f}, 持倉 {held_bars} 根K線")
                 return
-            
-            # 條件 B：BOSSB 專用價格止損/止盈
-            if self.is_bossb:
-                if current_close < self.cl_price[-1] or current_close > self.tp2_price[-1]:
+
+            # 條件 B：BOSSB 專用價格止損/止盈（使用進場時記錄的固定值）
+            if self.is_bossb and (self.entry_cl_price is not None or self.entry_tp2_price is not None):
+                cl_val = self.entry_cl_price
+                tp2_val = self.entry_tp2_price
+                
+                # 檢查條件
+                cl_valid = cl_val is not None and not np.isnan(cl_val)
+                tp2_valid = tp2_val is not None and not np.isnan(tp2_val)
+                
+                if (cl_valid and current_close < cl_val) or \
+                   (tp2_valid and current_close > tp2_val):
                     self.position.close()
                     self.holdingbars = 0
+                    self.highest_profit_pct = 0.0
+                    self.entry_cl_price = None
+                    self.entry_tp2_price = None
+                    logger.info(f"[{self.sno}][BOSSB] 平倉 @ {current_close:.2f}, cl_price={cl_val if cl_valid else 'N/A'}, tp2_price={tp2_val if tp2_valid else 'N/A'}")
                     return
-            
+
             # 條件 C：追蹤止損 (Trailing Stop - 回撤超過 dd%)
             if self.dd > 0:
                 self.highest_profit_pct = max(self.highest_profit_pct, current_pl_pct)
                 # 如果最高獲利已經超過我們設定的回撤值，且當前獲利從最高點跌落超過 dd
                 if self.highest_profit_pct > self.dd and current_pl_pct < (self.highest_profit_pct - self.dd):
+                    highest = self.highest_profit_pct
                     self.position.close()
                     self.holdingbars = 0
+                    self.highest_profit_pct = 0.0
+                    logger.info(f"[{self.sno}][Trailing Stop] 平倉 @ {current_close:.2f}, 最高盈利: {highest:.2f}%")
                     return
 
-        # --- 4. 空倉狀態下的進場邏輯 ---
+# --- 4. 空倉狀態下的進場邏輯 ---
         elif self.data[self.signal][-1]:
             # 計算精確的止損(sl)與止盈(tp)「絕對價格」
             sl_price = None
             tp_price = None
-            
-            # 使用內建的 sl/tp 參數進場，能讓回測引擎自動捕捉 K 線內的極值 (High/Low)
+
+            # 使用內建的 sl/tp 參數進場，能讓回測引擎自動捕捉 K 線內的極值
             if not self.is_bossb:
                 if self.sl < 0:
                     sl_price = current_close * (1 + self.sl / 100) # 計算止損價
                 if self.tp > 0:
                     tp_price = current_close * (1 + self.tp / 100) # 計算止盈價
-            
+
             # 執行買入
             self.buy(sl=sl_price, tp=tp_price)
-            
+
+            # BOSSB進場時記錄止損/止盈價格（固定值）
+            if self.is_bossb:
+                self.entry_cl_price = self.data.cl_price[-1] if self.has_cl_price else None
+                self.entry_tp2_price = self.data.tp2_price[-1] if self.has_tp2_price else None
+                logger.info(f"[{self.sno}][進場] 買入 @ {current_close:.2f}, cl_price={self.entry_cl_price}, tp2_price={self.entry_tp2_price}")
+            else:
+                logger.info(f"[{self.sno}][進場] 買入 @ {current_close:.2f}")
+
             # 重置計算變數
             self.holdingbars = 0
             self.highest_profit_pct = 0.0
 
 
 def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
-    tempdf = cc.pd.DataFrame()    
-    
+    tempdf = cc.pd.DataFrame()
+
     file_path = f"{cc.FOUTPATH}/{stype}/{sno}.csv"
     if not os.path.exists(file_path):
         return tempdf
-        
+
     df = cc.pd.read_csv(file_path)
 
     if len(df) != 0:
@@ -114,31 +155,31 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
         bt = Backtest(
             df, ModernStrategy, cash=200000,
             commission=0.002,
-            margin=1.0, 
-            trade_on_close=False, 
+            margin=1.0,
+            trade_on_close=False,
             hedging=False,
             exclusive_orders=True # 改為 True 確保同一時間只有一張單，符合原本邏輯
         )
 
-        output = bt.run(signal=signal, stype=stype, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd)
+        output = bt.run(signal=signal, stype=stype, sno=sno, max_holdbars=max_holdbars, sl=sl, tp=tp, dd=dd)
 
         if output['# Trades'] != 0:
             if cc.IS_WINDOWS:
                  bt.plot(filename=f'{cc.FOUTPATH}/BT/{signal}/{sno}.html', open_browser=False)
-                        
-            # 收集主要指標               
-            tempdf['returns'] = [output['Return [%]']] 
+
+            # 收集主要指標
+            tempdf['returns'] = [output['Return [%]']]
             tempdf['sno'] = str(sno).replace('P_','')
-            tempdf['final'] = [output['Equity Final [$]']] 
-            tempdf['peak'] = [output['Equity Peak [$]']] 
-            tempdf['trades_counts'] = [output['# Trades']] 
+            tempdf['final'] = [output['Equity Final [$]']]
+            tempdf['peak'] = [output['Equity Peak [$]']]
+            tempdf['trades_counts'] = [output['# Trades']]
             tempdf['win_rates'] = [output['Win Rate [%]']]
 
-            tempdf['RR'] = [output['Profit Factor']] 
-            tempdf['SQN'] = [output['SQN']] 
-            tempdf['sharpe_ratios'] = [output['Sharpe Ratio']] 
-            tempdf['sortino_ratios'] = [output['Sortino Ratio']] 
-            tempdf['calmar_ratios'] = [output['Calmar Ratio']] 
+            tempdf['RR'] = [output['Profit Factor']]
+            tempdf['SQN'] = [output['SQN']]
+            tempdf['sharpe_ratios'] = [output['Sharpe Ratio']]
+            tempdf['sortino_ratios'] = [output['Sortino Ratio']]
+            tempdf['calmar_ratios'] = [output['Calmar Ratio']]
             tempdf['avg_trade'] = [output['Avg. Trade [%]']]
             tempdf['best_trade'] = [output['Best Trade [%]']]
             tempdf['worst_trade'] = [output['Worst Trade [%]']]
@@ -150,13 +191,13 @@ def runBacktest(sno, stype, signal, max_holdbars, sl, tp, dd):
             tempdf['max_drawdownday'] = [output['Max. Drawdown Duration']]
             tempdf['avg_drawdownday'] = [output['Avg. Drawdown Duration']]
 
-            tempdf['buy_hold_return'] = [output['Buy & Hold Return [%]']] 
-            tempdf['ann_return'] = [output['Return (Ann.) [%]']] 
-            tempdf['volatility'] = [output['Volatility (Ann.) [%]']] 
+            tempdf['buy_hold_return'] = [output['Buy & Hold Return [%]']]
+            tempdf['ann_return'] = [output['Return (Ann.) [%]']]
+            tempdf['volatility'] = [output['Volatility (Ann.) [%]']]
 
-    return tempdf  
+    return tempdf
 
-                            
+
 
 def processBT(stype, signal, max_holdbars, sl, tp, dd):
 
@@ -169,17 +210,17 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
     SLIST = SLIST.assign(max_holdbars=max_holdbars)
     SLIST = SLIST.assign(sl=sl)
     SLIST = SLIST.assign(tp=tp)
-    SLIST = SLIST.assign(dd=dd)    
+    SLIST = SLIST.assign(dd=dd)
     SLIST = SLIST[:]
-    
+
     with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
         for tempdf in cc.tqdm(executor.map(runBacktest,SLIST["sno"],SLIST["stype"],SLIST["signal"],SLIST["max_holdbars"],
-                                        SLIST["sl"],SLIST["tp"],SLIST["dd"],chunksize=1),total=len(SLIST)):            
+                                        SLIST["sl"],SLIST["tp"],SLIST["dd"],chunksize=1),total=len(SLIST)):
             #tempdf = tempdf.dropna(axis=1, how="all")
             #print(tempdf)
             if len(tempdf)>0:
                 resultdf = cc.pd.concat([tempdf, resultdf], ignore_index=True)
-    
+
     resultdf.to_csv(f'{cc.FOUTPATH}/BT/BT_{stype}_{signal}.csv', index=False)
 
     if len(resultdf)>0:
@@ -197,14 +238,14 @@ def processBT(stype, signal, max_holdbars, sl, tp, dd):
         print(f"平均交易次數: {cc.np.mean(resultdf['trades_counts']):.1f}")
         print(f"總交易次數: {sum(resultdf['trades_counts'])}")
         print(f"平均勝率: {cc.np.mean(resultdf['win_rates']):.2f}%")
-    
+
     return resultdf
 
 
 def run_param_sweep(stype, signal, param_name, param_values, base_params):
     """
     參數掃描 - 測試不同參數值的效果
-    
+
     參數:
         stype: 股票類型
         signal: 信號名稱
@@ -213,11 +254,11 @@ def run_param_sweep(stype, signal, param_name, param_values, base_params):
         base_params: 基礎參數字典
     """
     results = []
-    
+
     for val in param_values:
         params = base_params.copy()
         params[param_name] = val
-        
+
         resultdf = processBT(
             stype=stype,
             signal=signal,
@@ -226,7 +267,7 @@ def run_param_sweep(stype, signal, param_name, param_values, base_params):
             tp=params['tp'],
             dd=params['dd']
         )
-        
+
         if len(resultdf) > 0:
             results.append({
                 'param_value': val,
@@ -235,7 +276,7 @@ def run_param_sweep(stype, signal, param_name, param_values, base_params):
                 'mean_winrate': np.mean(resultdf['win_rates']),
                 'total_trades': sum(resultdf['trades_counts'])
             })
-    
+
     return cc.pd.DataFrame(results)
 
 
@@ -245,27 +286,27 @@ if __name__ == '__main__':
     sl = -10.0          # 止損百分比
     tp = 20.0           # 止盈百分比
     dd = 0.0            # 回撤 (目前版本簡化為止盈止損)
-    
+
     start = cc.t.perf_counter()
-    
+
     print("=" * 60)
     print("VectorBT Backtest Starting...")
     print("=" * 60)
-    
+
     # 回測 TA 信號
     for taname in cc.TALIST:
         print(f"\nProcessing: {taname}")
         processBT("L", taname, max_holdbars, sl, tp, dd)
         processBT("M", taname, max_holdbars, sl, tp, dd)
-    
+
     # 如果需要回測 ML 模型
     # for modelname in cc.MODELLIST:
     #     print(f"\nProcessing: {modelname}")
     #     processBT("L", modelname, max_holdbars, sl, tp, dd)
     #     processBT("M", modelname, max_holdbars, sl, tp, dd)
-    
+
     finish = cc.t.perf_counter()
-    
+
     print(f"\nIt took {round(finish - start, 2)} second(s) to finish.")
     print("=" * 60)
     print("VectorBT Backtest Completed!")

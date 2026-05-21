@@ -22,7 +22,7 @@ def get_large_cap_hk_stocks():
         ("9988.HK", "阿里巴巴", "科網"),
         ("3690.HK", "美團", "科網"),
         ("1810.HK", "小米集團", "科網"),
-        ("2382.HK", "舜宇光學科技", "光學"),
+        ("2382.HK", "聯想集團", "科網"),
         ("0688.HK", "中海地產", "地產"),
         ("1109.HK", "華潤置地", "地產"),
         ("1211.HK", "比亞迪股份", "電車"),
@@ -73,12 +73,19 @@ def fetch_stock_data(symbol):
         data = r.json()
         result = data['chart']['result'][0]
         closes_raw = result['indicators']['quote'][0]['close']
-        closes = np.array([x for x in closes_raw if x is not None])
+        highs_raw = result['indicators']['quote'][0]['high']
+        lows_raw = result['indicators']['quote'][0]['low']
+        volumes_raw = result['indicators']['quote'][0]['volume']
+        
+        # Filter all together using same mask (aligned arrays)
+        mask = np.array([x is not None for x in closes_raw])
+        closes = np.array(closes_raw)[mask].astype(float)
+        highs = np.array(highs_raw)[mask].astype(float)
+        lows = np.array(lows_raw)[mask].astype(float)
+        volumes = np.array(volumes_raw)[mask].astype(float)
+        
         if len(closes) < 100:
             return None, None, None, None, None
-        highs = np.array([x for x in result['indicators']['quote'][0]['high'] if x is not None])
-        lows = np.array([x for x in result['indicators']['quote'][0]['low'] if x is not None])
-        volumes = np.array([x for x in result['indicators']['quote'][0]['volume'] if x is not None])
         return closes, highs, lows, volumes
     except Exception:
         return None, None, None, None, None
