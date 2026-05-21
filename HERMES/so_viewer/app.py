@@ -459,7 +459,8 @@ def api_if_dates():
 def api_if_data():
     """
     GET /api/if/data?code=HSI&date_from=20260101&date_to=20260430&months=2,3,4,5
-    回傳 IF 期貨數據（IF CSV + Yahoo Finance OHLC）
+    回傳 IF 期貨數據（IF CSV，預設當月合約）
+    months 省略時預設為當月月份
     """
     code = request.args.get("code", "").strip().upper()
     date_from = request.args.get("date_from", "").strip()
@@ -473,18 +474,26 @@ def api_if_data():
     if code not in valid_codes:
         return jsonify({"error": f"無效的指數代碼：{code}"}), 400
 
-    # 取得 YF code
+    # 取得 YF code（如有需要）
     yf_code = next((idx["yf_code"] for idx in IF_INDICES if idx["code"] == code), None)
-    if not yf_code:
-        return jsonify({"error": f"找不到 YF code：{code}"}), 400
 
-    # 解析月份範圍
+    # 解析月份範圍（省略時預設為當月）
+    month_abbr_to_num = {"JAN":1,"FEB":2,"MAR":3,"APR":4,"MAY":5,"JUN":6,"JUL":7,"AUG":8,"SEP":9,"OCT":10,"NOV":11,"DEC":12}
+    num_to_month_abbr = {v:k for k,v in month_abbr_to_num.items()}
+
+    today = datetime.today()
+    current_month_num = today.month
+    current_year_num = today.year % 100
+
     selected_months = set()
     if months_str:
         for m in months_str.split(","):
             m = m.strip()
             if m.isdigit():
                 selected_months.add(int(m))
+    else:
+        # 預設：當月
+        selected_months.add(current_month_num)
 
     # 讀取所有 IF CSV 數據
     index_path = IF_ROOT / code
@@ -526,35 +535,30 @@ def api_if_data():
     # 合併所有 CSV
     combined_df = pd.concat(all_rows, ignore_index=True)
 
-    # 月份篩選（用 month_abbr 如 "JAN","FEB"...）
-    month_abbr_to_num = {"JAN":1,"FEB":2,"MAR":3,"APR":4,"MAY":5,"JUN":6,"JUL":7,"AUG":8,"SEP":9,"OCT":10,"NOV":11,"DEC":12}
+    # 月份篩選
     if selected_months:
         mask = combined_df["month_abbr"].astype(str).str.upper().map(month_abbr_to_num).isin(selected_months)
         combined_df = combined_df[mask]
 
-    # 讀取 Yahoo Finance OHLC 數據（在月份篩選後，確保有數據）
-    yf_ohlc = {}
-    if date_from and date_to and len(combined_df) > 0:
-        yf_ohlc = _fetch_if_ohlc_from_yf(yf_code, date_from, date_to)
+    # 建立 index：用 (month_abbr, year, series) + date 排序，計算同合約的日對日結算價差
+    combined_df["month_num_int"] = combined_df["month_abbr"].astype(str).str.upper().map(month_abbr_to_num)
+    combined_df = combined_df.sort_values(["month_abbr", "year", "series", "_file_date"])
+
+    # 計算同合約上一日結算價（rise_fall = 今日結算價 - 昨日結算價）
+    combined_df["_prev_settle"] = combined_df.groupby(["month_abbr", "year", "series"])["settle_price"].shift(1)
+    combined_df["rise_fall"] = combined_df.apply(
+        lambda r: round(r["settle_price"] - r["_prev_settle"], 2)
+        if pd.notna(r["_prev_settle"]) and pd.notna(r["settle_price"]) else None,
+        axis=1
+    )
 
     # 構建輸出
     result_rows = []
     for _, row in combined_df.iterrows():
         file_date = row["_file_date"]
-        # month_abbr 已是 "JAN"/"FEB" 等，month_num 是日期數字，year 是年份數字
         month_abbr = str(row.get("month_abbr", "")).strip().upper()
         year_val = int(float(row["year"])) if pd.notna(row.get("year")) else 0
         month_label = f"{month_abbr}{year_val}月"
-
-        # 找 Yahoo Finance OHLC
-        ohlc = yf_ohlc.get(file_date, {})
-        settle_price = row.get("settle_price")
-        price_change = row.get("price_change", 0)
-
-        # 計算升跌（收市價 - 結算價）
-        rise_fall = None
-        if ohlc.get("close") and settle_price and pd.notna(settle_price):
-            rise_fall = round(ohlc["close"] - float(settle_price), 2)
 
         result_rows.append({
             "date": file_date,
@@ -562,24 +566,21 @@ def api_if_data():
             "gross": row.get("gross"),
             "gross_change": row.get("net_change"),
             "net": row.get("net"),
-            "open": ohlc.get("open"),
-            "high": ohlc.get("high"),
-            "low": ohlc.get("low"),
-            "close": ohlc.get("close"),
-            "rise_fall": rise_fall,
-            "volume": ohlc.get("volume"),
+            "turnover": row.get("turnover"),         # 來自 IF CSV
+            "deals": row.get("deals"),
             "month_num": row.get("month_num"),
             "month_abbr": month_abbr,
             "year": row.get("year"),
             "month_label": month_label,
-            "settle_price": settle_price,
-            "price_change": price_change,
+            "settle_price": row.get("settle_price"),
+            "price_change": row.get("price_change"),
+            "rise_fall": row.get("rise_fall"),
         })
 
     # 按日期倒序
     result_rows.sort(key=lambda x: x["date"], reverse=True)
 
-    columns = ["date", "date_display", "gross", "gross_change", "net", "open", "high", "low", "close", "rise_fall", "volume", "month_num", "month_abbr", "year", "month_label", "settle_price", "price_change"]
+    columns = ["date", "date_display", "month_label", "gross", "gross_change", "net", "settle_price", "rise_fall", "turnover", "deals"]
 
     return jsonify({
         "code": code,
@@ -589,53 +590,6 @@ def api_if_data():
         "rows": [[r.get(c) for c in columns] for r in result_rows],
         "total_rows": len(result_rows),
     })
-
-
-def _fetch_if_ohlc_from_yf(yf_code: str, date_from: str, date_to: str) -> dict:
-    """
-    從 Yahoo Finance 取得 OHLC + Volume
-    回傳 dict: { "20260102": {"open": x, "high": x, "low": x, "close": x, "volume": x}, ... }
-    """
-    import requests as _req
-
-    try:
-        dt_from = datetime.strptime(date_from, "%Y%m%d")
-        dt_to = datetime.strptime(date_to, "%Y%m%d")
-        utc_from = dt_from - timedelta(hours=8)
-        utc_to = dt_to + timedelta(hours=16)  # 多取一天確保涵蓋
-        period1 = int(utc_from.replace(tzinfo=timezone.utc).timestamp())
-        period2 = int(utc_to.replace(tzinfo=timezone.utc).timestamp())
-    except Exception:
-        return {}
-
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{_req.utils.quote(yf_code)}?interval=1d&period1={period1}&period2={period2}"
-
-    try:
-        resp = _req.get(url, headers=_YF_HEADERS, timeout=15)
-        if resp.status_code != 200:
-            return {}
-        data = resp.json()
-        result = data.get("chart", {}).get("result")
-        if not result:
-            return {}
-        ts_list = result[0].get("timestamp", [])
-        quote = result[0]["indicators"]["quote"][0]
-        ohlc = {}
-        for i, ts in enumerate(ts_list):
-            dt_utc = datetime.fromtimestamp(ts, tz=timezone.utc)
-            dt_hk = dt_utc - timedelta(hours=8)
-            date_str = dt_hk.strftime("%Y%m%d")
-            ohlc[date_str] = {
-                "open": quote["open"][i] if quote["open"][i] is not None else None,
-                "high": quote["high"][i] if quote["high"][i] is not None else None,
-                "low": quote["low"][i] if quote["low"][i] is not None else None,
-                "close": quote["close"][i] if quote["close"][i] is not None else None,
-                "volume": quote["volume"][i] if quote["volume"][i] is not None else None,
-            }
-        return ohlc
-    except Exception as e:
-        print(f"[IF YF] Error: {e}")
-        return {}
 
 
 @app.route("/api/sp", methods=["GET"])
