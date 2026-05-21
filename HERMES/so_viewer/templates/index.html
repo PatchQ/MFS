@@ -69,6 +69,13 @@
       gap: 3px;
     }
 
+    #oi-controls .controls {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
     .ctrl-group label {
       font-size: 10px;
       color: var(--text-dim);
@@ -237,6 +244,33 @@
     ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
     /* ================================================
+       Tab
+    ================================================ */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      margin-left: 0;
+    }
+    .tab-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 18px;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { border-color: var(--accent); color: var(--text); }
+    .tab-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ================================================
        Empty state
     ================================================ */
     .empty-msg {
@@ -244,6 +278,27 @@
       text-align: center;
       color: var(--text-dim);
       font-size: 14px;
+    }
+
+    /* ================================================
+       IF section
+    ================================================ */
+    #if-section { display: none; }
+    #if-section.active { display: block; }
+    #oi-section { display: block; }
+    #oi-section.hidden { display: none; }
+
+    .if-controls {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .date-range-hint {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 2px;
     }
   </style>
 </head>
@@ -255,7 +310,12 @@
 <header>
   <h1>📊 <span>OI</span> Viewer</h1>
 
-  <div class="controls">
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-oi" onclick="switchTab('oi')">📈 OI 期權</button>
+    <button class="tab-btn" id="tab-if" onclick="switchTab('if')">📊 IF 期貨</button>
+  </div>
+
+  <div class="controls" id="oi-controls" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
 
     <!-- 產品代碼（textbox + datalist 自動建議） -->
     <div class="ctrl-group">
@@ -332,6 +392,38 @@
       </div>
     </div>
   </div>
+  <!-- IF 期貨控制面板 -->
+  <div id="if-section">
+    <div class="if-controls">
+      <!-- 指數 -->
+      <div class="ctrl-group">
+        <label>指數</label>
+        <select id="if-index-select">
+          <option value="">— 請選擇 —</option>
+        </select>
+      </div>
+
+      <!-- 月份範圍 -->
+      <div class="ctrl-group">
+        <label>月份範圍</label>
+        <input type="text" id="if-months-input" placeholder="2,3,4,5" value="2,3,4,5" />
+        <div class="date-range-hint">逗號分隔，如：2,3,4,5</div>
+      </div>
+
+      <!-- 日期範圍 -->
+      <div class="ctrl-group">
+        <label>開始日期</label>
+        <input type="date" id="if-date-from" />
+      </div>
+      <div class="ctrl-group">
+        <label>結束日期</label>
+        <input type="date" id="if-date-to" />
+      </div>
+
+      <button class="btn-load" id="btn-load-if">🔍 載入</button>
+    </div>
+  </div>
+
 </header>
 
 <!-- ================================================
@@ -346,6 +438,14 @@
   <table id="so-table">
     <thead id="table-head"></thead>
     <tbody id="table-body"></tbody>
+  </table>
+</div>
+
+<!-- IF 期貨表格 -->
+<div class="table-wrap" id="if-table-wrap" style="display:none">
+  <table id="if-table">
+    <thead id="if-table-head"></thead>
+    <tbody id="if-table-body"></tbody>
   </table>
 </div>
 
@@ -658,6 +758,201 @@
   // ── 預設：HSI + 自動載入 ────────────────────────
   codeInput.value = 'HSI';
   onCodeSelected('HSI');
+
+  // ── IF Tab JavaScript ──────────────────────────────
+  let currentIFCode = '';
+
+  function switchTab(tab) {
+    const tabOI = document.getElementById('tab-oi');
+    const tabIF = document.getElementById('tab-if');
+    const oiSection = document.getElementById('oi-controls');
+    const ifSection = document.getElementById('if-section');
+    const ifTableWrap = document.getElementById('if-table-wrap');
+    const oiTableWrap = document.getElementById('table-wrap');
+    const statusEl = document.getElementById('status');
+
+    if (tab === 'if') {
+      tabOI.classList.remove('active');
+      tabIF.classList.add('active');
+      oiSection.parentElement.classList.add('hidden');
+      ifSection.classList.add('active');
+      oiTableWrap.style.display = 'none';
+      initIFTab();
+    } else {
+      tabIF.classList.remove('active');
+      tabOI.classList.add('active');
+      oiSection.parentElement.classList.remove('hidden');
+      ifSection.classList.remove('active');
+      ifTableWrap.style.display = 'none';
+      statusEl.textContent = '💡 輸入產品代碼、選擇日期，再點「載入」';
+    }
+  }
+
+  async function initIFTab() {
+    const sel = document.getElementById('if-index-select');
+    sel.innerHTML = '<option value="">載入中…</option>';
+
+    try {
+      const res = await fetch('/api/if/products');
+      const data = await res.json();
+
+      sel.innerHTML = '<option value="">— 請選擇 —</option>';
+      data.forEach(idx => {
+        const opt = document.createElement('option');
+        opt.value = idx.code;
+        opt.textContent = idx.label;
+        sel.appendChild(opt);
+      });
+
+      // 預設 HSI
+      sel.value = 'HSI';
+      if (sel.value === 'HSI') {
+        onIFIndexSelected('HSI');
+      }
+    } catch (e) {
+      sel.innerHTML = '<option value="">載入失敗</option>';
+    }
+  }
+
+  async function onIFIndexSelected(code) {
+    if (!code) return;
+    currentIFCode = code;
+
+    // 設定預設月份（當月 + 下月）
+    const now = new Date();
+    const curMonth = now.getMonth() + 1; // 1-12
+    const nextMonth = curMonth === 12 ? 1 : curMonth + 1;
+    document.getElementById('if-months-input').value = `${curMonth},${nextMonth}`;
+
+    // 設定預設日期範圍
+    const today = now.toISOString().split('T')[0];
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()).toISOString().split('T')[0];
+    document.getElementById('if-date-from').value = threeMonthsAgo;
+    document.getElementById('if-date-to').value = today;
+
+    // 自動載入
+    loadIFData();
+  }
+
+  document.getElementById('if-index-select').addEventListener('change', (e) => {
+    onIFIndexSelected(e.target.value);
+  });
+
+  document.getElementById('btn-load-if').addEventListener('click', loadIFData);
+
+  async function loadIFData() {
+    const code = document.getElementById('if-index-select').value;
+    const monthsStr = document.getElementById('if-months-input').value.trim();
+    const dateFrom = document.getElementById('if-date-from').value.replace(/-/g, '');
+    const dateTo = document.getElementById('if-date-to').value.replace(/-/g, '');
+
+    if (!code) {
+      document.getElementById('status').textContent = '⚠️ 請選擇指數';
+      return;
+    }
+
+    setStatus('⏳ 載入中…', 'loading');
+
+    try {
+      const params = new URLSearchParams({ code, months: monthsStr });
+      if (dateFrom) params.set('date_from', dateFrom);
+      if (dateTo) params.set('date_to', dateTo);
+
+      const res = await fetch(`/api/if/data?${params.toString()}`);
+      const data = await res.json();
+
+      if (data.error) {
+        setStatus('❌ ' + data.error, 'error');
+        return;
+      }
+
+      renderIFTable(data);
+      document.getElementById('info').textContent = `${data.code} [IF] ｜ ${data.date_range} ｜ ${data.total_rows} 行`;
+      setStatus(`✅ 顯示 ${data.total_rows} 行`, 'ok');
+    } catch (e) {
+      setStatus('❌ 載入失敗：' + e.message, 'error');
+    }
+  }
+
+  const IF_COL_CN = {
+    "date": "日期",
+    "date_display": "日期顯示",
+    "gross": "未平倉合約",
+    "gross_change": "OI增減",
+    "net": "淨倉",
+    "open": "開市價",
+    "high": "最高",
+    "low": "最低",
+    "close": "收市價",
+    "rise_fall": "升/跌",
+    "volume": "成交量",
+    "month_num": "日",
+    "month_abbr": "月",
+    "year": "年",
+    "month_label": "月份",
+    "settle_price": "結算價",
+    "price_change": "結算價變化",
+  };
+
+  function renderIFTable(data) {
+    const theadEl = document.getElementById('if-table-head');
+    const tbodyEl = document.getElementById('if-table-body');
+    const tableWrap = document.getElementById('if-table-wrap');
+
+    theadEl.innerHTML = '';
+    const tr = document.createElement('tr');
+
+    const displayCols = ["date_display", "month_label", "gross", "gross_change", "net", "open", "high", "low", "close", "rise_fall", "volume", "settle_price"];
+    const colKeys = displayCols;
+
+    colKeys.forEach(col => {
+      const th = document.createElement('th');
+      th.textContent = IF_COL_CN[col] || col;
+      tr.appendChild(th);
+    });
+    theadEl.appendChild(tr);
+
+    tbodyEl.innerHTML = '';
+    if (data.rows.length === 0) {
+      tbodyEl.innerHTML = '<tr><td colspan="99" style="text-align:center;color:var(--text-dim);padding:40px">🔍 沒有找到符合條件的資料</td></tr>';
+      tableWrap.style.display = 'block';
+      return;
+    }
+
+    data.rows.forEach((row) => {
+      const tr = document.createElement('tr');
+      colKeys.forEach((col, i) => {
+        const td = document.createElement('td');
+        const colIdx = data.columns.indexOf(col);
+        let val = colIdx >= 0 ? row[colIdx] : '';
+
+        const numVal = parseFloat(val);
+        if (col === 'rise_fall' && !isNaN(numVal)) {
+          if (numVal > 0) td.classList.add('val-pos');
+          else if (numVal < 0) td.classList.add('val-neg');
+          else td.classList.add('val-zero');
+        }
+
+        if (val === '' || val === null || val === undefined) {
+          td.textContent = '—';
+        } else if (!isNaN(numVal) && col !== 'date_display' && col !== 'month_label') {
+          if (Number.isInteger(numVal)) {
+            td.textContent = numVal.toLocaleString('en-US');
+          } else {
+            td.textContent = numVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+        } else {
+          td.textContent = val;
+        }
+
+        tr.appendChild(td);
+      });
+      tbodyEl.appendChild(tr);
+    });
+
+    tableWrap.style.display = 'block';
+    document.getElementById('status').textContent = '';
+  }
 </script>
 </body>
 </html>
