@@ -642,15 +642,20 @@
       return new Set(sorted.slice(0, 3));
     };
 
-    const callTurnoverIdx = data.columns.indexOf('call_turnover');
-    const putTurnoverIdx  = data.columns.indexOf('put_turnover');
-    const callGrossIdx    = data.columns.indexOf('call_gross');
-    const putGrossIdx     = data.columns.indexOf('put_gross');
-
-    const topCallTurnover = getTopVals(data.rows, callTurnoverIdx);
-    const topPutTurnover  = getTopVals(data.rows, putTurnoverIdx);
-    const topCallGross    = getTopVals(data.rows, callGrossIdx);
-    const topPutGross     = getTopVals(data.rows, putGrossIdx);
+    // 所有要 Top-3 highlight 的欄位
+    const TOP_COLS = [
+      'call_turnover_prev', 'call_turnover', 'call_net_change', 'call_net',
+      'call_gross_prev',    'call_gross',
+      'put_gross',          'put_gross_prev',
+      'put_net_change',     'put_net',
+      'put_turnover',      'put_turnover_prev',
+      'put_ratio',
+    ];
+    const topVals = {};
+    TOP_COLS.forEach(col => {
+      const idx = data.columns.indexOf(col);
+      if (idx >= 0) topVals[col] = getTopVals(data.rows, idx);
+    });
 
     theadEl.innerHTML = '';
     const tr = document.createElement('tr');
@@ -678,10 +683,7 @@
         let val = row[i];
 
         const numVal = parseFloat(val) || 0;
-        if (i === callTurnoverIdx && topCallTurnover.has(numVal)) td.classList.add('top-cell');
-        if (i === putTurnoverIdx  && topPutTurnover.has(numVal))  td.classList.add('top-cell');
-        if (i === callGrossIdx    && topCallGross.has(numVal))     td.classList.add('top-cell');
-        if (i === putGrossIdx     && topPutGross.has(numVal))      td.classList.add('top-cell');
+        if (TOP_COLS.includes(col) && topVals[col].has(numVal)) td.classList.add('top-cell');
 
         if (val === '' || val === null || val === undefined ||
             (typeof val === 'number' && isNaN(val))) {
