@@ -394,7 +394,8 @@
   </div>
   <!-- IF 期貨控制面板 -->
   <div id="if-section">
-    <div class="if-controls">
+    <div class="controls" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+
       <!-- 指數 -->
       <div class="ctrl-group">
         <label>指數</label>
@@ -403,11 +404,26 @@
         </select>
       </div>
 
-      <!-- 月份範圍 -->
+      <!-- 月份 -->
       <div class="ctrl-group">
-        <label>月份範圍</label>
-        <input type="text" id="if-months-input" placeholder="2,3,4,5" value="2,3,4,5" />
-        <div class="date-range-hint">逗號分隔，如：2,3,4,5</div>
+        <label>月份</label>
+        <select id="if-month-select">
+          <option value="">全部</option>
+          {% for m in month_abbr_list %}
+          <option value="{{ m }}">{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- 年份 -->
+      <div class="ctrl-group">
+        <label>年份</label>
+        <select id="if-year-select">
+          <option value="">全部</option>
+          {% for y in year_list %}
+          <option value="{{ y }}">{{ y }}</option>
+          {% endfor %}
+        </select>
       </div>
 
       <!-- 日期範圍 -->
@@ -774,14 +790,14 @@
     if (tab === 'if') {
       tabOI.classList.remove('active');
       tabIF.classList.add('active');
-      oiSection.parentElement.classList.add('hidden');
+      oiSection.style.display = 'none';
       ifSection.classList.add('active');
       oiTableWrap.style.display = 'none';
       initIFTab();
     } else {
       tabIF.classList.remove('active');
       tabOI.classList.add('active');
-      oiSection.parentElement.classList.remove('hidden');
+      oiSection.style.display = '';
       ifSection.classList.remove('active');
       ifTableWrap.style.display = 'none';
       statusEl.textContent = '💡 輸入產品代碼、選擇日期，再點「載入」';
@@ -818,11 +834,14 @@
     if (!code) return;
     currentIFCode = code;
 
-    // 設定預設月份（當月 + 下月）
+    // 設定預設月份（當月）和年份（今年）
     const now = new Date();
-    const curMonth = now.getMonth() + 1; // 1-12
-    const nextMonth = curMonth === 12 ? 1 : curMonth + 1;
-    document.getElementById('if-months-input').value = `${curMonth},${nextMonth}`;
+    const curMonthIdx = now.getMonth(); // 0-11
+    const curMonthAbbr = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][curMonthIdx];
+    const curYear = String(now.getFullYear()).slice(-2); // 26
+
+    document.getElementById('if-month-select').value = curMonthAbbr;
+    document.getElementById('if-year-select').value = curYear;
 
     // 設定預設日期範圍
     const today = now.toISOString().split('T')[0];
@@ -842,7 +861,8 @@
 
   async function loadIFData() {
     const code = document.getElementById('if-index-select').value;
-    const monthsStr = document.getElementById('if-months-input').value.trim();
+    const monthSel = document.getElementById('if-month-select').value;
+    const yearSel = document.getElementById('if-year-select').value;
     const dateFrom = document.getElementById('if-date-from').value.replace(/-/g, '');
     const dateTo = document.getElementById('if-date-to').value.replace(/-/g, '');
 
@@ -854,7 +874,9 @@
     setStatus('⏳ 載入中…', 'loading');
 
     try {
-      const params = new URLSearchParams({ code, months: monthsStr });
+      const params = new URLSearchParams({ code });
+      if (monthSel) params.set('months', monthSel);
+      if (yearSel) params.set('year', yearSel);
       if (dateFrom) params.set('date_from', dateFrom);
       if (dateTo) params.set('date_to', dateTo);
 

@@ -458,14 +458,15 @@ def api_if_dates():
 @app.route("/api/if/data", methods=["GET"])
 def api_if_data():
     """
-    GET /api/if/data?code=HSI&date_from=20260101&date_to=20260430&months=2,3,4,5
+    GET /api/if/data?code=HSI&date_from=20260101&date_to=20260430&months=JAN&year=26
     回傳 IF 期貨數據（IF CSV，預設當月合約）
-    months 省略時預設為當月月份
+    months 省略時預設為當月月份，year 省略時不限制年份
     """
     code = request.args.get("code", "").strip().upper()
     date_from = request.args.get("date_from", "").strip()
     date_to = request.args.get("date_to", "").strip()
-    months_str = request.args.get("months", "").strip()  # e.g. "2,3,4,5"
+    months_param = request.args.get("months", "").strip()  # e.g. "JAN" or "MAY"
+    year_param = request.args.get("year", "").strip()       # e.g. "26"
 
     if not code:
         return jsonify({"error": "缺少 code 參數"}), 400
@@ -477,23 +478,31 @@ def api_if_data():
     # 取得 YF code（如有需要）
     yf_code = next((idx["yf_code"] for idx in IF_INDICES if idx["code"] == code), None)
 
-    # 解析月份範圍（省略時預設為當月）
+    # 月份 abbreviation → number
     month_abbr_to_num = {"JAN":1,"FEB":2,"MAR":3,"APR":4,"MAY":5,"JUN":6,"JUL":7,"AUG":8,"SEP":9,"OCT":10,"NOV":11,"DEC":12}
-    num_to_month_abbr = {v:k for k,v in month_abbr_to_num.items()}
 
     today = datetime.today()
     current_month_num = today.month
-    current_year_num = today.year % 100
 
     selected_months = set()
-    if months_str:
-        for m in months_str.split(","):
-            m = m.strip()
-            if m.isdigit():
-                selected_months.add(int(m))
+    if months_param:
+        # 支援數字（1-12）或英文縮寫（JAN-DEC）
+        m = months_param.upper()
+        if m in month_abbr_to_num:
+            selected_months.add(month_abbr_to_num[m])
+        elif m.isdigit() and 1 <= int(m) <= 12:
+            selected_months.add(int(m))
     else:
         # 預設：當月
         selected_months.add(current_month_num)
+
+    # 年份篩選
+    selected_year = None
+    if year_param:
+        try:
+            selected_year = int(year_param)
+        except ValueError:
+            pass
 
     # 讀取所有 IF CSV 數據
     index_path = IF_ROOT / code
@@ -540,6 +549,10 @@ def api_if_data():
         mask = combined_df["month_abbr"].astype(str).str.upper().map(month_abbr_to_num).isin(selected_months)
         combined_df = combined_df[mask]
 
+    # 年份篩選
+    if selected_year is not None:
+        combined_df = combined_df[combined_df["year"] == float(selected_year)]
+
     # 建立 index：用 (month_abbr, year, series) + date 排序，計算同合約的日對日結算價差
     combined_df["month_num_int"] = combined_df["month_abbr"].astype(str).str.upper().map(month_abbr_to_num)
     combined_df = combined_df.sort_values(["month_abbr", "year", "series", "_file_date"])
@@ -582,12 +595,18 @@ def api_if_data():
 
     columns = ["date", "date_display", "month_label", "gross", "gross_change", "net", "settle_price", "rise_fall", "turnover", "deals"]
 
+    # 過濾 NaN → None（JSON 必須用 null）
+    def _clean(v):
+        if isinstance(v, float) and v != v:  # NaN check: NaN != NaN
+            return None
+        return v
+
     return jsonify({
         "code": code,
         "yf_code": yf_code,
         "date_range": f"{parse_date_display(date_from)} ~ {parse_date_display(date_to)}" if date_from or date_to else "全部",
         "columns": columns,
-        "rows": [[r.get(c) for c in columns] for r in result_rows],
+        "rows": [[_clean(r.get(c)) for c in columns] for r in result_rows],
         "total_rows": len(result_rows),
     })
 
