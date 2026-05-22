@@ -553,11 +553,25 @@ def api_if_data():
     if selected_year is not None:
         combined_df = combined_df[combined_df["year"] == float(selected_year)]
 
-    # 建立 index：用 (month_abbr, year, series) + date 排序，計算同合約的日對日結算價差
+    # 建立 index：用 (month_abbr, year, series) + date 排序
     combined_df["month_num_int"] = combined_df["month_abbr"].astype(str).str.upper().map(month_abbr_to_num)
     combined_df = combined_df.sort_values(["month_abbr", "year", "series", "_file_date"])
 
-    # 計算同合約上一日結算價（rise_fall = 今日結算價 - 昨日結算價）
+    # 計算同合約日對日差值
+    combined_df["_prev_gross"] = combined_df.groupby(["month_abbr", "year", "series"])["gross"].shift(1)
+    combined_df["gross_change"] = combined_df.apply(
+        lambda r: round(r["gross"] - r["_prev_gross"], 0)
+        if pd.notna(r["_prev_gross"]) and pd.notna(r["gross"]) else None,
+        axis=1
+    )
+
+    combined_df["_prev_net"] = combined_df.groupby(["month_abbr", "year", "series"])["net"].shift(1)
+    combined_df["net_change"] = combined_df.apply(
+        lambda r: round(r["net"] - r["_prev_net"], 0)
+        if pd.notna(r["_prev_net"]) and pd.notna(r["net"]) else None,
+        axis=1
+    )
+
     combined_df["_prev_settle"] = combined_df.groupby(["month_abbr", "year", "series"])["settle_price"].shift(1)
     combined_df["rise_fall"] = combined_df.apply(
         lambda r: round(r["settle_price"] - r["_prev_settle"], 2)
@@ -571,29 +585,39 @@ def api_if_data():
         file_date = row["_file_date"]
         month_abbr = str(row.get("month_abbr", "")).strip().upper()
         year_val = int(float(row["year"])) if pd.notna(row.get("year")) else 0
-        month_label = f"{month_abbr}{year_val}月"
+        month_label = f"{month_abbr}{year_val}"
+
+        # 成交比例 (turnover / deals)
+        deals_ratio = None
+        d_val = row.get("deals")
+        t_val = row.get("turnover")
+        try:
+            d_float = float(d_val) if d_val is not None else 0
+            t_float = float(t_val) if t_val is not None else 0
+            if d_float != 0:
+                deals_ratio = round(t_float / d_float, 2)
+        except (ValueError, TypeError, ZeroDivisionError):
+            deals_ratio = None
 
         result_rows.append({
             "date": file_date,
             "date_display": parse_date_display(file_date),
-            "gross": row.get("gross"),
-            "gross_change": row.get("net_change"),
-            "net": row.get("net"),
-            "turnover": row.get("turnover"),         # 來自 IF CSV
-            "deals": row.get("deals"),
-            "month_num": row.get("month_num"),
-            "month_abbr": month_abbr,
-            "year": row.get("year"),
             "month_label": month_label,
-            "settle_price": row.get("settle_price"),
-            "price_change": row.get("price_change"),
+            "gross": row.get("gross"),
+            "gross_change": row.get("gross_change"),
+            "net": row.get("net"),
+            "net_change": row.get("net_change"),
             "rise_fall": row.get("rise_fall"),
+            "settle_price": row.get("settle_price"),
+            "turnover": row.get("turnover"),
+            "deals_ratio": deals_ratio,
+            "deals": row.get("deals"),
         })
 
     # 按日期倒序
     result_rows.sort(key=lambda x: x["date"], reverse=True)
 
-    columns = ["date", "date_display", "month_label", "gross", "gross_change", "net", "settle_price", "rise_fall", "turnover", "deals"]
+    columns = ["date", "date_display", "month_label", "gross", "gross_change", "net", "net_change", "rise_fall", "settle_price", "turnover", "deals_ratio", "deals"]
 
     # 過濾 NaN → None（JSON 必須用 null）
     def _clean(v):

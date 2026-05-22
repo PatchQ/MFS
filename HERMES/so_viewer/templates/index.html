@@ -898,13 +898,15 @@
 
   const IF_COL_CN = {
     "date_display": "日期",
-    "month_label": "月份",
+    "month_label": "合約日期",
     "gross": "未平倉合約",
-    "gross_change": "OI增減",
+    "gross_change": "未平倉合約增減",
     "net": "淨倉",
+    "net_change": "淨倉增減",
+    "rise_fall": "升跌",
     "settle_price": "結算價",
-    "rise_fall": "升/跌",
     "turnover": "成交量",
+    "deals_ratio": "成交比例",
     "deals": "成交筆數",
   };
 
@@ -916,7 +918,7 @@
     theadEl.innerHTML = '';
     const tr = document.createElement('tr');
 
-    const displayCols = ["date_display", "month_label", "gross", "gross_change", "net", "settle_price", "rise_fall", "turnover", "deals"];
+    const displayCols = ["date_display", "month_label", "gross", "gross_change", "net", "net_change", "rise_fall", "settle_price", "turnover", "deals_ratio", "deals"];
     const colKeys = displayCols;
 
     colKeys.forEach(col => {
