@@ -915,11 +915,28 @@
     const tbodyEl = document.getElementById('if-table-body');
     const tableWrap = document.getElementById('if-table-wrap');
 
-    theadEl.innerHTML = '';
-    const tr = document.createElement('tr');
-
     const displayCols = ["date_display", "month_label", "gross", "gross_change", "net", "net_change", "rise_fall", "settle_price", "turnover", "deals_ratio", "deals"];
     const colKeys = displayCols;
+
+    // Top-3 highlight columns
+    const getTopVals = (rows, colIdx) => {
+      const vals = rows.map(r => parseFloat(r[colIdx]) || 0);
+      const sorted = [...new Set(vals)].sort((a, b) => b - a);
+      return new Set(sorted.slice(0, 3));
+    };
+
+    const netIdx          = data.columns.indexOf('net');
+    const netChangeIdx    = data.columns.indexOf('net_change');
+    const turnoverIdx     = data.columns.indexOf('turnover');
+    const dealsRatioIdx   = data.columns.indexOf('deals_ratio');
+
+    const topNet         = getTopVals(data.rows, netIdx);
+    const topNetChange   = getTopVals(data.rows, netChangeIdx);
+    const topTurnover    = getTopVals(data.rows, turnoverIdx);
+    const topDealsRatio  = getTopVals(data.rows, dealsRatioIdx);
+
+    theadEl.innerHTML = '';
+    const tr = document.createElement('tr');
 
     colKeys.forEach(col => {
       const th = document.createElement('th');
@@ -943,6 +960,13 @@
         let val = colIdx >= 0 ? row[colIdx] : '';
 
         const numVal = parseFloat(val);
+
+        // Top-3 red highlight
+        if (col === 'net'          && topNet.has(numVal))         td.classList.add('top-cell');
+        if (col === 'net_change'   && topNetChange.has(numVal))    td.classList.add('top-cell');
+        if (col === 'turnover'     && topTurnover.has(numVal))      td.classList.add('top-cell');
+        if (col === 'deals_ratio'  && topDealsRatio.has(numVal))   td.classList.add('top-cell');
+
         if (col === 'rise_fall' && !isNaN(numVal)) {
           if (numVal > 0) td.classList.add('val-pos');
           else if (numVal < 0) td.classList.add('val-neg');
