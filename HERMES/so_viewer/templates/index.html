@@ -486,8 +486,10 @@
     <label>產品類型</label>
     <select id="scan-product-type">
       <option value="all">全部</option>
-      <option value="io">指數期權 IO</option>
-      <option value="so">股票期權 SO</option>
+      <option value="SO">股票期權 SO</option>
+      <option value="HSI">HSI</option>
+      <option value="HTI">HTI</option>
+      <option value="HHI">HHI</option>
     </select>
   </div>
 
@@ -1150,7 +1152,7 @@
 
       renderScanTable(data);
         const f = data.filters;
-        const ptLabel = {'all':'全部','io':'指數期權IO','so':'股票期權SO'}[f.product_type] || f.product_type;
+        const ptLabel = {'all':'全部','SO':'股票期權SO','HSI':'HSI','HTI':'HTI','HHI':'HHI'}[f.product_type] || f.product_type;
         const trunc = data.truncated ? ' ⚠️ 已截斷（最多5000行）' : '';
         setStatus(
           `✅ 找到 ${data.total_rows} 行${trunc} ｜ 閾值≥${f.threshold} ｜ ${f.month_range} ｜ ${f.side} ｜ ${ptLabel}`,

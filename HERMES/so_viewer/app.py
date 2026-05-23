@@ -365,10 +365,13 @@ def api_scan():
     result_rows: list[list] = []
 
     products = get_product_list()
-    if product_type == 'io':
-        products = [p for p in products if p["type"] == "IO"]
-    elif product_type == 'so':
+    # product_type: 'all' | 'SO' | 'HSI' | 'HTI' | 'HHI'
+    if product_type == 'all':
+        pass  # scan all
+    elif product_type == 'SO':
         products = [p for p in products if p["type"] == "SO"]
+    else:  # HSI | HTI | HHI — specific index
+        products = [p for p in products if p["code"] == product_type.upper()]
 
     for p in products:
         if len(result_rows) >= MAX_ROWS:
