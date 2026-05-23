@@ -371,8 +371,10 @@ def api_scan():
                 "date_from": date_from, "date_to": date_to,
                 "month_range": f"{month_start}{year_start}～{month_end}{year_end}" if month_start else "全部",
                 "threshold": threshold, "side": side,
+                "product_type": product_type,
                 "total_dates_scanned": 0,
-            }
+            },
+            "truncated": False,
         })
 
     # ── 掃描所有產品 + 日期 ───────────────────────────
@@ -381,6 +383,13 @@ def api_scan():
         "call_net_change", "call_net", "call_turnover", "call_turnover_prev",
         "put_net_change",  "put_net",  "put_turnover",  "put_gross_prev",
     ]
+    # 只讀取必要的欄位，加速
+    USECOLS = [
+        'month_abbr', 'year', 'strike',
+        'call_net_change', 'call_net', 'call_turnover', 'call_turnover_prev',
+        'put_net_change',  'put_net',  'put_turnover',  'put_gross_prev',
+    ]
+    MAX_ROWS = 5000
     result_rows: list[list] = []
 
     products = get_product_list()
@@ -390,6 +399,8 @@ def api_scan():
         products = [p for p in products if p["type"] == "SO"]
 
     for p in products:
+        if len(result_rows) >= MAX_ROWS:
+            break  # early exit
         pcode  = p["code"]
         ptype  = p["type"]
         scan_root = (SO_ROOT if ptype == "SO" else IO_ROOT) / pcode
@@ -404,12 +415,14 @@ def api_scan():
         csv_prefix = p.get("short_name") or pcode
 
         for d in date_list:
+            if len(result_rows) >= MAX_ROWS:
+                break  # early exit
             csv_path = scan_root / f"{csv_prefix}_{d}.csv"
             if not csv_path.exists():
                 continue
 
             try:
-                df = pd.read_csv(csv_path)
+                df = pd.read_csv(csv_path, usecols=USECOLS)
             except Exception:
                 continue
 
@@ -490,7 +503,8 @@ def api_scan():
             "side": side,
             "product_type": product_type,
             "total_dates_scanned": len(date_list),
-        }
+        },
+        "truncated": len(result_rows) >= MAX_ROWS,
     })
 
 
