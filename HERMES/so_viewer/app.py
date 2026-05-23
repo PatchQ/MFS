@@ -475,19 +475,26 @@ def api_scan():
                     row.get('put_gross_prev', ''),
                 ])
 
-    # 中文欄位名
-    COL_NAMES_SCAN = {
-        "code": "產品", "date": "日期", "month_label": "合約",
-        "strike": "行使價",
-        "call_net_change": "C淨數c", "call_net": "C淨數",
-        "call_turnover": "CVol", "call_turnover_prev": "C上日Vol",
-        "put_net_change": "P淨數c", "put_net": "P淨數",
-        "put_turnover": "PVol", "put_gross_prev": "P上日OI",
-    }
+    # 中文欄位名（key 順序需與 OUTPUT_COLS 一致，供前端可靠地用 Object.keys() 對齊）
+    COL_NAMES_SCAN = [
+        ("code",             "產品"),
+        ("date",             "日期"),
+        ("month_label",      "合約"),
+        ("strike",           "行使價"),
+        ("call_net_change",  "C淨數c"),
+        ("call_net",         "C淨數"),
+        ("call_turnover",    "CVol"),
+        ("call_turnover_prev","C上日Vol"),
+        ("put_net_change",   "P淨數c"),
+        ("put_net",          "P淨數"),
+        ("put_turnover",     "PVol"),
+        ("put_gross_prev",   "P上日OI"),
+    ]
+    COL_NAMES_SCAN_DICT = dict(COL_NAMES_SCAN)
 
     return jsonify({
         "columns": OUTPUT_COLS,
-        "col_names_cn": COL_NAMES_SCAN,
+        "col_names_cn": COL_NAMES_SCAN_DICT,
         "rows": result_rows,
         "total_rows": len(result_rows),
         "filters": {
