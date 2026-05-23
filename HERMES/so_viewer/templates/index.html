@@ -1157,8 +1157,7 @@
         const ptLabel = {'all':'全部','io':'指數期權IO','so':'股票期權SO'}[f.product_type] || f.product_type;
         const trunc = data.truncated ? ' ⚠️ 已截斷（最多5000行）' : '';
         setStatus(
-          `✅ 找到 ${data.total_rows} 行${trunc} ｜ 掃描 ${f.total_dates_scanned} 個交易日 ｜ ` +
-          `閾值≥${f.threshold} ｜ ${f.month_range} ｜ ${f.side} ｜ ${ptLabel}`,
+          `✅ 找到 ${data.total_rows} 行${trunc} ｜ 閾值≥${f.threshold} ｜ ${f.month_range} ｜ ${f.side} ｜ ${ptLabel}`,
           'ok'
         );
     } catch (e) {

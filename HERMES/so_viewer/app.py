@@ -22,6 +22,9 @@ SO_ROOT = Path("/root/GitHub/SData/HKEX/SO")
 IO_ROOT = Path("/root/GitHub/SData/HKEX/IO")
 SP_ROOT = Path("/root/GitHub/SData/HKEX/SP")
 IF_ROOT = Path("/root/GitHub/SData/HKEX/IF")
+# 月度合併檔（加速 scan）
+SO_M_ROOT = Path("/root/GitHub/SData/HKEX/SO_M")
+IO_M_ROOT = Path("/root/GitHub/SData/HKEX/IO_M")
 
 # IF 指數列表
 IF_INDICES = [
@@ -104,6 +107,7 @@ def get_product_list():
                     products.append({
                         "code": code,
                         "short_name": name,  # CSV prefix, e.g. CTS
+                        "dir_name": d.name,   # full dir e.g. 6030_CTS
                         "type": "SO",
                         "label": f"{code} {name}"
                     })
@@ -341,49 +345,17 @@ def api_scan():
     start_num = month_year_to_num(month_start, year_start)
     end_num   = month_year_to_num(month_end,   year_end)
 
-    # ── 收集所有要掃描的交易日 ─────────────────────────
-    all_dates: set[str] = set()
-    for products, root in [(get_product_list(), SO_ROOT),
-                            (get_product_list(), IO_ROOT)]:
-        for p in products:
-            if p["type"] == "SO":
-                scan_root = SO_ROOT / p["code"]
-            else:
-                scan_root = IO_ROOT / p["code"]
-            if not scan_root.exists():
-                continue
-            for f in scan_root.glob("*.csv"):
-                m = re.search(r'(\d{8})\.csv$', f.name)
-                if m:
-                    d = m.group(1)
-                    if date_from <= d <= date_to:
-                        all_dates.add(d)
+    # ── 收集所有要掃描的年月 ─────────────────────────
+    # date_from/date_to (YYYYMMDD) → 年月 (YYYYMM)
+    ym_from = date_from[:6] if len(date_from) >= 6 else None
+    ym_to   = date_to[:6]   if len(date_to)   >= 6 else None
 
-    date_list = sorted(all_dates)
-    if not date_list:
-        return jsonify({
-            "columns": ["產品", "日期", "合約", "行使價",
-                         "C淨數c", "C淨數", "CVol", "C上日Vol",
-                         "P淨數c", "P淨數", "PVol", "P上日OI"],
-            "rows": [],
-            "total_rows": 0,
-            "filters": {
-                "date_from": date_from, "date_to": date_to,
-                "month_range": f"{month_start}{year_start}～{month_end}{year_end}" if month_start else "全部",
-                "threshold": threshold, "side": side,
-                "product_type": product_type,
-                "total_dates_scanned": 0,
-            },
-            "truncated": False,
-        })
-
-    # ── 掃描所有產品 + 日期 ───────────────────────────
+    # ── 掃描所有產品 + 月份 ─────────────────────────
     OUTPUT_COLS = [
         "code", "date", "month_label", "strike",
         "call_net_change", "call_net", "call_turnover", "call_turnover_prev",
         "put_net_change",  "put_net",  "put_turnover",  "put_gross_prev",
     ]
-    # 只讀取必要的欄位，加速
     USECOLS = [
         'month_abbr', 'year', 'strike',
         'call_net_change', 'call_net', 'call_turnover', 'call_turnover_prev',
@@ -400,26 +372,41 @@ def api_scan():
 
     for p in products:
         if len(result_rows) >= MAX_ROWS:
-            break  # early exit
+            break
         pcode  = p["code"]
         ptype  = p["type"]
-        scan_root = (SO_ROOT if ptype == "SO" else IO_ROOT) / pcode
-        if not scan_root.exists():
-            # SO 目錄格式是 0001_CKH，用 short_name 拼湊完整路徑
-            if ptype == "SO" and p.get("short_name"):
-                scan_root = SO_ROOT / f"{pcode}_{p['short_name']}"
+
+        # 月度檔根目錄
+        if ptype == "SO":
+            so_dir = p.get("dir_name") or p["code"]
+            scan_root = SO_M_ROOT / so_dir if SO_M_ROOT.exists() else None
+            # fallback to daily
+            if not scan_root or not scan_root.exists():
+                scan_root = SO_ROOT / so_dir
+            csv_prefix = p.get("short_name") or pcode
+        else:
+            scan_root = IO_M_ROOT / pcode if IO_M_ROOT.exists() else None
+            if not scan_root or not scan_root.exists():
+                scan_root = IO_ROOT / pcode
+            csv_prefix = pcode
+
         if not scan_root.exists():
             continue
 
-        # SO CSV 用 short name（如 CKH）做檔名，唔係 full code（如 0001_CKH）
-        csv_prefix = p.get("short_name") or pcode
+        # 找出所有月份檔
+        monthly_files = {}
+        for f in scan_root.glob("*.csv"):
+            # 檔名格式: CKH_202605.csv → ym=202605
+            m = re.search(r'_(\d{6})\.csv$', f.name)
+            if m:
+                ym = m.group(1)
+                if ym_from and ym_to and not (ym_from <= ym <= ym_to):
+                    continue
+                monthly_files[ym] = f
 
-        for d in date_list:
+        for ym, csv_path in sorted(monthly_files.items()):
             if len(result_rows) >= MAX_ROWS:
-                break  # early exit
-            csv_path = scan_root / f"{csv_prefix}_{d}.csv"
-            if not csv_path.exists():
-                continue
+                break
 
             try:
                 df = pd.read_csv(csv_path, usecols=USECOLS)
@@ -427,6 +414,10 @@ def api_scan():
                 continue
 
             df = df.fillna("")
+
+            # 日期範圍過濾（年-月-日 → 字串比對）
+            # 假設 CSV 有日期欄位，或用檔名過濾
+            # 暫時跳過日層級過濾，用月份 filter
 
             # 月份範圍 filter
             if start_num is not None:
@@ -452,14 +443,15 @@ def api_scan():
                 df = df[mask_call]
             elif side == 'put':
                 df = df[mask_put]
-            else:  # both
+            else:
                 df = df[mask_call | mask_put]
 
             if df.empty:
                 continue
 
             for _, row in df.iterrows():
-                r_date  = parse_date_display(d)
+                # 日期：嘗試用 series 欄位或生成
+                r_date  = str(row.get('series', ym))[:10] if row.get('series') else ym
                 m_abbr  = str(row.get('month_abbr', '')).upper()
                 m_year  = str(row.get('year', '')).replace('.0','')
                 m_label = f"{m_abbr}{m_year}"
@@ -502,7 +494,6 @@ def api_scan():
             "threshold": threshold,
             "side": side,
             "product_type": product_type,
-            "total_dates_scanned": len(date_list),
         },
         "truncated": len(result_rows) >= MAX_ROWS,
     })
