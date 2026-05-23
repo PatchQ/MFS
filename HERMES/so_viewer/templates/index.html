@@ -481,6 +481,16 @@
     <input type="date" id="scan-date-to" />
   </div>
 
+  <!-- 產品類型 -->
+  <div class="ctrl-group">
+    <label>產品類型</label>
+    <select id="scan-product-type">
+      <option value="all">全部</option>
+      <option value="io">指數期權 IO</option>
+      <option value="so">股票期權 SO</option>
+    </select>
+  </div>
+
   <!-- 合約月份範圍起點 -->
   <div class="ctrl-group">
     <label>月份起點</label>
@@ -894,6 +904,18 @@
       const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
       document.getElementById('scan-date-from').value = threeMonthsAgo.toISOString().split('T')[0];
       document.getElementById('scan-date-to').value    = now.toISOString().split('T')[0];
+      // 預設合約月份：上月 → 下月
+      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const MONTH_ABBR = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+      const pm = MONTH_ABBR[prevMonth.getMonth()];
+      const py = String(prevMonth.getFullYear()).slice(-2);
+      const nm = MONTH_ABBR[nextMonth.getMonth()];
+      const ny = String(nextMonth.getFullYear()).slice(-2);
+      document.getElementById('scan-month-start').value = pm;
+      document.getElementById('scan-year-start').value  = py;
+      document.getElementById('scan-month-end').value   = nm;
+      document.getElementById('scan-year-end').value    = ny;
       setStatus('💡 設定條件後點「篩選」', '');
     } else {
       tabIF.classList.remove('active');
@@ -1109,6 +1131,7 @@
     const yearEnd    = document.getElementById('scan-year-end').value;
     const threshold  = document.getElementById('scan-threshold').value;
     const side       = document.getElementById('scan-side').value;
+    const productType = document.getElementById('scan-product-type').value;
 
     if (!dateFrom || !dateTo) {
       setStatus('⚠️ 需要日期範圍', 'error');
@@ -1118,7 +1141,7 @@
     setStatus('⏳ 掃描中（需時數秒）…', 'loading');
 
     try {
-      const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo, threshold, side });
+      const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo, threshold, side, product_type: productType });
       if (monthStart) params.set('month_start', monthStart);
       if (yearStart)  params.set('year_start', yearStart);
       if (monthEnd)   params.set('month_end', monthEnd);
@@ -1130,12 +1153,13 @@
       if (data.error) { setStatus('❌ ' + data.error, 'error'); return; }
 
       renderScanTable(data);
-      const f = data.filters;
-      setStatus(
-        `✅ 找到 ${data.total_rows} 行 ｜ 掃描 ${f.total_dates_scanned} 個交易日 ｜ ` +
-        `閾值≥${f.threshold} ｜ ${f.month_range} ｜ ${f.side}`,
-        'ok'
-      );
+        const f = data.filters;
+        const ptLabel = {'all':'全部','io':'指數期權IO','so':'股票期權SO'}[f.product_type] || f.product_type;
+        setStatus(
+          `✅ 找到 ${data.total_rows} 行 ｜ 掃描 ${f.total_dates_scanned} 個交易日 ｜ ` +
+          `閾值≥${f.threshold} ｜ ${f.month_range} ｜ ${f.side} ｜ ${ptLabel}`,
+          'ok'
+        );
     } catch (e) {
       setStatus('❌ 載入失敗：' + e.message, 'error');
     }

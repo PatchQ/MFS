@@ -103,6 +103,7 @@ def get_product_list():
                     name = m.group(2)
                     products.append({
                         "code": code,
+                        "short_name": name,  # CSV prefix, e.g. CTS
                         "type": "SO",
                         "label": f"{code} {name}"
                     })
@@ -321,6 +322,7 @@ def api_scan():
     year_end    = request.args.get("year_end",    "").strip()
     threshold   = int(request.args.get("threshold", 1000))
     side        = request.args.get("side", "both").lower()
+    product_type = request.args.get("product_type", "all").lower()  # all | io | so
 
     if not date_from or not date_to:
         return jsonify({"error": "需要 date_from 和 date_to"}), 400
@@ -382,17 +384,27 @@ def api_scan():
     result_rows: list[list] = []
 
     products = get_product_list()
+    if product_type == 'io':
+        products = [p for p in products if p["type"] == "IO"]
+    elif product_type == 'so':
+        products = [p for p in products if p["type"] == "SO"]
 
     for p in products:
         pcode  = p["code"]
         ptype  = p["type"]
         scan_root = (SO_ROOT if ptype == "SO" else IO_ROOT) / pcode
-
+        if not scan_root.exists():
+            # SO 目錄格式是 0001_CKH，用 short_name 拼湊完整路徑
+            if ptype == "SO" and p.get("short_name"):
+                scan_root = SO_ROOT / f"{pcode}_{p['short_name']}"
         if not scan_root.exists():
             continue
 
+        # SO CSV 用 short name（如 CKH）做檔名，唔係 full code（如 0001_CKH）
+        csv_prefix = p.get("short_name") or pcode
+
         for d in date_list:
-            csv_path = scan_root / f"{pcode}_{d}.csv"
+            csv_path = scan_root / f"{csv_prefix}_{d}.csv"
             if not csv_path.exists():
                 continue
 
@@ -476,6 +488,7 @@ def api_scan():
             "month_range": f"{month_start}{year_start}～{month_end}{year_end}" if month_start else "全部",
             "threshold": threshold,
             "side": side,
+            "product_type": product_type,
             "total_dates_scanned": len(date_list),
         }
     })
