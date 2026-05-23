@@ -1172,7 +1172,9 @@
 
     theadEl.innerHTML = '';
     const tr = document.createElement('tr');
-    (data.col_names_cn ? Object.entries(data.col_names_cn) : data.columns.map(c => [c, c])).forEach(([col, label]) => {
+    // Use data.columns order (not col_names_cn key insertion order)
+    data.columns.forEach(col => {
+      const label = data.col_names_cn ? (data.col_names_cn[col] ?? col) : col;
       const th = document.createElement('th');
       th.textContent = label;
       tr.appendChild(th);
