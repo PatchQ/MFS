@@ -705,10 +705,9 @@
       infoEl.textContent = `${data.code} [${typeLabel}] ｜ ${data.date_display} ｜ ${data.total_rows} 行${filterStr ? ' ｜ 篩選: ' + filterStr : ''}`;
       setStatus(`✅ 顯示 ${data.total_rows} 行`, 'ok');
 
-      // SO 股票 → 顯示現貨；IO 指數 → 期貨現貨（MHI/MCH 唔顯示）
+      // SO 股票 → 顯示現貨；IO 指數 → 期貨現貨
       // 注意：HSI/HHI 月期貨在 Yahoo Finance 已 delist，改用 ^HSI / ^HSCE 現貨代替
-      const ioNoSp = ['MHI', 'MCH'].includes(code);
-      if (data.type === 'SO' || (data.type === 'IO' && !ioNoSp)) {
+      if (data.type === 'SO' || data.type === 'IO') {
         loadSPPrice(code, dateStr);
       } else {
         document.getElementById('sp-panel').style.display = 'none';
@@ -813,16 +812,13 @@
 
   // ── 載入股票現貨價面板 ─────────────────────────────
   // SO 股票：直接用 code（如 0700）
-  // IO 指數：HSI/HHI → ^HSI / ^HSCE 現貨；HTI → HSTECH.HK 現貨；MHI/MCH → 唔顯示
+  // IO 指數：HSI/HHI → ^HSI / ^HSCE 現貨；HTI → HSTECH.HK 現貨
   async function loadSPPrice(code, dateStr) {
     const panel = document.getElementById('sp-panel');
 
     // 判斷是否 IO 指數（用於 skip 或 label）
-    const ioCodes = ['HSI', 'HHI', 'HTI', 'MHI', 'MCH'];
+    const ioCodes = ['HSI', 'HHI', 'HTI'];
     const isIO = ioCodes.includes(code);
-    const ioSkip = ['MHI', 'MCH'].includes(code);
-
-    if (ioSkip) { panel.style.display = 'none'; return; }
 
     try {
       const res = await fetch(`/api/sp?code=${encodeURIComponent(code)}&date=${encodeURIComponent(dateStr)}`);
@@ -1194,9 +1190,12 @@
       row.forEach((val, i) => {
         const td = document.createElement('td');
         const numVal = parseFloat(val);
+        const colName = data.columns[i];
+        // date / code columns are NOT numeric — display raw without toLocaleString
+        const isDateOrCode = (colName === 'date' || colName === 'code');
         if (val === '' || val === null || val === undefined) {
           td.textContent = '—';
-        } else if (!isNaN(numVal)) {
+        } else if (!isNaN(numVal) && !isDateOrCode) {
           td.textContent = numVal.toLocaleString('en-US');
           if (numVal > 0) td.classList.add('val-pos');
           else if (numVal < 0) td.classList.add('val-neg');

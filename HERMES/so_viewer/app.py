@@ -112,8 +112,8 @@ def get_product_list():
                         "label": f"{code} {name}"
                     })
 
-    # IO（指數期權）— HSI, MHI, HTI, HHI, MCH
-    IO_INDICES = ["HSI", "MHI", "HTI", "HHI", "MCH"]
+    # IO（指數期權）— HSI, HTI, HHI
+    IO_INDICES = ["HSI", "HTI", "HHI"]
     for idx in IO_INDICES:
         products.append({
             "code": idx,
@@ -532,8 +532,6 @@ _IO_YF_CODES: dict[str, str] = {
     # 默認：HSI/HHI → 現貨（舊代碼 fallback）
     "HSI":  "^HSI",
     "HHI":  "^HSCE",
-    "MHI":  "^HSI",
-    "MCH":  "^HSCE",
 }
 
 # Yahoo Finance API HTTP headers（用正常瀏覽器 User-Agent 避免被拒）
