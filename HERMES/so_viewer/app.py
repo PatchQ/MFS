@@ -357,7 +357,7 @@ def api_scan():
         "put_net_change",  "put_net",  "put_turnover",  "put_gross_prev",
     ]
     USECOLS = [
-        'month_abbr', 'year', 'strike',
+        'date', 'month_abbr', 'year', 'strike',
         'call_net_change', 'call_net', 'call_turnover', 'call_turnover_prev',
         'put_net_change',  'put_net',  'put_turnover',  'put_gross_prev',
     ]
@@ -415,9 +415,12 @@ def api_scan():
 
             df = df.fillna("")
 
-            # 日期範圍過濾（年-月-日 → 字串比對）
-            # 假設 CSV 有日期欄位，或用檔名過濾
-            # 暫時跳過日層級過濾，用月份 filter
+            # 日期範圍過濾（精確到日）
+            if 'date' in df.columns:
+                df['date'] = df['date'].astype(str).str[:8]
+                df = df[(df['date'] >= str(date_from)) & (df['date'] <= str(date_to))]
+                if df.empty:
+                    continue
 
             # 月份範圍 filter
             if start_num is not None:
@@ -450,8 +453,8 @@ def api_scan():
                 continue
 
             for _, row in df.iterrows():
-                # 日期：嘗試用 series 欄位或生成
-                r_date  = str(row.get('series', ym))[:10] if row.get('series') else ym
+                # 日期：直接從 CSV 的 date 欄位取
+                r_date  = str(row.get('date', ym))[:8]
                 m_abbr  = str(row.get('month_abbr', '')).upper()
                 m_year  = str(row.get('year', '')).replace('.0','')
                 m_label = f"{m_abbr}{m_year}"
