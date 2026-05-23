@@ -298,6 +298,190 @@ def api_data():
 
 
 # ============================================================
+# OI 期權篩選掃描 API（跨所有產品）
+# ============================================================
+@app.route("/api/scan", methods=["GET"])
+def api_scan():
+    """
+    掃描所有 SO + IO 產品，根據條件篩選
+
+    GET params:
+      date_from: YYYYMMDD
+      date_to:   YYYYMMDD
+      month_start / year_start: 合約月份範圍起點（可選）
+      month_end   / year_end:   合約月份範圍終點（可選）
+      threshold:  淨數變化閾值（默認 1000）
+      side:       call | put | both（默認 both）
+    """
+    date_from   = request.args.get("date_from", "").strip()
+    date_to     = request.args.get("date_to",   "").strip()
+    month_start = request.args.get("month_start", "").upper()
+    year_start  = request.args.get("year_start",  "").strip()
+    month_end   = request.args.get("month_end",   "").upper()
+    year_end    = request.args.get("year_end",    "").strip()
+    threshold   = int(request.args.get("threshold", 1000))
+    side        = request.args.get("side", "both").lower()
+
+    if not date_from or not date_to:
+        return jsonify({"error": "需要 date_from 和 date_to"}), 400
+
+    # ── 月份範圍起點/終點 → 數值用於比較 ───────────────
+    def month_year_to_num(m_abbr, yr):
+        if not m_abbr or not yr:
+            return None
+        try:
+            mi = FIXED_MONTH_ABBR.index(m_abbr) + 1
+            yi = int(yr)
+            return yi * 100 + mi  # e.g. 2626 = 2026 JUN
+        except (ValueError, IndexError):
+            return None
+
+    start_num = month_year_to_num(month_start, year_start)
+    end_num   = month_year_to_num(month_end,   year_end)
+
+    # ── 收集所有要掃描的交易日 ─────────────────────────
+    all_dates: set[str] = set()
+    for products, root in [(get_product_list(), SO_ROOT),
+                            (get_product_list(), IO_ROOT)]:
+        for p in products:
+            if p["type"] == "SO":
+                scan_root = SO_ROOT / p["code"]
+            else:
+                scan_root = IO_ROOT / p["code"]
+            if not scan_root.exists():
+                continue
+            for f in scan_root.glob("*.csv"):
+                m = re.search(r'(\d{8})\.csv$', f.name)
+                if m:
+                    d = m.group(1)
+                    if date_from <= d <= date_to:
+                        all_dates.add(d)
+
+    date_list = sorted(all_dates)
+    if not date_list:
+        return jsonify({
+            "columns": ["產品", "日期", "合約", "行使價",
+                         "C淨數c", "C淨數", "CVol", "C上日Vol",
+                         "P淨數c", "P淨數", "PVol", "P上日OI"],
+            "rows": [],
+            "total_rows": 0,
+            "filters": {
+                "date_from": date_from, "date_to": date_to,
+                "month_range": f"{month_start}{year_start}～{month_end}{year_end}" if month_start else "全部",
+                "threshold": threshold, "side": side,
+                "total_dates_scanned": 0,
+            }
+        })
+
+    # ── 掃描所有產品 + 日期 ───────────────────────────
+    OUTPUT_COLS = [
+        "code", "date", "month_label", "strike",
+        "call_net_change", "call_net", "call_turnover", "call_turnover_prev",
+        "put_net_change",  "put_net",  "put_turnover",  "put_gross_prev",
+    ]
+    result_rows: list[list] = []
+
+    products = get_product_list()
+
+    for p in products:
+        pcode  = p["code"]
+        ptype  = p["type"]
+        scan_root = (SO_ROOT if ptype == "SO" else IO_ROOT) / pcode
+
+        if not scan_root.exists():
+            continue
+
+        for d in date_list:
+            csv_path = scan_root / f"{pcode}_{d}.csv"
+            if not csv_path.exists():
+                continue
+
+            try:
+                df = pd.read_csv(csv_path)
+            except Exception:
+                continue
+
+            df = df.fillna("")
+
+            # 月份範圍 filter
+            if start_num is not None:
+                mynums = df.apply(
+                    lambda r: month_year_to_num(str(r.get('month_abbr', '')),
+                                                str(r.get('year', '')).replace('.0', '')) or 0,
+                    axis=1)
+                df = df[mynums >= start_num]
+            if end_num is not None:
+                mynums = df.apply(
+                    lambda r: month_year_to_num(str(r.get('month_abbr', '')),
+                                                str(r.get('year', '')).replace('.0', '')) or 0,
+                    axis=1)
+                df = df[mynums <= end_num]
+
+            # 淨數變化 filter
+            cn_col = df['call_net_change'] if 'call_net_change' in df.columns else pd.Series([0]*len(df))
+            pn_col = df['put_net_change']  if 'put_net_change'  in df.columns else pd.Series([0]*len(df))
+            mask_call = pd.to_numeric(cn_col, errors='coerce').fillna(0).astype(float) >= threshold
+            mask_put  = pd.to_numeric(pn_col, errors='coerce').fillna(0).astype(float) >= threshold
+
+            if side == 'call':
+                df = df[mask_call]
+            elif side == 'put':
+                df = df[mask_put]
+            else:  # both
+                df = df[mask_call | mask_put]
+
+            if df.empty:
+                continue
+
+            for _, row in df.iterrows():
+                r_date  = parse_date_display(d)
+                m_abbr  = str(row.get('month_abbr', '')).upper()
+                m_year  = str(row.get('year', '')).replace('.0','')
+                m_label = f"{m_abbr}{m_year}"
+                strike  = row.get('strike', '')
+
+                result_rows.append([
+                    pcode,
+                    r_date,
+                    m_label,
+                    strike,
+                    row.get('call_net_change', ''),
+                    row.get('call_net', ''),
+                    row.get('call_turnover', ''),
+                    row.get('call_turnover_prev', ''),
+                    row.get('put_net_change', ''),
+                    row.get('put_net', ''),
+                    row.get('put_turnover', ''),
+                    row.get('put_gross_prev', ''),
+                ])
+
+    # 中文欄位名
+    COL_NAMES_SCAN = {
+        "code": "產品", "date": "日期", "month_label": "合約",
+        "strike": "行使價",
+        "call_net_change": "C淨數c", "call_net": "C淨數",
+        "call_turnover": "CVol", "call_turnover_prev": "C上日Vol",
+        "put_net_change": "P淨數c", "put_net": "P淨數",
+        "put_turnover": "PVol", "put_gross_prev": "P上日OI",
+    }
+
+    return jsonify({
+        "columns": OUTPUT_COLS,
+        "col_names_cn": COL_NAMES_SCAN,
+        "rows": result_rows,
+        "total_rows": len(result_rows),
+        "filters": {
+            "date_from": date_from,
+            "date_to": date_to,
+            "month_range": f"{month_start}{year_start}～{month_end}{year_end}" if month_start else "全部",
+            "threshold": threshold,
+            "side": side,
+            "total_dates_scanned": len(date_list),
+        }
+    })
+
+
+# ============================================================
 # SP 現貨股價 API（支援 CSV fallback + yfinance 即時拉取）
 # ============================================================
 import threading

@@ -287,6 +287,8 @@
     #if-section.active { display: block; }
     #oi-section { display: block; }
     #oi-section.hidden { display: none; }
+    #scan-section { display: none; }
+    #scan-section.active { display: block; }
 
     .if-controls {
       display: flex;
@@ -313,6 +315,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" id="tab-oi" onclick="switchTab('oi')">📈 OI 期權</button>
     <button class="tab-btn" id="tab-if" onclick="switchTab('if')">📊 IF 期貨</button>
+    <button class="tab-btn" id="tab-scan" onclick="switchTab('scan')">🔍 篩選</button>
   </div>
 
   <div class="controls" id="oi-controls" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
@@ -462,6 +465,86 @@
   <table id="if-table">
     <thead id="if-table-head"></thead>
     <tbody id="if-table-body"></tbody>
+  </table>
+</div>
+
+<!-- Scan 篩選控制面板 -->
+<div id="scan-section" class="controls" style="display:none;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+
+  <!-- 日期範圍 -->
+  <div class="ctrl-group">
+    <label>由日期</label>
+    <input type="date" id="scan-date-from" />
+  </div>
+  <div class="ctrl-group">
+    <label>至日期</label>
+    <input type="date" id="scan-date-to" />
+  </div>
+
+  <!-- 合約月份範圍起點 -->
+  <div class="ctrl-group">
+    <label>月份起點</label>
+    <select id="scan-month-start">
+      <option value="">—</option>
+      {% for m in month_abbr_list %}
+      <option value="{{ m }}">{{ m }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <label>年份起點</label>
+    <select id="scan-year-start">
+      <option value="">—</option>
+      {% for y in year_list %}
+      <option value="{{ y }}">{{ y }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- 合約月份範圍終點 -->
+  <div class="ctrl-group">
+    <label>月份終點</label>
+    <select id="scan-month-end">
+      <option value="">—</option>
+      {% for m in month_abbr_list %}
+      <option value="{{ m }}">{{ m }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <label>年份終點</label>
+    <select id="scan-year-end">
+      <option value="">—</option>
+      {% for y in year_list %}
+      <option value="{{ y }}">{{ y }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- 淨數變化閾值 -->
+  <div class="ctrl-group">
+    <label>淨數變化 ≥</label>
+    <input type="number" id="scan-threshold" value="1000" min="0" style="width:80px;" />
+  </div>
+
+  <!-- 方向 -->
+  <div class="ctrl-group">
+    <label>方向</label>
+    <select id="scan-side">
+      <option value="both">全部</option>
+      <option value="call">Call</option>
+      <option value="put">Put</option>
+    </select>
+  </div>
+
+  <button class="btn-load" id="btn-load-scan">🔍 篩選</button>
+</div>
+
+<!-- Scan 表格 -->
+<div class="table-wrap" id="scan-table-wrap" style="display:none">
+  <table id="scan-table">
+    <thead id="scan-table-head"></thead>
+    <tbody id="scan-table-body"></tbody>
   </table>
 </div>
 
@@ -792,15 +875,33 @@
     if (tab === 'if') {
       tabOI.classList.remove('active');
       tabIF.classList.add('active');
+      document.getElementById('tab-scan').classList.remove('active');
       oiSection.style.display = 'none';
       ifSection.classList.add('active');
       oiTableWrap.style.display = 'none';
       initIFTab();
+    } else if (tab === 'scan') {
+      tabOI.classList.remove('active');
+      tabIF.classList.remove('active');
+      document.getElementById('tab-scan').classList.add('active');
+      oiSection.style.display = 'none';
+      ifSection.classList.remove('active');
+      oiTableWrap.style.display = 'none';
+      document.getElementById('if-table-wrap').style.display = 'none';
+      document.getElementById('scan-section').style.display = 'flex';
+      // 預設日期範圍
+      const now = new Date();
+      const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+      document.getElementById('scan-date-from').value = threeMonthsAgo.toISOString().split('T')[0];
+      document.getElementById('scan-date-to').value    = now.toISOString().split('T')[0];
+      setStatus('💡 設定條件後點「篩選」', '');
     } else {
       tabIF.classList.remove('active');
+      document.getElementById('tab-scan').classList.remove('active');
       tabOI.classList.add('active');
       oiSection.style.display = '';
       ifSection.classList.remove('active');
+      document.getElementById('scan-section').style.display = 'none';
       ifTableWrap.style.display = 'none';
       statusEl.textContent = '💡 輸入產品代碼、選擇日期，再點「載入」';
     }
@@ -994,6 +1095,94 @@
 
     tableWrap.style.display = 'block';
     document.getElementById('status').textContent = '';
+  }
+
+  // ── Scan Tab ───────────────────────────────────────
+  document.getElementById('btn-load-scan').addEventListener('click', loadScanData);
+
+  async function loadScanData() {
+    const dateFrom = document.getElementById('scan-date-from').value.replace(/-/g, '');
+    const dateTo   = document.getElementById('scan-date-to').value.replace(/-/g, '');
+    const monthStart = document.getElementById('scan-month-start').value;
+    const yearStart  = document.getElementById('scan-year-start').value;
+    const monthEnd   = document.getElementById('scan-month-end').value;
+    const yearEnd    = document.getElementById('scan-year-end').value;
+    const threshold  = document.getElementById('scan-threshold').value;
+    const side       = document.getElementById('scan-side').value;
+
+    if (!dateFrom || !dateTo) {
+      setStatus('⚠️ 需要日期範圍', 'error');
+      return;
+    }
+
+    setStatus('⏳ 掃描中（需時數秒）…', 'loading');
+
+    try {
+      const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo, threshold, side });
+      if (monthStart) params.set('month_start', monthStart);
+      if (yearStart)  params.set('year_start', yearStart);
+      if (monthEnd)   params.set('month_end', monthEnd);
+      if (yearEnd)    params.set('year_end', yearEnd);
+
+      const res = await fetch(`/api/scan?${params.toString()}`);
+      const data = await res.json();
+
+      if (data.error) { setStatus('❌ ' + data.error, 'error'); return; }
+
+      renderScanTable(data);
+      const f = data.filters;
+      setStatus(
+        `✅ 找到 ${data.total_rows} 行 ｜ 掃描 ${f.total_dates_scanned} 個交易日 ｜ ` +
+        `閾值≥${f.threshold} ｜ ${f.month_range} ｜ ${f.side}`,
+        'ok'
+      );
+    } catch (e) {
+      setStatus('❌ 載入失敗：' + e.message, 'error');
+    }
+  }
+
+  function renderScanTable(data) {
+    const theadEl = document.getElementById('scan-table-head');
+    const tbodyEl = document.getElementById('scan-table-body');
+    const tableWrap = document.getElementById('scan-table-wrap');
+
+    theadEl.innerHTML = '';
+    const tr = document.createElement('tr');
+    (data.col_names_cn ? Object.entries(data.col_names_cn) : data.columns.map(c => [c, c])).forEach(([col, label]) => {
+      const th = document.createElement('th');
+      th.textContent = label;
+      tr.appendChild(th);
+    });
+    theadEl.appendChild(tr);
+
+    tbodyEl.innerHTML = '';
+    if (data.rows.length === 0) {
+      tbodyEl.innerHTML = '<tr><td colspan="99" style="text-align:center;color:var(--text-dim);padding:40px">🔍 沒有找到符合條件的資料</td></tr>';
+      tableWrap.style.display = 'block';
+      return;
+    }
+
+    const colCount = data.columns.length;
+    data.rows.forEach((row) => {
+      const tr = document.createElement('tr');
+      row.forEach((val, i) => {
+        const td = document.createElement('td');
+        const numVal = parseFloat(val);
+        if (val === '' || val === null || val === undefined) {
+          td.textContent = '—';
+        } else if (!isNaN(numVal)) {
+          td.textContent = numVal.toLocaleString('en-US');
+          if (numVal > 0) td.classList.add('val-pos');
+          else if (numVal < 0) td.classList.add('val-neg');
+        } else {
+          td.textContent = val;
+        }
+        tr.appendChild(td);
+      });
+      tbodyEl.appendChild(tr);
+    });
+
+    tableWrap.style.display = 'block';
   }
 </script>
 </body>
