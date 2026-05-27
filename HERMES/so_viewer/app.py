@@ -352,14 +352,15 @@ def api_scan():
 
     # ── 掃描所有產品 + 月份 ─────────────────────────
     OUTPUT_COLS = [
-        "code", "date", "month_label", "strike",
-        "call_net_change", "call_net", "call_turnover", "call_turnover_prev",
-        "put_net_change",  "put_net",  "put_turnover",  "put_gross_prev",
+        "code", "date", "month_label",
+        "call_net_change", "call_net", "call_turnover", "call_turnover_prev", "call_ratio",
+        "strike",
+        "put_net_change", "put_net", "put_turnover", "put_gross_prev", "put_ratio",
     ]
     USECOLS = [
         'date', 'month_abbr', 'year', 'strike',
-        'call_net_change', 'call_net', 'call_turnover', 'call_turnover_prev',
-        'put_net_change',  'put_net',  'put_turnover',  'put_gross_prev',
+        'call_net_change', 'call_net', 'call_turnover', 'call_turnover_prev', 'call_ratio',
+        'put_net_change', 'put_net', 'put_turnover', 'put_gross_prev', 'put_ratio',
     ]
     MAX_ROWS = 5000
     result_rows: list[list] = []
@@ -488,11 +489,13 @@ def api_scan():
     # 前端 renderScanTable 已改用 data.columns 順序渲染，故此 dict 僅用於 label lookup）
     COL_NAMES_SCAN = {
         "code": "產品", "date": "日期", "month_label": "合約",
-        "strike": "行使價",
         "call_net_change": "C淨數c", "call_net": "C淨數",
         "call_turnover": "CVol", "call_turnover_prev": "C上日Vol",
+        "call_ratio": "C比率",
+        "strike": "行使價",
         "put_net_change": "P淨數c", "put_net": "P淨數",
         "put_turnover": "PVol", "put_gross_prev": "P上日OI",
+        "put_ratio": "P比率",
     }
 
     return jsonify({
