@@ -452,11 +452,11 @@ def api_scan():
                     axis=1)
                 df = df[mynums <= end_num]
 
-            # 淨數變化 filter
+            # 淨數變化 filter（取絕對值，正負都算）
             cn_col = df['call_net_change'] if 'call_net_change' in df.columns else pd.Series([0]*len(df))
             pn_col = df['put_net_change']  if 'put_net_change'  in df.columns else pd.Series([0]*len(df))
-            mask_call = pd.to_numeric(cn_col, errors='coerce').fillna(0).astype(float) >= threshold
-            mask_put  = pd.to_numeric(pn_col, errors='coerce').fillna(0).astype(float) >= threshold
+            mask_call = pd.to_numeric(cn_col, errors='coerce').fillna(0).astype(float).abs() >= threshold
+            mask_put  = pd.to_numeric(pn_col, errors='coerce').fillna(0).astype(float).abs() >= threshold
 
             if side == 'call':
                 df = df[mask_call]
