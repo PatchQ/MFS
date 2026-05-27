@@ -351,16 +351,22 @@ def api_scan():
     ym_to   = date_to[:6]   if len(date_to)   >= 6 else None
 
     # ── 掃描所有產品 + 月份 ─────────────────────────
+    # 欄位順序：產品、日期、合約、C→P（行使價在中間）
     OUTPUT_COLS = [
         "code", "date", "month_label",
-        "call_net_change", "call_net", "call_turnover", "call_turnover_prev", "call_ratio",
+        "call_turnover_prev", "call_turnover", "call_ratio",
+        "call_net_change", "call_net",
         "strike",
-        "put_net_change", "put_net", "put_turnover", "put_gross_prev", "put_ratio",
+        "put_net", "put_net_change", "put_ratio",
+        "put_turnover", "put_gross_prev",
     ]
     USECOLS = [
-        'date', 'month_abbr', 'year', 'strike',
-        'call_net_change', 'call_net', 'call_turnover', 'call_turnover_prev', 'call_ratio',
-        'put_net_change', 'put_net', 'put_turnover', 'put_gross_prev', 'put_ratio',
+        'date', 'month_abbr', 'year',
+        'call_turnover_prev', 'call_turnover', 'call_ratio',
+        'call_net_change', 'call_net',
+        'strike',
+        'put_net', 'put_net_change', 'put_ratio',
+        'put_turnover', 'put_gross_prev',
     ]
     MAX_ROWS = 5000
     result_rows: list[list] = []
@@ -474,30 +480,30 @@ def api_scan():
                     pcode,
                     r_date,
                     m_label,
+                    row.get('call_turnover_prev', ''),
+                    row.get('call_turnover', ''),
+                    row.get('call_ratio', ''),
                     row.get('call_net_change', ''),
                     row.get('call_net', ''),
-                    row.get('call_turnover', ''),
-                    row.get('call_turnover_prev', ''),
-                    row.get('call_ratio', ''),
                     strike,
-                    row.get('put_net_change', ''),
                     row.get('put_net', ''),
+                    row.get('put_net_change', ''),
+                    row.get('put_ratio', ''),
                     row.get('put_turnover', ''),
                     row.get('put_gross_prev', ''),
-                    row.get('put_ratio', ''),
                 ])
 
     # 中文欄位名（Flask jsonify 會按字母排序 key，故 dict key 順序無關緊要；
     # 前端 renderScanTable 已改用 data.columns 順序渲染，故此 dict 僅用於 label lookup）
     COL_NAMES_SCAN = {
         "code": "產品", "date": "日期", "month_label": "合約",
-        "call_net_change": "C淨數c", "call_net": "C淨數",
-        "call_turnover": "CVol", "call_turnover_prev": "C上日Vol",
+        "call_turnover_prev": "C上日VOL", "call_turnover": "CVOL",
         "call_ratio": "C比率",
+        "call_net_change": "C淨數c", "call_net": "C淨數",
         "strike": "行使價",
-        "put_net_change": "P淨數c", "put_net": "P淨數",
-        "put_turnover": "PVol", "put_gross_prev": "P上日OI",
+        "put_net": "P淨數", "put_net_change": "P淨數c",
         "put_ratio": "P比率",
+        "put_turnover": "PVOL", "put_gross_prev": "P上日VOL",
     }
 
     return jsonify({
