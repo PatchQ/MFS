@@ -354,18 +354,18 @@ def api_scan():
     # 欄位順序：產品、日期、合約、C→P（行使價在中間）
     OUTPUT_COLS = [
         "code", "date", "month_label",
-        "call_turnover_prev", "call_turnover", "call_ratio",
+        "call_turnover_prev", "call_turnover", "call_ratio", "call_settle_price",
         "call_net_change", "call_net",
         "strike",
-        "put_net", "put_net_change", "put_ratio",
+        "put_net", "put_net_change", "put_settle_price", "put_ratio",
         "put_turnover", "put_gross_prev",
     ]
     USECOLS = [
         'date', 'month_abbr', 'year',
-        'call_turnover_prev', 'call_turnover', 'call_ratio',
+        'call_turnover_prev', 'call_turnover', 'call_ratio', 'call_settle_price',
         'call_net_change', 'call_net',
         'strike',
-        'put_net', 'put_net_change', 'put_ratio',
+        'put_net', 'put_net_change', 'put_settle_price', 'put_ratio',
         'put_turnover', 'put_gross_prev',
     ]
     MAX_ROWS = 5000
@@ -483,11 +483,13 @@ def api_scan():
                     row.get('call_turnover_prev', ''),
                     row.get('call_turnover', ''),
                     row.get('call_ratio', ''),
+                    row.get('call_settle_price', ''),
                     row.get('call_net_change', ''),
                     row.get('call_net', ''),
                     strike,
                     row.get('put_net', ''),
                     row.get('put_net_change', ''),
+                    row.get('put_settle_price', ''),
                     row.get('put_ratio', ''),
                     row.get('put_turnover', ''),
                     row.get('put_gross_prev', ''),
@@ -498,11 +500,11 @@ def api_scan():
     COL_NAMES_SCAN = {
         "code": "產品", "date": "日期", "month_label": "合約",
         "call_turnover_prev": "C上日VOL", "call_turnover": "CVOL",
-        "call_ratio": "C比率",
+        "call_ratio": "C比率", "call_settle_price": "C價",
         "call_net_change": "C淨數c", "call_net": "C淨數",
         "strike": "行使價",
         "put_net": "P淨數", "put_net_change": "P淨數c",
-        "put_ratio": "P比率",
+        "put_settle_price": "P價", "put_ratio": "P比率",
         "put_turnover": "PVOL", "put_gross_prev": "P上日VOL",
     }
 
