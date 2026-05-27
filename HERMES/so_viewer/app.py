@@ -474,15 +474,17 @@ def api_scan():
                     pcode,
                     r_date,
                     m_label,
-                    strike,
                     row.get('call_net_change', ''),
                     row.get('call_net', ''),
                     row.get('call_turnover', ''),
                     row.get('call_turnover_prev', ''),
+                    row.get('call_ratio', ''),
+                    strike,
                     row.get('put_net_change', ''),
                     row.get('put_net', ''),
                     row.get('put_turnover', ''),
                     row.get('put_gross_prev', ''),
+                    row.get('put_ratio', ''),
                 ])
 
     # 中文欄位名（Flask jsonify 會按字母排序 key，故 dict key 順序無關緊要；
