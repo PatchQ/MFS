@@ -365,10 +365,16 @@ def api_scan():
     result_rows: list[list] = []
 
     products = get_product_list()
-    # product_type: 'all' | 'SO' | 'HSI' | 'HTI' | 'HHI'
-    if product_type == 'all':
+    product_type = request.args.get("product_type", "all").lower()  # all | so | hsi | hti | hhi
+    stock_codes_raw = request.args.get("stock_codes", "").strip()  # e.g. "9992, 0175, 2318"
+
+    # 優先：自定義股票編號清單（覆蓋 product_type）
+    if stock_codes_raw:
+        code_list = [c.strip().zfill(4) for c in stock_codes_raw.split(",") if c.strip().isdigit() or c.strip().lstrip('0').isdigit()]
+        products = [p for p in products if p["code"] in code_list and p["type"] == "SO"]
+    elif product_type == 'all':
         pass  # scan all
-    elif product_type == 'SO':
+    elif product_type == 'so':
         products = [p for p in products if p["type"] == "SO"]
     else:  # HSI | HTI | HHI — specific index
         products = [p for p in products if p["code"] == product_type.upper()]
@@ -501,6 +507,7 @@ def api_scan():
             "threshold": threshold,
             "side": side,
             "product_type": product_type,
+            "stock_codes": stock_codes_raw,
         },
         "truncated": len(result_rows) >= MAX_ROWS,
     })
