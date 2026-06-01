@@ -63,8 +63,14 @@ def merge_index_options(index_code: str):
         merged = pd.concat(dfs, ignore_index=True)
         # 按日期排序
         merged = merged.sort_values('date').reset_index(drop=True)
-        # 去重（同一 product+date+strike 留第一筆）
-        merged = merged.drop_duplicates(subset=['date', 'month_abbr', 'year', 'strike'], keep='first')
+        # 處理 strike / settle_price NaN — 填充為 -1 避免去重時撞 NaN
+        merged['strike'] = pd.to_numeric(merged['strike'], errors='coerce').fillna(-1.0)
+        merged['call_settle_price'] = pd.to_numeric(merged['call_settle_price'], errors='coerce').fillna(-1.0)
+        merged['put_settle_price'] = pd.to_numeric(merged['put_settle_price'], errors='coerce').fillna(-1.0)
+        # 去重：同 (date, month, year, strike) 配唔同 settle_price 係唔同合約，必須保留
+        # 實際上一個 CSV 內唔會有完全重複嘅 row，所以理論上無需去重
+        # 為保險只刪除完全重複（所有欄位都一樣）嘅 row
+        merged = merged.drop_duplicates(keep='last')
 
         out_path = dst_dir / f"{index_code}_{ym}.csv"
         merged.to_csv(out_path, index=False)
@@ -109,7 +115,11 @@ def merge_stock_options(stock_dir_name: str, csv_prefix: str):
 
         merged = pd.concat(dfs, ignore_index=True)
         merged = merged.sort_values('date').reset_index(drop=True)
-        merged = merged.drop_duplicates(subset=['date', 'month_abbr', 'year', 'strike'], keep='first')
+        # 處理 NaN — 填充為 -1 避免去重時撞 NaN
+        for col in ['strike', 'call_settle_price', 'put_settle_price']:
+            merged[col] = pd.to_numeric(merged[col], errors='coerce').fillna(-1.0)
+        # 去重：完整 row 完全重複才刪除（同 strike 配不同 settle_price 係唔同合約必須保留）
+        merged = merged.drop_duplicates(keep='last')
 
         out_path = dst_dir / f"{csv_prefix}_{ym}.csv"
         merged.to_csv(out_path, index=False)
