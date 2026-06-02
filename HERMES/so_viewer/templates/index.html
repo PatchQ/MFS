@@ -901,23 +901,20 @@
       oiTableWrap.style.display = 'none';
       document.getElementById('if-table-wrap').style.display = 'none';
       document.getElementById('scan-section').style.display = 'flex';
-      // 預設日期範圍
+      // 預設日期範圍：本月第一日 → 今日
       const now = new Date();
-      const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-      document.getElementById('scan-date-from').value = threeMonthsAgo.toISOString().split('T')[0];
-      document.getElementById('scan-date-to').value    = now.toISOString().split('T')[0];
-      // 預設合約月份：上月 → 下月
-      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      document.getElementById('scan-date-from').value = firstOfMonth.toISOString().split('T')[0];
+      document.getElementById('scan-date-to').value   = now.toISOString().split('T')[0];
+      // 預設合約月份：本月 → 12月
+      const curMonth = now.getMonth(); // 0-11
+      const curYear  = String(now.getFullYear()).slice(-2);
       const MONTH_ABBR = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-      const pm = MONTH_ABBR[prevMonth.getMonth()];
-      const py = String(prevMonth.getFullYear()).slice(-2);
-      const nm = MONTH_ABBR[nextMonth.getMonth()];
-      const ny = String(nextMonth.getFullYear()).slice(-2);
-      document.getElementById('scan-month-start').value = pm;
-      document.getElementById('scan-year-start').value  = py;
-      document.getElementById('scan-month-end').value   = nm;
-      document.getElementById('scan-year-end').value    = ny;
+      const cm = MONTH_ABBR[curMonth];
+      document.getElementById('scan-month-start').value = cm;
+      document.getElementById('scan-year-start').value  = curYear;
+      document.getElementById('scan-month-end').value   = 'DEC';
+      document.getElementById('scan-year-end').value    = curYear;
       setStatus('💡 設定條件後點「篩選」', '');
     } else {
       tabIF.classList.remove('active');
