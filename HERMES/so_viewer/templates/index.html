@@ -316,6 +316,7 @@
     <button class="tab-btn active" id="tab-oi" onclick="switchTab('oi')">📈 OI 期權</button>
     <button class="tab-btn" id="tab-if" onclick="switchTab('if')">📊 IF 期貨</button>
     <button class="tab-btn" id="tab-scan" onclick="switchTab('scan')">🔍 篩選</button>
+    <button class="tab-btn" id="tab-agg" onclick="switchTab('agg')">📊 聚合視圖</button>
   </div>
 
   <div class="controls" id="oi-controls" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
@@ -556,11 +557,43 @@
   <button class="btn-load" id="btn-load-scan">🔍 篩選</button>
 </div>
 
+<!-- 聚合視圖控制面板 -->
+<div id="agg-section" style="display:none;">
+  <div class="controls" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+
+    <div class="ctrl-group">
+      <label>指數</label>
+      <select id="agg-index-select">
+        <option value="HSI">HSI 恆生指數</option>
+        <option value="HTI">HTI 恆生科技指數</option>
+        <option value="HHI">HHI 恆生中國企業指數</option>
+      </select>
+    </div>
+
+    <div class="ctrl-group">
+      <label>日期</label>
+      <select id="agg-date-select">
+        <option value="">—</option>
+      </select>
+    </div>
+
+    <button class="btn-load" id="btn-load-agg">🔍 載入</button>
+  </div>
+</div>
+
 <!-- Scan 表格 -->
 <div class="table-wrap" id="scan-table-wrap" style="display:none">
   <table id="scan-table">
     <thead id="scan-table-head"></thead>
     <tbody id="scan-table-body"></tbody>
+  </table>
+</div>
+
+<!-- 聚合視圖表格 -->
+<div class="table-wrap" id="agg-table-wrap" style="display:none">
+  <table id="agg-table">
+    <thead id="agg-table-head"></thead>
+    <tbody id="agg-table-body"></tbody>
   </table>
 </div>
 
@@ -888,6 +921,7 @@
       tabOI.classList.remove('active');
       tabIF.classList.add('active');
       document.getElementById('tab-scan').classList.remove('active');
+      document.getElementById('tab-agg').classList.remove('active');
       oiSection.style.display = 'none';
       ifSection.classList.add('active');
       oiTableWrap.style.display = 'none';
@@ -896,10 +930,13 @@
       tabOI.classList.remove('active');
       tabIF.classList.remove('active');
       document.getElementById('tab-scan').classList.add('active');
+      document.getElementById('tab-agg').classList.remove('active');
       oiSection.style.display = 'none';
       ifSection.classList.remove('active');
       oiTableWrap.style.display = 'none';
       document.getElementById('if-table-wrap').style.display = 'none';
+      document.getElementById('agg-section').style.display = 'none';
+      document.getElementById('agg-table-wrap').style.display = 'none';
       document.getElementById('scan-section').style.display = 'flex';
       // 預設日期範圍：本月第一日 → 今日
       const now = new Date();
@@ -916,16 +953,181 @@
       document.getElementById('scan-month-end').value   = 'DEC';
       document.getElementById('scan-year-end').value    = curYear;
       setStatus('💡 設定條件後點「篩選」', '');
+    } else if (tab === 'agg') {
+      tabOI.classList.remove('active');
+      tabIF.classList.remove('active');
+      document.getElementById('tab-scan').classList.remove('active');
+      document.getElementById('tab-agg').classList.add('active');
+      oiSection.style.display = 'none';
+      ifSection.classList.remove('active');
+      oiTableWrap.style.display = 'none';
+      document.getElementById('if-table-wrap').style.display = 'none';
+      document.getElementById('scan-section').style.display = 'none';
+      document.getElementById('agg-table-wrap').style.display = 'none';
+      document.getElementById('agg-section').style.display = 'block';
+      initAggTab();
+      setStatus('💡 選擇指數及日期，再點「載入」', '');
     } else {
       tabIF.classList.remove('active');
       document.getElementById('tab-scan').classList.remove('active');
+      document.getElementById('tab-agg').classList.remove('active');
       tabOI.classList.add('active');
       oiSection.style.display = '';
       ifSection.classList.remove('active');
       document.getElementById('scan-section').style.display = 'none';
+      document.getElementById('agg-section').style.display = 'none';
       ifTableWrap.style.display = 'none';
+      document.getElementById('agg-table-wrap').style.display = 'none';
       statusEl.textContent = '💡 輸入產品代碼、選擇日期，再點「載入」';
     }
+  }
+
+  // ── Tab 4 聚合視圖：初始化日期選單 ────────────
+  async function initAggTab() {
+    const idx = document.getElementById('agg-index-select').value;
+    if (!idx) return;
+    const sel = document.getElementById('agg-date-select');
+    sel.innerHTML = '<option value="">載入中…</option>';
+    try {
+      const res = await fetch(`/api/agg/dates?index=${encodeURIComponent(idx)}`);
+      const data = await res.json();
+      if (data.error) {
+        sel.innerHTML = '<option value="">無資料</option>';
+        return;
+      }
+      sel.innerHTML = '<option value="">— 請選擇日期 —</option>';
+      data.dates.forEach((d, i) => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8) + (i === 0 ? ' ◀ 最新' : '');
+        if (i === 0) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    } catch (e) {
+      sel.innerHTML = '<option value="">載入失敗</option>';
+    }
+  }
+
+  // 切換指數時重載日期
+  document.getElementById('agg-index-select').addEventListener('change', initAggTab);
+
+  // 載入聚合視圖數據
+  document.getElementById('btn-load-agg').addEventListener('click', loadAggData);
+
+  async function loadAggData() {
+    const idx     = document.getElementById('agg-index-select').value;
+    const dateStr = document.getElementById('agg-date-select').value;
+    if (!idx || !dateStr) {
+      setStatus('⚠️ 請先選擇指數及日期', 'error');
+      return;
+    }
+    setStatus('⏳ 載入中…', 'loading');
+    try {
+      const res = await fetch(`/api/agg/data?index=${encodeURIComponent(idx)}&date=${encodeURIComponent(dateStr)}`);
+      const data = await res.json();
+      if (data.error) { setStatus('❌ ' + data.error, 'error'); return; }
+      renderAggTable(data);
+      infoEl.textContent = `${data.code} [聚合視圖] ｜ ${data.date_display} ｜ ${data.total_rows} 行`;
+      setStatus(`✅ 顯示 ${data.total_rows} 行`, 'ok');
+    } catch (e) {
+      setStatus('❌ 載入失敗：' + e.message, 'error');
+    }
+  }
+
+  function renderAggTable(data) {
+    const STRIKE_COLS = new Set(['strike']);
+    const CHANGE_COLS = new Set([
+      'call_price_change', 'put_price_change',
+      'call_turnover_change', 'put_turnover_change',
+      'call_net_change', 'put_net_change',
+      'call_gross_change', 'put_gross_change',
+    ]);
+    const RATIO_COLS  = new Set(['call_ratio', 'put_ratio']);
+
+    const getTopVals = (rows, colIdx) => {
+      const vals = rows.map(r => parseFloat(r[colIdx]) || 0);
+      const sorted = [...new Set(vals)].sort((a, b) => b - a);
+      return new Set(sorted.slice(0, 3));
+    };
+
+    const TOP_COLS = [
+      'call_turnover_prev', 'call_turnover', 'call_net_change', 'call_net',
+      'call_gross_prev',    'call_gross',
+      'put_gross',          'put_gross_prev',
+      'put_net_change',     'put_net',
+      'put_turnover',      'put_turnover_prev',
+      'put_ratio',
+    ];
+    const topVals = {};
+    TOP_COLS.forEach(col => {
+      const idx = data.columns.indexOf(col);
+      if (idx >= 0) topVals[col] = getTopVals(data.rows, idx);
+    });
+
+    const aggThead = document.getElementById('agg-table-head');
+    const aggTbody = document.getElementById('agg-table-body');
+    const aggWrap  = document.getElementById('agg-table-wrap');
+
+    aggThead.innerHTML = '';
+    const tr = document.createElement('tr');
+    data.columns.forEach(col => {
+      if (col === 'date' || col === 'series') return;  // 隱藏 date/series（已知）
+      if (COL_CN[col] === null || COL_CN[col] === undefined) return;
+      const th = document.createElement('th');
+      th.textContent = COL_CN[col] || col;
+      if (STRIKE_COLS.has(col)) th.classList.add('strike-col');
+      tr.appendChild(th);
+    });
+    aggThead.appendChild(tr);
+
+    aggTbody.innerHTML = '';
+    if (data.rows.length === 0) {
+      aggTbody.innerHTML = '<tr><td colspan="99" style="text-align:center;color:var(--text-dim);padding:40px">🔍 沒有資料</td></tr>';
+      aggWrap.style.display = 'block';
+      return;
+    }
+
+    data.rows.forEach((row) => {
+      const tr = document.createElement('tr');
+      data.columns.forEach((col, i) => {
+        if (col === 'date' || col === 'series') return;
+        if (COL_CN[col] === null || COL_CN[col] === undefined) return;
+        const td = document.createElement('td');
+        let val = row[i];
+
+        const numVal = parseFloat(val) || 0;
+        if (TOP_COLS.includes(col) && topVals[col].has(numVal)) td.classList.add('top-cell');
+
+        if (val === '' || val === null || val === undefined ||
+            (typeof val === 'number' && isNaN(val))) {
+          td.textContent = '—';
+        } else {
+          if (typeof val === 'number' && !RATIO_COLS.has(col)) {
+            if (Number.isInteger(val)) {
+              td.textContent = val.toLocaleString('en-US');
+            } else {
+              td.textContent = val.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              });
+            }
+            if (CHANGE_COLS.has(col)) {
+              if (val > 0)      td.classList.add('val-pos');
+              else if (val < 0) td.classList.add('val-neg');
+              else              td.classList.add('val-zero');
+            }
+          } else {
+            td.textContent = val;
+          }
+        }
+
+        if (STRIKE_COLS.has(col)) td.classList.add('strike-col');
+        tr.appendChild(td);
+      });
+      aggTbody.appendChild(tr);
+    });
+
+    aggWrap.style.display = 'block';
   }
 
   async function initIFTab() {

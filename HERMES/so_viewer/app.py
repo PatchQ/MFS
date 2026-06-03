@@ -895,6 +895,102 @@ def api_sp():
 
 
 # ============================================================
+# 聚合視圖 API（Tab 4 — IO 指數按 strike 聚合）
+# ============================================================
+IO_AGG_ROOT = Path("/root/GitHub/SData/HKEX/IO_AGG")
+
+
+@app.route("/api/agg/dates", methods=["GET"])
+def api_agg_dates():
+    """
+    GET ?index=HSI
+    回傳該指數聚合視圖嘅可用日期（從最新月度檔抽取）
+    """
+    idx = request.args.get("index", "").strip().upper()
+    if idx not in ["HSI", "HTI", "HHI"]:
+        return jsonify({"error": f"不支援指數：{idx}"}), 400
+
+    agg_dir = IO_AGG_ROOT / idx
+    if not agg_dir.exists():
+        return jsonify({"error": f"找不到聚合視圖目錄：{agg_dir}"}), 404
+
+    # 搵最新嘅月度檔
+    files = sorted(agg_dir.glob("*_AGG.csv"), reverse=True)
+    if not files:
+        return jsonify({"error": "冇聚合視圖檔案"}), 404
+
+    # 用最新月度檔抽日期
+    try:
+        df = pd.read_csv(files[0], usecols=["date"])
+        dates = sorted(df["date"].astype(str).str.zfill(8).unique(), reverse=True)
+    except Exception as e:
+        return jsonify({"error": f"讀取失敗：{e}"}), 500
+
+    return jsonify({
+        "index": idx,
+        "dates": dates,
+        "file": files[0].name,
+    })
+
+
+@app.route("/api/agg/data", methods=["GET"])
+def api_agg_data():
+    """
+    GET ?index=HSI&date=20260601
+    回傳該指數某日嘅聚合視圖（按 strike 聚合本月起所有合約）
+    """
+    idx     = request.args.get("index", "").strip().upper()
+    date_str = request.args.get("date", "").strip()
+
+    if idx not in ["HSI", "HTI", "HHI"]:
+        return jsonify({"error": f"不支援指數：{idx}"}), 400
+    if not date_str:
+        return jsonify({"error": "需要 date 參數"}), 400
+
+    # 標準化 date (e.g. 20260601)
+    date_str = str(date_str).split(".")[0].zfill(8)
+
+    # 判斷月份 (20260601 → 202606)
+    ym = date_str[:6]
+
+    csv_path = IO_AGG_ROOT / idx / f"{idx}_{ym}_AGG.csv"
+    if not csv_path.exists():
+        return jsonify({"error": f"找不到聚合檔：{csv_path.name}"}), 404
+
+    try:
+        df = pd.read_csv(csv_path, low_memory=False)
+        # 過濾為該日期
+        df["date"] = df["date"].astype(str).str.zfill(8)
+        df = df[df["date"] == date_str]
+
+        if df.empty:
+            return jsonify({"error": f"{date_str} 冇資料"}), 404
+
+        # strike NaN 過濾
+        df = df.dropna(subset=["strike"])
+        df = df[df["strike"] != ""]
+
+        df = df.fillna("")
+
+        # 欄位順序：剔除 date 同 series（前端會隱藏）
+        columns = [c for c in df.columns if c not in ("date",)]
+        # 但要保留 date 同 series 喺資料內（前端用嚟判斷）
+        # 唔好，乾脆前端處理好過，呢度剔除
+
+        return jsonify({
+            "columns": list(df.columns),
+            "rows": df.values.tolist(),
+            "code": idx,
+            "date": date_str,
+            "date_display": f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}",
+            "total_rows": len(df),
+            "col_names_cn": COLUMN_NAMES_CN,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================================
 # 啟動
 # ============================================================
 if __name__ == "__main__":
