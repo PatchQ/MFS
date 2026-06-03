@@ -316,6 +316,7 @@
     <button class="tab-btn active" id="tab-oi" onclick="switchTab('oi')">📈 OI 期權</button>
     <button class="tab-btn" id="tab-if" onclick="switchTab('if')">📊 IF 期貨</button>
     <button class="tab-btn" id="tab-scan" onclick="switchTab('scan')">🔍 篩選</button>
+    <button class="tab-btn" id="tab-agg" onclick="switchTab('agg')">📊 聚合視圖</button>
   </div>
 
   <div class="controls" id="oi-controls" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
@@ -556,11 +557,71 @@
   <button class="btn-load" id="btn-load-scan">🔍 篩選</button>
 </div>
 
+<!-- 聚合視圖控制面板 -->
+<div id="agg-section" style="display:none;">
+  <div class="controls" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+
+    <div class="ctrl-group" style="min-width:280px;">
+      <label>系列（搜尋指數/股票）</label>
+      <input type="text" id="agg-series-input" list="agg-series-list"
+             placeholder="輸入 HSI / HTI / HHI / 0001 / CKH / 騰訊…"
+             autocomplete="off" style="width:280px;">
+      <datalist id="agg-series-list"></datalist>
+      <span id="agg-series-info" style="font-size:11px;color:#888;margin-top:3px;display:block;"></span>
+    </div>
+
+    <div class="ctrl-group">
+      <label>日期</label>
+      <select id="agg-date-select">
+        <option value="">—</option>
+      </select>
+    </div>
+
+    <button class="btn-load" id="btn-load-agg">🔍 載入</button>
+
+    <!-- Tab 4 專用股價面板（跟 Tab 1 一致風格，置右） -->
+    <div id="agg-sp-panel" style="display:none; margin-left:auto; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12px; min-width:200px;">
+      <div style="color:var(--text-dim); font-size:10px; margin-bottom:4px;">📈 <span id="agg-sp-label">—</span></div>
+      <div style="display:flex; gap:16px; align-items:center;">
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim)">開</div>
+          <div id="agg-sp-open" style="font-size:15px;font-weight:700;color:var(--text)">—</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim)">高</div>
+          <div id="agg-sp-high" style="font-size:15px;font-weight:700;color:var(--green)">—</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim)">低</div>
+          <div id="agg-sp-low" style="font-size:15px;font-weight:700;color:var(--red)">—</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim)">收</div>
+          <div id="agg-sp-close" style="font-size:18px;font-weight:700;color:#fff">—</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim)">成交量</div>
+          <div id="agg-sp-vol" style="font-size:11px;color:var(--text-dim)">—</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- Scan 表格 -->
 <div class="table-wrap" id="scan-table-wrap" style="display:none">
   <table id="scan-table">
     <thead id="scan-table-head"></thead>
     <tbody id="scan-table-body"></tbody>
+  </table>
+</div>
+
+<!-- 聚合視圖表格 -->
+<div class="table-wrap" id="agg-table-wrap" style="display:none">
+  <table id="agg-table">
+    <thead id="agg-table-head"></thead>
+    <tbody id="agg-table-body"></tbody>
   </table>
 </div>
 
@@ -740,19 +801,23 @@
       return new Set(sorted.slice(0, 3));
     };
 
-    // 所有要 Top-3 highlight 的欄位
-    const TOP_COLS = [
-      'call_turnover_prev', 'call_turnover', 'call_net_change', 'call_net',
-      'call_gross_prev',    'call_gross',
-      'put_gross',          'put_gross_prev',
-      'put_net_change',     'put_net',
-      'put_turnover',      'put_turnover_prev',
-      'put_ratio',
-    ];
+    // 自動偵測所有數值欄位做 Top-3 highlight
+    // 排除：日(date)、月(month_num/month_abbr)、年(year)、C價(call_settle_price)、P價(put_settle_price)、C價C(call_price_change)、P價C(put_price_change)
+    //      + 識別欄位(strike/series/code/contract_label)
+    const EXCLUDE_TOP_COLS = new Set([
+      'date', 'month_num', 'month_abbr', 'year',
+      'call_settle_price', 'put_settle_price',
+      'call_price_change', 'put_price_change',
+      'strike', 'series', 'code', 'contract_label'
+    ]);
     const topVals = {};
-    TOP_COLS.forEach(col => {
-      const idx = data.columns.indexOf(col);
-      if (idx >= 0) topVals[col] = getTopVals(data.rows, idx);
+    data.columns.forEach((col, idx) => {
+      if (EXCLUDE_TOP_COLS.has(col)) return;
+      // 只處理數值欄位
+      const sampleVal = data.rows.find(r => r[idx] !== '' && r[idx] !== null && r[idx] !== undefined)?.[idx];
+      if (typeof sampleVal === 'number' || (typeof sampleVal === 'string' && !isNaN(parseFloat(sampleVal)))) {
+        topVals[col] = getTopVals(data.rows, idx);
+      }
     });
 
     theadEl.innerHTML = '';
@@ -781,7 +846,7 @@
         let val = row[i];
 
         const numVal = parseFloat(val) || 0;
-        if (TOP_COLS.includes(col) && topVals[col].has(numVal)) td.classList.add('top-cell');
+        if (topVals[col] && topVals[col].has(numVal)) td.classList.add('top-cell');
 
         if (val === '' || val === null || val === undefined ||
             (typeof val === 'number' && isNaN(val))) {
@@ -888,6 +953,7 @@
       tabOI.classList.remove('active');
       tabIF.classList.add('active');
       document.getElementById('tab-scan').classList.remove('active');
+      document.getElementById('tab-agg').classList.remove('active');
       oiSection.style.display = 'none';
       ifSection.classList.add('active');
       oiTableWrap.style.display = 'none';
@@ -896,10 +962,13 @@
       tabOI.classList.remove('active');
       tabIF.classList.remove('active');
       document.getElementById('tab-scan').classList.add('active');
+      document.getElementById('tab-agg').classList.remove('active');
       oiSection.style.display = 'none';
       ifSection.classList.remove('active');
       oiTableWrap.style.display = 'none';
       document.getElementById('if-table-wrap').style.display = 'none';
+      document.getElementById('agg-section').style.display = 'none';
+      document.getElementById('agg-table-wrap').style.display = 'none';
       document.getElementById('scan-section').style.display = 'flex';
       // 預設日期範圍：本月第一日 → 今日
       const now = new Date();
@@ -916,16 +985,293 @@
       document.getElementById('scan-month-end').value   = 'DEC';
       document.getElementById('scan-year-end').value    = curYear;
       setStatus('💡 設定條件後點「篩選」', '');
+    } else if (tab === 'agg') {
+      tabOI.classList.remove('active');
+      tabIF.classList.remove('active');
+      document.getElementById('tab-scan').classList.remove('active');
+      document.getElementById('tab-agg').classList.add('active');
+      oiSection.style.display = 'none';
+      ifSection.classList.remove('active');
+      oiTableWrap.style.display = 'none';
+      document.getElementById('if-table-wrap').style.display = 'none';
+      document.getElementById('scan-section').style.display = 'none';
+      document.getElementById('agg-table-wrap').style.display = 'none';
+      document.getElementById('agg-section').style.display = 'block';
+      loadAggSeriesList();   // 第一次切到 agg tab 時先載入 series list
+      setStatus('💡 輸入 HSI/HTI/HHI 或股票編號 (如 0001)，再選擇日期', '');
     } else {
       tabIF.classList.remove('active');
       document.getElementById('tab-scan').classList.remove('active');
+      document.getElementById('tab-agg').classList.remove('active');
       tabOI.classList.add('active');
       oiSection.style.display = '';
       ifSection.classList.remove('active');
       document.getElementById('scan-section').style.display = 'none';
+      document.getElementById('agg-section').style.display = 'none';
       ifTableWrap.style.display = 'none';
+      document.getElementById('agg-table-wrap').style.display = 'none';
       statusEl.textContent = '💡 輸入產品代碼、選擇日期，再點「載入」';
     }
+  }
+
+  // ── Tab 4 聚合視圖：載入 series list（IO 指數 + SO 股票期權）────────────
+  let aggSeriesList = [];   // [{code, label, short, kind}, ...]
+
+  async function loadAggSeriesList() {
+    if (aggSeriesList.length > 0) return;
+    const dl = document.getElementById('agg-series-list');
+    const info = document.getElementById('agg-series-info');
+    try {
+      const res = await fetch('/api/agg/list');
+      const data = await res.json();
+      if (data.error) { info.textContent = '❌ 載入失敗'; return; }
+      aggSeriesList = data.series;
+      // 填 datalist
+      dl.innerHTML = '';
+      // IO 先
+      aggSeriesList.filter(s => s.kind === 'IO').forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.code;
+        opt.label = `📊 ${s.label}`;
+        dl.appendChild(opt);
+      });
+      // SO 後
+      aggSeriesList.filter(s => s.kind === 'SO').forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.code;
+        opt.label = `📈 ${s.label}`;
+        dl.appendChild(opt);
+      });
+      const ioCount = aggSeriesList.filter(s => s.kind === 'IO').length;
+      const soCount = aggSeriesList.filter(s => s.kind === 'SO').length;
+      info.textContent = `已載入 ${ioCount} 指數 + ${soCount} 股票期權 = ${data.total} 個系列`;
+    } catch (e) {
+      info.textContent = '❌ 載入失敗：' + e.message;
+    }
+  }
+
+  // ── Tab 4 聚合視圖：初始化日期選單 ────────────
+  async function initAggTab() {
+    const series = document.getElementById('agg-series-input').value.trim();
+    if (!series) {
+      document.getElementById('agg-series-info').textContent = '⚠️ 請先輸入系列名稱';
+      return;
+    }
+    const sel = document.getElementById('agg-date-select');
+    sel.innerHTML = '<option value="">載入中…</option>';
+    try {
+      const res = await fetch(`/api/agg/dates?series=${encodeURIComponent(series)}`);
+      const data = await res.json();
+      if (data.error) {
+        sel.innerHTML = '<option value="">無資料</option>';
+        document.getElementById('agg-series-info').textContent = '❌ ' + data.error;
+        return;
+      }
+      sel.innerHTML = '<option value="">— 請選擇日期 —</option>';
+      data.dates.forEach((d, i) => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8) + (i === 0 ? ' ◀ 最新' : '');
+        if (i === 0) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      document.getElementById('agg-series-info').textContent = `✅ ${data.series} 載入 ${data.dates.length} 個日期`;
+    } catch (e) {
+      sel.innerHTML = '<option value="">載入失敗</option>';
+      document.getElementById('agg-series-info').textContent = '❌ ' + e.message;
+    }
+  }
+
+  // 切換系列時重載日期
+  document.getElementById('agg-series-input').addEventListener('change', initAggTab);
+  document.getElementById('agg-series-input').addEventListener('input', () => {
+    // 用戶開始輸入時清狀態
+    if (document.getElementById('agg-series-info').textContent.includes('✅')) {
+      document.getElementById('agg-series-info').textContent = '';
+    }
+  });
+
+  // 載入聚合視圖數據
+  document.getElementById('btn-load-agg').addEventListener('click', loadAggData);
+
+  async function loadAggData() {
+    const series  = document.getElementById('agg-series-input').value.trim();
+    const dateStr = document.getElementById('agg-date-select').value;
+    if (!series || !dateStr) {
+      setStatus('⚠️ 請先輸入系列及選擇日期', 'error');
+      return;
+    }
+    setStatus('⏳ 載入中…', 'loading');
+    try {
+      const res = await fetch(`/api/agg/data?series=${encodeURIComponent(series)}&date=${encodeURIComponent(dateStr)}`);
+      const data = await res.json();
+      if (data.error) { setStatus('❌ ' + data.error, 'error'); return; }
+      renderAggTable(data);
+      infoEl.textContent = `${data.code} [聚合視圖] ｜ ${data.date_display} ｜ ${data.total_rows} 行`;
+      setStatus(`✅ 顯示 ${data.total_rows} 行`, 'ok');
+      // 載入現貨價面板（跟 Tab 1 一致）
+      loadAggSPPrice(series, dateStr);
+    } catch (e) {
+      setStatus('❌ 載入失敗：' + e.message, 'error');
+    }
+  }
+
+  // ── Tab 4 載入現貨價面板 ─────────────────────────────
+  // IO 指數：HSI / HTI / HHI 直接用
+  // SO 股票：'0001_CKH' → 抽出 '0001' 傳俾 yfinance
+  async function loadAggSPPrice(series, dateStr) {
+    const panel = document.getElementById('agg-sp-panel');
+
+    // 解析 series → 真正嘅 yfinance code
+    // IO: 'HSI' / 'HTI' / 'HHI' / 'MCH' / 'MHI'
+    // SO: '0001_CKH' → '0001'
+    let code = series;
+    if (/_/.test(series)) {
+      const m = series.match(/^(\d{4})_/);
+      if (m) code = m[1];
+    }
+
+    try {
+      const res = await fetch(`/api/sp?code=${encodeURIComponent(code)}&date=${encodeURIComponent(dateStr)}`);
+      const sp = await res.json();
+
+      if (sp.error) {
+        panel.style.display = 'none';
+        return;
+      }
+
+      const fmt = (v) => {
+        if (!v && v !== 0) return '—';
+        const f = parseFloat(v);
+        if (isNaN(f)) return '—';
+        return f.toFixed(2);
+      };
+      const fmtVol = (v) => {
+        if (!v) return '—';
+        const f = parseFloat(v);
+        if (isNaN(f)) return '—';
+        if (f >= 1e6) return (f / 1e6).toFixed(1) + 'M';
+        if (f >= 1e3) return (f / 1e3).toFixed(0) + 'K';
+        return f.toString();
+      };
+
+      document.getElementById('agg-sp-label').textContent = `${code} 現貨`;
+      document.getElementById('agg-sp-open').textContent  = fmt(sp.open);
+      document.getElementById('agg-sp-high').textContent  = fmt(sp.high);
+      document.getElementById('agg-sp-low').textContent   = fmt(sp.low);
+      document.getElementById('agg-sp-close').textContent = fmt(sp.close);
+      document.getElementById('agg-sp-vol').textContent   = fmtVol(sp.volume);
+
+      panel.style.display = 'flex';
+    } catch (e) {
+      panel.style.display = 'none';
+    }
+  }
+
+  function renderAggTable(data) {
+    const STRIKE_COLS = new Set(['strike']);
+    const CHANGE_COLS = new Set([
+      'call_price_change', 'put_price_change',
+      'call_turnover_change', 'put_turnover_change',
+      'call_net_change', 'put_net_change',
+      'call_gross_change', 'put_gross_change',
+    ]);
+    const RATIO_COLS  = new Set(['call_ratio', 'put_ratio']);
+
+    const getTopVals = (rows, colIdx) => {
+      const vals = rows.map(r => parseFloat(r[colIdx]) || 0);
+      const sorted = [...new Set(vals)].sort((a, b) => b - a);
+      return new Set(sorted.slice(0, 3));
+    };
+
+    // 自動偵測所有數值欄位做 Top-3 highlight（除 date/strike/series）
+    const EXCLUDE_TOP_COLS_AGG = new Set([
+      'date', 'month_num', 'month_abbr', 'year',
+      'call_settle_price', 'put_settle_price',
+      'call_price_change', 'put_price_change',
+      'strike', 'series', 'code', 'contract_label'
+    ]);
+    const topVals = {};
+    data.columns.forEach((col, idx) => {
+      if (EXCLUDE_TOP_COLS_AGG.has(col)) return;
+      const sampleVal = data.rows.find(r => r[idx] !== '' && r[idx] !== null && r[idx] !== undefined)?.[idx];
+      if (typeof sampleVal === 'number' || (typeof sampleVal === 'string' && !isNaN(parseFloat(sampleVal)))) {
+        topVals[col] = getTopVals(data.rows, idx);
+      }
+    });
+
+    const aggThead = document.getElementById('agg-table-head');
+    const aggTbody = document.getElementById('agg-table-body');
+    const aggWrap  = document.getElementById('agg-table-wrap');
+
+    aggThead.innerHTML = '';
+    const tr = document.createElement('tr');
+    data.columns.forEach(col => {
+      if (col === 'date' || col === 'series') return;  // 隱藏 date/series（已知）
+      if (COL_CN[col] === null || COL_CN[col] === undefined) return;
+      const th = document.createElement('th');
+      th.textContent = COL_CN[col] || col;
+      if (STRIKE_COLS.has(col)) th.classList.add('strike-col');
+      tr.appendChild(th);
+    });
+    aggThead.appendChild(tr);
+
+    aggTbody.innerHTML = '';
+    if (data.rows.length === 0) {
+      aggTbody.innerHTML = '<tr><td colspan="99" style="text-align:center;color:var(--text-dim);padding:40px">🔍 沒有資料</td></tr>';
+      aggWrap.style.display = 'block';
+      return;
+    }
+
+    data.rows.forEach((row) => {
+      const tr = document.createElement('tr');
+      data.columns.forEach((col, i) => {
+        if (col === 'date' || col === 'series') return;
+        if (COL_CN[col] === null || COL_CN[col] === undefined) return;
+        const td = document.createElement('td');
+        let val = row[i];
+
+        const numVal = parseFloat(val) || 0;
+        if (topVals[col] && topVals[col].has(numVal)) td.classList.add('top-cell');
+
+        if (val === '' || val === null || val === undefined ||
+            (typeof val === 'number' && isNaN(val))) {
+          td.textContent = '—';
+        } else {
+          if (typeof val === 'number' && !RATIO_COLS.has(col)) {
+            if (Number.isInteger(val)) {
+              td.textContent = val.toLocaleString('en-US');
+            } else {
+              td.textContent = val.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              });
+            }
+            if (CHANGE_COLS.has(col)) {
+              if (val > 0)      td.classList.add('val-pos');
+              else if (val < 0) td.classList.add('val-neg');
+              else              td.classList.add('val-zero');
+            }
+          } else {
+            // ratio 欄位：顯示 2 位小數
+            if (typeof val === 'number') {
+              td.textContent = val.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              });
+            } else {
+              td.textContent = val;
+            }
+          }
+        }
+
+        if (STRIKE_COLS.has(col)) td.classList.add('strike-col');
+        tr.appendChild(td);
+      });
+      aggTbody.appendChild(tr);
+    });
+
+    aggWrap.style.display = 'block';
   }
 
   async function initIFTab() {
@@ -1042,22 +1388,21 @@
     const displayCols = ["date_display", "month_label", "gross", "gross_change", "net", "net_change", "rise_fall", "settle_price", "turnover", "deals_ratio", "deals"];
     const colKeys = displayCols;
 
-    // Top-3 highlight columns
-    const getTopVals = (rows, colIdx) => {
-      const vals = rows.map(r => parseFloat(r[colIdx]) || 0);
+    // 自動偵測所有數值欄位做 Top-3 highlight（除 date_display/month_label/rise_fall）
+    const EXCLUDE_TOP_COLS_IF = new Set([
+      'date_display', 'date', 'month_label', 'month_num', 'month_abbr', 'year',
+      'call_settle_price', 'put_settle_price',
+      'call_price_change', 'put_price_change',
+      'strike', 'series', 'code', 'contract_label'
+    ]);
+    const ifTopVals = {};
+    data.columns.forEach((col, idx) => {
+      if (EXCLUDE_TOP_COLS_IF.has(col)) return;
+      const vals = data.rows.map(r => parseFloat(r[idx])).filter(v => !isNaN(v));
+      if (vals.length === 0) return;
       const sorted = [...new Set(vals)].sort((a, b) => b - a);
-      return new Set(sorted.slice(0, 3));
-    };
-
-    const netIdx          = data.columns.indexOf('net');
-    const netChangeIdx    = data.columns.indexOf('net_change');
-    const turnoverIdx     = data.columns.indexOf('turnover');
-    const dealsRatioIdx   = data.columns.indexOf('deals_ratio');
-
-    const topNet         = getTopVals(data.rows, netIdx);
-    const topNetChange   = getTopVals(data.rows, netChangeIdx);
-    const topTurnover    = getTopVals(data.rows, turnoverIdx);
-    const topDealsRatio  = getTopVals(data.rows, dealsRatioIdx);
+      ifTopVals[col] = new Set(sorted.slice(0, 3));
+    });
 
     theadEl.innerHTML = '';
     const tr = document.createElement('tr');
@@ -1085,11 +1430,8 @@
 
         const numVal = parseFloat(val);
 
-        // Top-3 red highlight
-        if (col === 'net'          && topNet.has(numVal))         td.classList.add('top-cell');
-        if (col === 'net_change'   && topNetChange.has(numVal))    td.classList.add('top-cell');
-        if (col === 'turnover'     && topTurnover.has(numVal))      td.classList.add('top-cell');
-        if (col === 'deals_ratio'  && topDealsRatio.has(numVal))   td.classList.add('top-cell');
+        // Top-3 red highlight（自動偵測所有數值欄位）
+        if (ifTopVals[col] && ifTopVals[col].has(numVal)) td.classList.add('top-cell');
 
         if (col === 'rise_fall' && !isNaN(numVal)) {
           if (numVal > 0) td.classList.add('val-pos');
@@ -1180,6 +1522,22 @@
     // 排序後的數據
     let rows = data.rows.slice();
 
+    // 自動偵測所有數值欄位做 Top-3 highlight（除 date/strike/code/month_label/contract_label）
+    const EXCLUDE_TOP_COLS_SCAN = new Set([
+      'date', 'month_num', 'month_abbr', 'year', 'month_label',
+      'call_settle_price', 'put_settle_price',
+      'call_price_change', 'put_price_change',
+      'strike', 'series', 'code', 'contract_label'
+    ]);
+    const scanTopVals = {};
+    data.columns.forEach((col, idx) => {
+      if (EXCLUDE_TOP_COLS_SCAN.has(col)) return;
+      const vals = data.rows.map(r => parseFloat(r[idx])).filter(v => !isNaN(v));
+      if (vals.length === 0) return;
+      const sorted = [...new Set(vals)].sort((a, b) => b - a);
+      scanTopVals[col] = new Set(sorted.slice(0, 3));
+    });
+
     theadEl.innerHTML = '';
     const tr = document.createElement('tr');
     // Use data.columns order (not col_names_cn key insertion order)
@@ -1250,6 +1608,10 @@
           td.textContent = numVal.toLocaleString('en-US');
           if (numVal > 0) td.classList.add('val-pos');
           else if (numVal < 0) td.classList.add('val-neg');
+          // Top 3 highlight
+          if (scanTopVals[colName] && scanTopVals[colName].has(numVal)) {
+            td.classList.add('top-cell');
+          }
         } else {
           td.textContent = val;
         }

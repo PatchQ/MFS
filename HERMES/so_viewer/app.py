@@ -895,6 +895,196 @@ def api_sp():
 
 
 # ============================================================
+# 聚合視圖 API（Tab 4 — IO 指數 + SO 股票期權按 strike 聚合）
+# ============================================================
+IO_AGG_ROOT = Path("/root/GitHub/SData/HKEX/IO_AGG")
+SO_AGG_ROOT = Path("/root/GitHub/SData/HKEX/SO_AGG")
+
+
+def _resolve_agg_series(series: str):
+    """
+    將 series（如 'HSI' 或 '0001_CKH'）解析成 (agg_root, subdir, short_code) tuple
+    - IO 系列 (HSI/HTI/HHI/MCH/MHI): agg_root=IO_AGG_ROOT, subdir=series, short=series
+    - SO 系列 (0001_CKH): agg_root=SO_AGG_ROOT, subdir='0001_CKH', short='CKH'
+    """
+    s = series.strip()
+    if not s:
+        return None
+    # IO 指數
+    if s.isalpha():
+        io_dir = IO_AGG_ROOT / s
+        if io_dir.exists():
+            return (IO_AGG_ROOT, s, s)
+        return None
+    # SO 股票（含數字前綴）
+    so_dir = SO_AGG_ROOT / s
+    if so_dir.exists():
+        import re as _re
+        m = _re.match(r'^\d+_(.+)$', s)
+        short = m.group(1) if m else s
+        return (SO_AGG_ROOT, s, short)
+    return None
+
+
+@app.route("/api/agg/list", methods=["GET"])
+def api_agg_list():
+    """
+    GET /
+    回傳所有可用聚合視圖系列（IO 指數 + SO 股票期權）
+    [{code, label, kind, has_data}, ...]
+    """
+    out = []
+    # IO 指數
+    if IO_AGG_ROOT.exists():
+        for p in sorted(IO_AGG_ROOT.iterdir()):
+            if p.is_dir() and list(p.glob("*_AGG.csv")):
+                out.append({
+                    "code": p.name,
+                    "label": p.name,
+                    "kind": "IO",
+                    "has_data": True,
+                })
+    # SO 股票期權
+    if SO_AGG_ROOT.exists():
+        for p in sorted(SO_AGG_ROOT.iterdir()):
+            if not p.is_dir():
+                continue
+            if not list(p.glob("*_AGG.csv")):
+                continue
+            import re as _re
+            m = _re.match(r'^(\d+)_(.+)$', p.name)
+            if m:
+                code_str = m.group(1)
+                short = m.group(2)
+                label = f"{code_str} {short}"
+            else:
+                label = p.name
+            out.append({
+                "code": p.name,
+                "label": label,
+                "short": m.group(2) if m else p.name,
+                "kind": "SO",
+                "has_data": True,
+            })
+    return jsonify({"series": out, "total": len(out)})
+
+
+@app.route("/api/agg/dates", methods=["GET"])
+def api_agg_dates():
+    """
+    GET ?series=HSI  或  ?series=0001_CKH
+    回傳該系列聚合視圖嘅可用日期（從最新月度檔抽取）
+    """
+    series = request.args.get("series", "").strip()
+    if not series:
+        return jsonify({"error": "需要 series 參數"}), 400
+
+    resolved = _resolve_agg_series(series)
+    if not resolved:
+        return jsonify({"error": f"找不到系列：{series}"}), 404
+    agg_root, subdir, _short = resolved
+
+    agg_dir = agg_root / subdir
+    if not agg_dir.exists():
+        return jsonify({"error": f"找不到聚合視圖目錄：{agg_dir}"}), 404
+
+    # 搵最新嘅月度檔
+    files = sorted(agg_dir.glob("*_AGG.csv"), reverse=True)
+    if not files:
+        return jsonify({"error": "冇聚合視圖檔案"}), 404
+
+    # 用最新月度檔抽日期
+    try:
+        df = pd.read_csv(files[0], usecols=["date"])
+        dates = sorted(df["date"].astype(str).str.zfill(8).unique(), reverse=True)
+    except Exception as e:
+        return jsonify({"error": f"讀取失敗：{e}"}), 500
+
+    return jsonify({
+        "series": subdir,
+        "dates": dates,
+        "file": files[0].name,
+    })
+
+
+@app.route("/api/agg/data", methods=["GET"])
+def api_agg_data():
+    """
+    GET ?series=HSI&date=20260601  或  ?series=0001_CKH&date=20260601
+    回傳該系列某日嘅聚合視圖（按 strike 聚合本月起所有合約）
+    """
+    series  = request.args.get("series", "").strip()
+    date_str = request.args.get("date", "").strip()
+
+    if not series:
+        return jsonify({"error": "需要 series 參數"}), 400
+    if not date_str:
+        return jsonify({"error": "需要 date 參數"}), 400
+
+    resolved = _resolve_agg_series(series)
+    if not resolved:
+        return jsonify({"error": f"找不到系列：{series}"}), 404
+    agg_root, subdir, _short = resolved
+
+    # 標準化 date (e.g. 20260601)
+    date_str = str(date_str).split(".")[0].zfill(8)
+
+    # 判斷月份 (20260601 → 202606)
+    ym = date_str[:6]
+
+    csv_path = agg_root / subdir / f"{subdir}_{ym}_AGG.csv"
+    if not csv_path.exists():
+        return jsonify({"error": f"找不到聚合檔：{csv_path.name}"}), 404
+
+    try:
+        df = pd.read_csv(csv_path, low_memory=False)
+        # 過濾為該日期
+        df["date"] = df["date"].astype(str).str.zfill(8)
+        df = df[df["date"] == date_str]
+
+        if df.empty:
+            return jsonify({"error": f"{date_str} 冇資料"}), 404
+
+        # strike NaN 過濾
+        df = df.dropna(subset=["strike"])
+        df = df[df["strike"] != ""]
+
+        df = df.fillna("")
+
+        # 欄位順序：與 OI 期權一致（Strike 放中間）
+        # OI 順序：series, month_num, month_abbr, year, call_*, strike, put_*
+        # 聚合視圖冇 month_abbr/year（已聚合），但保持 call_* 全部 → strike → put_* → contract_label
+        # 排除 call/put_settle_price 同 call/put_price_change（唔同合約唔可比）
+        OUTPUT_COLS = [
+            "series",
+            "call_ratio", "call_deals",
+            "call_turnover_change", "call_turnover_prev", "call_turnover",
+            "call_net_change", "call_net",
+            "call_gross_change", "call_gross_prev", "call_gross",
+            "strike",
+            "put_gross", "put_gross_prev", "put_gross_change",
+            "put_net", "put_net_change",
+            "put_turnover", "put_turnover_prev", "put_turnover_change",
+            "put_deals", "put_ratio",
+            "contract_label",
+        ]
+        # 只保留實際存在嘅欄位
+        out_cols = [c for c in OUTPUT_COLS if c in df.columns]
+
+        return jsonify({
+            "columns": out_cols,
+            "rows": df[out_cols].values.tolist(),
+            "code": subdir,
+            "date": date_str,
+            "date_display": f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}",
+            "total_rows": len(df),
+            "col_names_cn": COLUMN_NAMES_CN,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================================
 # 啟動
 # ============================================================
 if __name__ == "__main__":
