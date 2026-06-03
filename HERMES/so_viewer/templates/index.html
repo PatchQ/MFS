@@ -561,13 +561,13 @@
 <div id="agg-section" style="display:none;">
   <div class="controls" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
 
-    <div class="ctrl-group">
-      <label>指數</label>
-      <select id="agg-index-select">
-        <option value="HSI">HSI 恆生指數</option>
-        <option value="HTI">HTI 恆生科技指數</option>
-        <option value="HHI">HHI 恆生中國企業指數</option>
-      </select>
+    <div class="ctrl-group" style="min-width:280px;">
+      <label>系列（搜尋指數/股票）</label>
+      <input type="text" id="agg-series-input" list="agg-series-list"
+             placeholder="輸入 HSI / HTI / HHI / 0001 / CKH / 騰訊…"
+             autocomplete="off" style="width:280px;">
+      <datalist id="agg-series-list"></datalist>
+      <span id="agg-series-info" style="font-size:11px;color:#888;margin-top:3px;display:block;"></span>
     </div>
 
     <div class="ctrl-group">
@@ -969,8 +969,8 @@
       document.getElementById('scan-section').style.display = 'none';
       document.getElementById('agg-table-wrap').style.display = 'none';
       document.getElementById('agg-section').style.display = 'block';
-      initAggTab();
-      setStatus('💡 選擇指數及日期，再點「載入」', '');
+      loadAggSeriesList();   // 第一次切到 agg tab 時先載入 series list
+      setStatus('💡 輸入 HSI/HTI/HHI 或股票編號 (如 0001)，再選擇日期', '');
     } else {
       tabIF.classList.remove('active');
       document.getElementById('tab-scan').classList.remove('active');
@@ -986,17 +986,57 @@
     }
   }
 
+  // ── Tab 4 聚合視圖：載入 series list（IO 指數 + SO 股票期權）────────────
+  let aggSeriesList = [];   // [{code, label, short, kind}, ...]
+
+  async function loadAggSeriesList() {
+    if (aggSeriesList.length > 0) return;
+    const dl = document.getElementById('agg-series-list');
+    const info = document.getElementById('agg-series-info');
+    try {
+      const res = await fetch('/api/agg/list');
+      const data = await res.json();
+      if (data.error) { info.textContent = '❌ 載入失敗'; return; }
+      aggSeriesList = data.series;
+      // 填 datalist
+      dl.innerHTML = '';
+      // IO 先
+      aggSeriesList.filter(s => s.kind === 'IO').forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.code;
+        opt.label = `📊 ${s.label}`;
+        dl.appendChild(opt);
+      });
+      // SO 後
+      aggSeriesList.filter(s => s.kind === 'SO').forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.code;
+        opt.label = `📈 ${s.label}`;
+        dl.appendChild(opt);
+      });
+      const ioCount = aggSeriesList.filter(s => s.kind === 'IO').length;
+      const soCount = aggSeriesList.filter(s => s.kind === 'SO').length;
+      info.textContent = `已載入 ${ioCount} 指數 + ${soCount} 股票期權 = ${data.total} 個系列`;
+    } catch (e) {
+      info.textContent = '❌ 載入失敗：' + e.message;
+    }
+  }
+
   // ── Tab 4 聚合視圖：初始化日期選單 ────────────
   async function initAggTab() {
-    const idx = document.getElementById('agg-index-select').value;
-    if (!idx) return;
+    const series = document.getElementById('agg-series-input').value.trim();
+    if (!series) {
+      document.getElementById('agg-series-info').textContent = '⚠️ 請先輸入系列名稱';
+      return;
+    }
     const sel = document.getElementById('agg-date-select');
     sel.innerHTML = '<option value="">載入中…</option>';
     try {
-      const res = await fetch(`/api/agg/dates?index=${encodeURIComponent(idx)}`);
+      const res = await fetch(`/api/agg/dates?series=${encodeURIComponent(series)}`);
       const data = await res.json();
       if (data.error) {
         sel.innerHTML = '<option value="">無資料</option>';
+        document.getElementById('agg-series-info').textContent = '❌ ' + data.error;
         return;
       }
       sel.innerHTML = '<option value="">— 請選擇日期 —</option>';
@@ -1007,27 +1047,35 @@
         if (i === 0) opt.selected = true;
         sel.appendChild(opt);
       });
+      document.getElementById('agg-series-info').textContent = `✅ ${data.series} 載入 ${data.dates.length} 個日期`;
     } catch (e) {
       sel.innerHTML = '<option value="">載入失敗</option>';
+      document.getElementById('agg-series-info').textContent = '❌ ' + e.message;
     }
   }
 
-  // 切換指數時重載日期
-  document.getElementById('agg-index-select').addEventListener('change', initAggTab);
+  // 切換系列時重載日期
+  document.getElementById('agg-series-input').addEventListener('change', initAggTab);
+  document.getElementById('agg-series-input').addEventListener('input', () => {
+    // 用戶開始輸入時清狀態
+    if (document.getElementById('agg-series-info').textContent.includes('✅')) {
+      document.getElementById('agg-series-info').textContent = '';
+    }
+  });
 
   // 載入聚合視圖數據
   document.getElementById('btn-load-agg').addEventListener('click', loadAggData);
 
   async function loadAggData() {
-    const idx     = document.getElementById('agg-index-select').value;
+    const series  = document.getElementById('agg-series-input').value.trim();
     const dateStr = document.getElementById('agg-date-select').value;
-    if (!idx || !dateStr) {
-      setStatus('⚠️ 請先選擇指數及日期', 'error');
+    if (!series || !dateStr) {
+      setStatus('⚠️ 請先輸入系列及選擇日期', 'error');
       return;
     }
     setStatus('⏳ 載入中…', 'loading');
     try {
-      const res = await fetch(`/api/agg/data?index=${encodeURIComponent(idx)}&date=${encodeURIComponent(dateStr)}`);
+      const res = await fetch(`/api/agg/data?series=${encodeURIComponent(series)}&date=${encodeURIComponent(dateStr)}`);
       const data = await res.json();
       if (data.error) { setStatus('❌ ' + data.error, 'error'); return; }
       renderAggTable(data);

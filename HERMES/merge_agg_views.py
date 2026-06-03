@@ -1,6 +1,6 @@
 """
-HKEX 指數期權合併視圖生成器
-為 HSI / HTI / HHI 生成「按 strike 聚合所有合約」嘅月度視圖
+HKEX 期權合併視圖生成器（指數 + 股票期權全部支援）
+為 HSI/HTI/HHI/MCH/MHI + 全部 14x 個股票期權生成「按 strike 聚合所有合約」嘅月度視圖
 由本月開始的所有合約 (含本月同未來)，相同 strike 嘅所有數值欄位相加
 """
 import os
@@ -9,17 +9,27 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
+# ============================================================
+# 路徑
+# ============================================================
 IO_M_ROOT  = Path("/root/GitHub/SData/HKEX/IO_M")
+SO_M_ROOT  = Path("/root/GitHub/SData/HKEX/SO_M")
 IO_AGG_ROOT = Path("/root/GitHub/SData/HKEX/IO_AGG")
+SO_AGG_ROOT = Path("/root/GitHub/SData/HKEX/SO_AGG")
 
-# 要生成嘅指數
-INDICES = ["HSI", "HTI", "HHI"]
+# ============================================================
+# 排除子目錄（DATA / TEMP 等）
+# ============================================================
+EXCLUDE_SUBDIRS = {"DATA", "TEMP", "_TEMP", "BAK", "OLD"}
 
+# ============================================================
 # 唔聚合（每個 strike 只取第一個值代表）嘅欄位
-# settle_price 因為唔同合約有唔同值，sum 冇意義，所以唔聚合亦唔顯示
+# ============================================================
 PASSTHROUGH_COLS = ['series']
 
+# ============================================================
 # 唔聚合（識別用）嘅欄位
+# ============================================================
 KEY_COLS = ['date', 'strike']
 
 
@@ -33,15 +43,14 @@ def get_current_year_short() -> int:
     return int(str(datetime.now().year)[-2:])
 
 
-def build_agg_view(index_code: str):
+def build_agg_view(src_dir: Path, dst_dir: Path, subdir_name: str, kind: str):
     """
-    為單一指數生成「按 strike 聚合」嘅月度視圖
+    為單一 IO 或 SO 子目錄生成「按 strike 聚合」嘅月度視圖
     只取由當月開始嘅合約，所有數值欄位都 sum
+    kind: "IO" or "SO"  (用嚟 print label)
     """
-    src_dir = IO_M_ROOT / index_code
-    dst_dir = IO_AGG_ROOT / index_code
     if not src_dir.exists():
-        print(f"  [SKIP] {index_code}: 月度檔目錄不存在")
+        print(f"  [SKIP] {kind}/{subdir_name}: 月度檔目錄不存在")
         return 0
 
     dst_dir.mkdir(parents=True, exist_ok=True)
@@ -49,7 +58,6 @@ def build_agg_view(index_code: str):
     # 取得當前月份
     cur_month_num = get_current_month_num()
     cur_year_short = get_current_year_short()
-    # 用 2 位年份，例如 26 而非 2026，跟 year_int 對齊
     cur_contract_num = cur_year_short * 100 + cur_month_num
 
     # 找出所有月度檔
@@ -61,7 +69,7 @@ def build_agg_view(index_code: str):
             monthly_files[ym] = f
 
     if not monthly_files:
-        print(f"  [SKIP] {index_code}: 冇月度檔")
+        print(f"  [SKIP] {kind}/{subdir_name}: 冇月度檔")
         return 0
 
     written = 0
@@ -69,7 +77,7 @@ def build_agg_view(index_code: str):
         try:
             df = pd.read_csv(csv_path, low_memory=False)
         except Exception as e:
-            print(f"  [WARN] {index_code}/{csv_path.name}: {e}")
+            print(f"  [WARN] {kind}/{subdir_name}/{csv_path.name}: {e}")
             continue
 
         # 過濾：由當月開始嘅合約
@@ -88,22 +96,17 @@ def build_agg_view(index_code: str):
         # 處理 strike NaN
         df['strike'] = pd.to_numeric(df['strike'], errors='coerce')
 
-        # 構建聚合字典：所有數值欄位（除 key/pass-through/excluded）都用 sum
-        # call_settle_price / put_settle_price 因為唔同合約有唔同值，sum 冇意義，唔聚合亦唔輸出
-        # call_price_change / put_price_change：今日 vs 昨日結算價差，唔同合約唔可比，唔聚合亦唔輸出
+        # 構建聚合字典
         EXCLUDED_COLS = ['call_settle_price', 'put_settle_price', 'call_price_change', 'put_price_change']
         agg_dict = {}
-        passthrough_cols_present = []
         for col in df.columns:
             if col in KEY_COLS or col in ['month_num', 'year_int', 'contract_num', 'month_abbr', 'year']:
-                continue  # 唔聚合
+                continue
             if col in EXCLUDED_COLS:
-                continue  # 完全唔包含
+                continue
             if col in PASSTHROUGH_COLS:
                 agg_dict[col] = 'first'
-                passthrough_cols_present.append(col)
                 continue
-            # 數值欄位 → sum
             if pd.api.types.is_numeric_dtype(df[col]):
                 agg_dict[col] = 'sum'
 
@@ -113,14 +116,12 @@ def build_agg_view(index_code: str):
         # groupby + agg
         grouped = df.groupby(KEY_COLS, dropna=True).agg(agg_dict).reset_index()
 
-        # 重算 call_ratio / put_ratio（turnover 加權平均，唔係 sum 原始 ratio）
-        # formula: ratio = sum(turnover) / sum(turnover_prev)
+        # 重算 ratio
         if 'call_turnover' in grouped.columns and 'call_turnover_prev' in grouped.columns:
             grouped['call_ratio'] = grouped['call_turnover'] / grouped['call_turnover_prev'].replace(0, 1)
         if 'put_turnover' in grouped.columns and 'put_turnover_prev' in grouped.columns:
             grouped['put_ratio'] = grouped['put_turnover'] / grouped['put_turnover_prev'].replace(0, 1)
 
-        # 將 ratio round 至小數點後 2 位
         for col in ['call_ratio', 'put_ratio']:
             if col in grouped.columns:
                 grouped[col] = grouped[col].round(2)
@@ -130,17 +131,14 @@ def build_agg_view(index_code: str):
             lambda x: ','.join(sorted(set(x)))
         ).reset_index(drop=True)
 
-        # 重新排序欄位：date, series, strike, call_*, strike, put_*, contract_label
+        # 重新排序欄位
         all_cols = list(grouped.columns)
-        # 將 call_settle_price 放最前，put_settle_price 放 strike 後
-        # 其餘保持原本順序
         out_cols = ['date', 'series', 'strike']
         for col in all_cols:
             if col in out_cols or col == 'contract_label':
                 continue
             out_cols.append(col)
         out_cols.append('contract_label')
-        # 只保留存在嘅欄位（去重保持順序）
         seen = set()
         out_cols = [c for c in out_cols if c in grouped.columns and not (c in seen or seen.add(c))]
 
@@ -149,28 +147,70 @@ def build_agg_view(index_code: str):
         # 排序：先日期，後 strike
         grouped = grouped.sort_values(['date', 'strike']).reset_index(drop=True)
 
-        out_path = dst_dir / f"{index_code}_{ym}_AGG.csv"
+        out_path = dst_dir / f"{subdir_name}_{ym}_AGG.csv"
         grouped.to_csv(out_path, index=False)
-        print(f"  ✅ {index_code}/{out_path.name}: {len(grouped)} rows ({len(grouped['date'].unique())} dates × {len(grouped['strike'].unique())} strikes, {len(grouped.columns)} cols)")
+        print(f"  ✅ {kind}/{out_path.name}: {len(grouped)} rows ({len(grouped['date'].unique())} dates × {len(grouped['strike'].unique())} strikes, {len(grouped.columns)} cols)")
         written += 1
 
     return written
 
 
+def scan_subdirs(root: Path) -> list:
+    """
+    掃描 root 下嘅子目錄，排除 DATA/TEMP/BAK/OLD
+    返回 [(subdir_name, subdir_path), ...]
+    """
+    if not root.exists():
+        return []
+    out = []
+    for p in sorted(root.iterdir()):
+        if not p.is_dir():
+            continue
+        if p.name in EXCLUDE_SUBDIRS or p.name.startswith('.'):
+            continue
+        # 必須有至少一個月度檔 (*_YYYYMM.csv)
+        has_monthly = any(re.search(r'_\d{6}\.csv$', f.name) for f in p.glob("*.csv"))
+        if not has_monthly:
+            continue
+        out.append((p.name, p))
+    return out
+
+
 def main():
     print("=" * 60)
-    print("HKEX 指數期權 — 聚合視圖生成器（全部數值欄位 sum）")
+    print("HKEX 期權 — 聚合視圖生成器（IO 指數 + SO 股票期權）")
     print(f"當前月份: {datetime.now().strftime('%Y-%m')}")
     print("=" * 60)
     start = datetime.now()
 
     total = 0
-    for idx in INDICES:
-        n = build_agg_view(idx)
-        total += n
+    total_series = 0
 
-    print(f"\n完成！耗時 {(datetime.now() - start).total_seconds():.1f}s")
-    print(f"總共生成 {total} 個聚合視圖")
+    # 指數期權
+    io_subdirs = scan_subdirs(IO_M_ROOT)
+    print(f"\n[IO 指數期權] 發現 {len(io_subdirs)} 個系列: {[s[0] for s in io_subdirs]}")
+    for subdir_name, subdir_path in io_subdirs:
+        n = build_agg_view(subdir_path, IO_AGG_ROOT / subdir_name, subdir_name, "IO")
+        total += n
+        if n > 0:
+            total_series += 1
+
+    # 股票期權
+    so_subdirs = scan_subdirs(SO_M_ROOT)
+    print(f"\n[SO 股票期權] 發現 {len(so_subdirs)} 個系列")
+    for subdir_name, subdir_path in so_subdirs:
+        # SO_M 子目錄係 0001_CKH 格式 → 抽出 CKH 用嚟做檔名
+        m = re.match(r'^\d+_(.+)$', subdir_name)
+        short_name = m.group(1) if m else subdir_name
+        n = build_agg_view(subdir_path, SO_AGG_ROOT / subdir_name, subdir_name, "SO")
+        total += n
+        if n > 0:
+            total_series += 1
+
+    print(f"\n{'=' * 60}")
+    print(f"完成！耗時 {(datetime.now() - start).total_seconds():.1f}s")
+    print(f"總共生成 {total} 個聚合視圖（{total_series} 個系列）")
+    print(f"輸出目錄：{IO_AGG_ROOT} + {SO_AGG_ROOT}")
 
 
 if __name__ == "__main__":

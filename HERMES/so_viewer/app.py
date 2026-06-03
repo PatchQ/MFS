@@ -895,22 +895,96 @@ def api_sp():
 
 
 # ============================================================
-# 聚合視圖 API（Tab 4 — IO 指數按 strike 聚合）
+# 聚合視圖 API（Tab 4 — IO 指數 + SO 股票期權按 strike 聚合）
 # ============================================================
 IO_AGG_ROOT = Path("/root/GitHub/SData/HKEX/IO_AGG")
+SO_AGG_ROOT = Path("/root/GitHub/SData/HKEX/SO_AGG")
+
+
+def _resolve_agg_series(series: str):
+    """
+    將 series（如 'HSI' 或 '0001_CKH'）解析成 (agg_root, subdir, short_code) tuple
+    - IO 系列 (HSI/HTI/HHI/MCH/MHI): agg_root=IO_AGG_ROOT, subdir=series, short=series
+    - SO 系列 (0001_CKH): agg_root=SO_AGG_ROOT, subdir='0001_CKH', short='CKH'
+    """
+    s = series.strip()
+    if not s:
+        return None
+    # IO 指數
+    if s.isalpha():
+        io_dir = IO_AGG_ROOT / s
+        if io_dir.exists():
+            return (IO_AGG_ROOT, s, s)
+        return None
+    # SO 股票（含數字前綴）
+    so_dir = SO_AGG_ROOT / s
+    if so_dir.exists():
+        import re as _re
+        m = _re.match(r'^\d+_(.+)$', s)
+        short = m.group(1) if m else s
+        return (SO_AGG_ROOT, s, short)
+    return None
+
+
+@app.route("/api/agg/list", methods=["GET"])
+def api_agg_list():
+    """
+    GET /
+    回傳所有可用聚合視圖系列（IO 指數 + SO 股票期權）
+    [{code, label, kind, has_data}, ...]
+    """
+    out = []
+    # IO 指數
+    if IO_AGG_ROOT.exists():
+        for p in sorted(IO_AGG_ROOT.iterdir()):
+            if p.is_dir() and list(p.glob("*_AGG.csv")):
+                out.append({
+                    "code": p.name,
+                    "label": p.name,
+                    "kind": "IO",
+                    "has_data": True,
+                })
+    # SO 股票期權
+    if SO_AGG_ROOT.exists():
+        for p in sorted(SO_AGG_ROOT.iterdir()):
+            if not p.is_dir():
+                continue
+            if not list(p.glob("*_AGG.csv")):
+                continue
+            import re as _re
+            m = _re.match(r'^(\d+)_(.+)$', p.name)
+            if m:
+                code_str = m.group(1)
+                short = m.group(2)
+                label = f"{code_str} {short}"
+            else:
+                label = p.name
+            out.append({
+                "code": p.name,
+                "label": label,
+                "short": m.group(2) if m else p.name,
+                "kind": "SO",
+                "has_data": True,
+            })
+    return jsonify({"series": out, "total": len(out)})
 
 
 @app.route("/api/agg/dates", methods=["GET"])
 def api_agg_dates():
     """
-    GET ?index=HSI
-    回傳該指數聚合視圖嘅可用日期（從最新月度檔抽取）
+    GET ?series=HSI  或  ?series=0001_CKH
+    回傳該系列聚合視圖嘅可用日期（從最新月度檔抽取）
     """
-    idx = request.args.get("index", "").strip().upper()
-    if idx not in ["HSI", "HTI", "HHI"]:
-        return jsonify({"error": f"不支援指數：{idx}"}), 400
+    series = request.args.get("series", "").strip()
+    if not series:
+        return jsonify({"error": "需要 series 參數"}), 400
 
-    agg_dir = IO_AGG_ROOT / idx
+    resolved = _resolve_agg_series(series)
+    if not resolved:
+        return jsonify({"error": f"找不到系列：{series}"}), 404
+    agg_root, subdir, _short = resolved
+
+    agg_dir = agg_root / subdir
     if not agg_dir.exists():
         return jsonify({"error": f"找不到聚合視圖目錄：{agg_dir}"}), 404
 
@@ -927,7 +1001,7 @@ def api_agg_dates():
         return jsonify({"error": f"讀取失敗：{e}"}), 500
 
     return jsonify({
-        "index": idx,
+        "series": subdir,
         "dates": dates,
         "file": files[0].name,
     })
@@ -936,16 +1010,21 @@ def api_agg_dates():
 @app.route("/api/agg/data", methods=["GET"])
 def api_agg_data():
     """
-    GET ?index=HSI&date=20260601
-    回傳該指數某日嘅聚合視圖（按 strike 聚合本月起所有合約）
+    GET ?series=HSI&date=20260601  或  ?series=0001_CKH&date=20260601
+    回傳該系列某日嘅聚合視圖（按 strike 聚合本月起所有合約）
     """
-    idx     = request.args.get("index", "").strip().upper()
+    series  = request.args.get("series", "").strip()
     date_str = request.args.get("date", "").strip()
 
-    if idx not in ["HSI", "HTI", "HHI"]:
-        return jsonify({"error": f"不支援指數：{idx}"}), 400
+    if not series:
+        return jsonify({"error": "需要 series 參數"}), 400
     if not date_str:
         return jsonify({"error": "需要 date 參數"}), 400
+
+    resolved = _resolve_agg_series(series)
+    if not resolved:
+        return jsonify({"error": f"找不到系列：{series}"}), 404
+    agg_root, subdir, _short = resolved
 
     # 標準化 date (e.g. 20260601)
     date_str = str(date_str).split(".")[0].zfill(8)
@@ -953,7 +1032,7 @@ def api_agg_data():
     # 判斷月份 (20260601 → 202606)
     ym = date_str[:6]
 
-    csv_path = IO_AGG_ROOT / idx / f"{idx}_{ym}_AGG.csv"
+    csv_path = agg_root / subdir / f"{subdir}_{ym}_AGG.csv"
     if not csv_path.exists():
         return jsonify({"error": f"找不到聚合檔：{csv_path.name}"}), 404
 
@@ -995,7 +1074,7 @@ def api_agg_data():
         return jsonify({
             "columns": out_cols,
             "rows": df[out_cols].values.tolist(),
-            "code": idx,
+            "code": subdir,
             "date": date_str,
             "date_display": f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}",
             "total_rows": len(df),
