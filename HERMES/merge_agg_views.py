@@ -112,6 +112,18 @@ def build_agg_view(index_code: str):
         # groupby + agg
         grouped = df.groupby(KEY_COLS, dropna=True).agg(agg_dict).reset_index()
 
+        # 重算 call_ratio / put_ratio（turnover 加權平均，唔係 sum 原始 ratio）
+        # formula: ratio = sum(turnover) / sum(turnover_prev)
+        if 'call_turnover' in grouped.columns and 'call_turnover_prev' in grouped.columns:
+            grouped['call_ratio'] = grouped['call_turnover'] / grouped['call_turnover_prev'].replace(0, 1)
+        if 'put_turnover' in grouped.columns and 'put_turnover_prev' in grouped.columns:
+            grouped['put_ratio'] = grouped['put_turnover'] / grouped['put_turnover_prev'].replace(0, 1)
+
+        # 將 ratio 同 price_change round 至小數點後 2 位
+        for col in ['call_ratio', 'put_ratio', 'call_price_change', 'put_price_change']:
+            if col in grouped.columns:
+                grouped[col] = grouped[col].round(2)
+
         # contract_label 用 group 內去重版
         grouped['contract_label'] = df.groupby(KEY_COLS, dropna=True)['contract_label'].apply(
             lambda x: ','.join(sorted(set(x)))
