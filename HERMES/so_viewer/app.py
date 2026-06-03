@@ -972,14 +972,28 @@ def api_agg_data():
 
         df = df.fillna("")
 
-        # 欄位順序：剔除 date 同 series（前端會隱藏）
-        columns = [c for c in df.columns if c not in ("date",)]
-        # 但要保留 date 同 series 喺資料內（前端用嚟判斷）
-        # 唔好，乾脆前端處理好過，呢度剔除
+        # 欄位順序：與 OI 期權一致（Strike 放中間）
+        # OI 順序：series, month_num, month_abbr, year, call_*, strike, put_*
+        # 聚合視圖冇 month_abbr/year（已聚合），但保持 call_* 全部 → strike → put_* → contract_label
+        OUTPUT_COLS = [
+            "series",
+            "call_price_change", "call_ratio", "call_deals",
+            "call_turnover_change", "call_turnover_prev", "call_turnover",
+            "call_net_change", "call_net",
+            "call_gross_change", "call_gross_prev", "call_gross",
+            "strike",
+            "put_gross", "put_gross_prev", "put_gross_change",
+            "put_net", "put_net_change",
+            "put_turnover", "put_turnover_prev", "put_turnover_change",
+            "put_deals", "put_ratio", "put_price_change",
+            "contract_label",
+        ]
+        # 只保留實際存在嘅欄位
+        out_cols = [c for c in OUTPUT_COLS if c in df.columns]
 
         return jsonify({
-            "columns": list(df.columns),
-            "rows": df.values.tolist(),
+            "columns": out_cols,
+            "rows": df[out_cols].values.tolist(),
             "code": idx,
             "date": date_str,
             "date_display": f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}",
