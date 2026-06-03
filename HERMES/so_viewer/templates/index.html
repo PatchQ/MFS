@@ -559,7 +559,7 @@
 
 <!-- 聚合視圖控制面板 -->
 <div id="agg-section" style="display:none;">
-  <div class="controls" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+  <div class="controls" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
 
     <div class="ctrl-group" style="min-width:280px;">
       <label>系列（搜尋指數/股票）</label>
@@ -578,6 +578,34 @@
     </div>
 
     <button class="btn-load" id="btn-load-agg">🔍 載入</button>
+
+    <!-- Tab 4 專用股價面板（跟 Tab 1 一致風格，置右） -->
+    <div id="agg-sp-panel" style="display:none; margin-left:auto; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12px; min-width:200px;">
+      <div style="color:var(--text-dim); font-size:10px; margin-bottom:4px;">📈 <span id="agg-sp-label">—</span></div>
+      <div style="display:flex; gap:16px; align-items:center;">
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim)">開</div>
+          <div id="agg-sp-open" style="font-size:15px;font-weight:700;color:var(--text)">—</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim)">高</div>
+          <div id="agg-sp-high" style="font-size:15px;font-weight:700;color:var(--green)">—</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim)">低</div>
+          <div id="agg-sp-low" style="font-size:15px;font-weight:700;color:var(--red)">—</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim)">收</div>
+          <div id="agg-sp-close" style="font-size:18px;font-weight:700;color:#fff">—</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim)">成交量</div>
+          <div id="agg-sp-vol" style="font-size:11px;color:var(--text-dim)">—</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1081,8 +1109,62 @@
       renderAggTable(data);
       infoEl.textContent = `${data.code} [聚合視圖] ｜ ${data.date_display} ｜ ${data.total_rows} 行`;
       setStatus(`✅ 顯示 ${data.total_rows} 行`, 'ok');
+      // 載入現貨價面板（跟 Tab 1 一致）
+      loadAggSPPrice(series, dateStr);
     } catch (e) {
       setStatus('❌ 載入失敗：' + e.message, 'error');
+    }
+  }
+
+  // ── Tab 4 載入現貨價面板 ─────────────────────────────
+  // IO 指數：HSI / HTI / HHI 直接用
+  // SO 股票：'0001_CKH' → 抽出 '0001' 傳俾 yfinance
+  async function loadAggSPPrice(series, dateStr) {
+    const panel = document.getElementById('agg-sp-panel');
+
+    // 解析 series → 真正嘅 yfinance code
+    // IO: 'HSI' / 'HTI' / 'HHI' / 'MCH' / 'MHI'
+    // SO: '0001_CKH' → '0001'
+    let code = series;
+    if (/_/.test(series)) {
+      const m = series.match(/^(\d{4})_/);
+      if (m) code = m[1];
+    }
+
+    try {
+      const res = await fetch(`/api/sp?code=${encodeURIComponent(code)}&date=${encodeURIComponent(dateStr)}`);
+      const sp = await res.json();
+
+      if (sp.error) {
+        panel.style.display = 'none';
+        return;
+      }
+
+      const fmt = (v) => {
+        if (!v && v !== 0) return '—';
+        const f = parseFloat(v);
+        if (isNaN(f)) return '—';
+        return f.toFixed(2);
+      };
+      const fmtVol = (v) => {
+        if (!v) return '—';
+        const f = parseFloat(v);
+        if (isNaN(f)) return '—';
+        if (f >= 1e6) return (f / 1e6).toFixed(1) + 'M';
+        if (f >= 1e3) return (f / 1e3).toFixed(0) + 'K';
+        return f.toString();
+      };
+
+      document.getElementById('agg-sp-label').textContent = `${code} 現貨`;
+      document.getElementById('agg-sp-open').textContent  = fmt(sp.open);
+      document.getElementById('agg-sp-high').textContent  = fmt(sp.high);
+      document.getElementById('agg-sp-low').textContent   = fmt(sp.low);
+      document.getElementById('agg-sp-close').textContent = fmt(sp.close);
+      document.getElementById('agg-sp-vol').textContent   = fmtVol(sp.volume);
+
+      panel.style.display = 'flex';
+    } catch (e) {
+      panel.style.display = 'none';
     }
   }
 
