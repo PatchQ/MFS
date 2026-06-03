@@ -16,7 +16,8 @@ IO_AGG_ROOT = Path("/root/GitHub/SData/HKEX/IO_AGG")
 INDICES = ["HSI", "HTI", "HHI"]
 
 # 唔聚合（每個 strike 只取第一個值代表）嘅欄位
-PASSTHROUGH_COLS = ['series', 'call_settle_price', 'put_settle_price']
+# settle_price 因為唔同合約有唔同值，sum 冇意義，所以唔聚合亦唔顯示
+PASSTHROUGH_COLS = ['series']
 
 # 唔聚合（識別用）嘅欄位
 KEY_COLS = ['date', 'strike']
@@ -87,12 +88,16 @@ def build_agg_view(index_code: str):
         # 處理 strike NaN
         df['strike'] = pd.to_numeric(df['strike'], errors='coerce')
 
-        # 構建聚合字典：所有數值欄位（除 key/pass-through）都用 sum
+        # 構建聚合字典：所有數值欄位（除 key/pass-through/excluded）都用 sum
+        # call_settle_price / put_settle_price 因為唔同合約有唔同值，sum 冇意義，唔聚合亦唔輸出
+        EXCLUDED_COLS = ['call_settle_price', 'put_settle_price']
         agg_dict = {}
         passthrough_cols_present = []
         for col in df.columns:
             if col in KEY_COLS or col in ['month_num', 'year_int', 'contract_num', 'month_abbr', 'year']:
                 continue  # 唔聚合
+            if col in EXCLUDED_COLS:
+                continue  # 完全唔包含
             if col in PASSTHROUGH_COLS:
                 agg_dict[col] = 'first'
                 passthrough_cols_present.append(col)
