@@ -90,7 +90,8 @@ def build_agg_view(index_code: str):
 
         # 構建聚合字典：所有數值欄位（除 key/pass-through/excluded）都用 sum
         # call_settle_price / put_settle_price 因為唔同合約有唔同值，sum 冇意義，唔聚合亦唔輸出
-        EXCLUDED_COLS = ['call_settle_price', 'put_settle_price']
+        # call_price_change / put_price_change：今日 vs 昨日結算價差，唔同合約唔可比，唔聚合亦唔輸出
+        EXCLUDED_COLS = ['call_settle_price', 'put_settle_price', 'call_price_change', 'put_price_change']
         agg_dict = {}
         passthrough_cols_present = []
         for col in df.columns:
@@ -119,8 +120,8 @@ def build_agg_view(index_code: str):
         if 'put_turnover' in grouped.columns and 'put_turnover_prev' in grouped.columns:
             grouped['put_ratio'] = grouped['put_turnover'] / grouped['put_turnover_prev'].replace(0, 1)
 
-        # 將 ratio 同 price_change round 至小數點後 2 位
-        for col in ['call_ratio', 'put_ratio', 'call_price_change', 'put_price_change']:
+        # 將 ratio round 至小數點後 2 位
+        for col in ['call_ratio', 'put_ratio']:
             if col in grouped.columns:
                 grouped[col] = grouped[col].round(2)
 
