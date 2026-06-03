@@ -1,7 +1,7 @@
 """
 HKEX 指數期權合併視圖生成器
 為 HSI / HTI / HHI 生成「按 strike 聚合所有合約」嘅月度視圖
-由本月開始的所有合約 (含本月同未來)，相同 strike 嘅 call_net / put_net / 各成交量相加
+由本月開始的所有合約 (含本月同未來)，相同 strike 嘅所有數值欄位相加
 """
 import os
 import re
@@ -15,23 +15,11 @@ IO_AGG_ROOT = Path("/root/GitHub/SData/HKEX/IO_AGG")
 # 要生成嘅指數
 INDICES = ["HSI", "HTI", "HHI"]
 
-# 要聚合嘅數值欄位
-AGG_COLS = {
-    "call_net_change": "sum",
-    "call_net": "sum",
-    "call_turnover": "sum",
-    "call_turnover_prev": "sum",
-    "call_gross_change": "sum",
-    "call_gross": "sum",
-    "call_deals": "sum",
-    "put_net_change": "sum",
-    "put_net": "sum",
-    "put_turnover": "sum",
-    "put_turnover_prev": "sum",
-    "put_gross_change": "sum",
-    "put_gross": "sum",
-    "put_deals": "sum",
-}
+# 唔聚合（每個 strike 只取第一個值代表）嘅欄位
+PASSTHROUGH_COLS = ['series', 'call_settle_price', 'put_settle_price']
+
+# 唔聚合（識別用）嘅欄位
+KEY_COLS = ['date', 'strike']
 
 
 def get_current_month_num() -> int:
@@ -47,7 +35,7 @@ def get_current_year_short() -> int:
 def build_agg_view(index_code: str):
     """
     為單一指數生成「按 strike 聚合」嘅月度視圖
-    只取由當月開始嘅合約
+    只取由當月開始嘅合約，所有數值欄位都 sum
     """
     src_dir = IO_M_ROOT / index_code
     dst_dir = IO_AGG_ROOT / index_code
@@ -99,36 +87,45 @@ def build_agg_view(index_code: str):
         # 處理 strike NaN
         df['strike'] = pd.to_numeric(df['strike'], errors='coerce')
 
-        # 為每個 (date, strike) 聚合
-        agg_dict = {col: 'sum' for col in AGG_COLS if col in df.columns}
-        # 用 first 取 call_settle_price 同 put_settle_price 嘅代表值
-        first_cols = ['call_settle_price', 'put_settle_price', 'series']
-        for col in first_cols:
-            if col in df.columns:
+        # 構建聚合字典：所有數值欄位（除 key/pass-through）都用 sum
+        agg_dict = {}
+        passthrough_cols_present = []
+        for col in df.columns:
+            if col in KEY_COLS or col in ['month_num', 'year_int', 'contract_num', 'month_abbr', 'year']:
+                continue  # 唔聚合
+            if col in PASSTHROUGH_COLS:
                 agg_dict[col] = 'first'
+                passthrough_cols_present.append(col)
+                continue
+            # 數值欄位 → sum
+            if pd.api.types.is_numeric_dtype(df[col]):
+                agg_dict[col] = 'sum'
 
-        # 記錄涉及嘅合約月份（每個 (date, strike) 內先 group 去重再加逗號）
+        # 記錄涉及嘅合約月份
         df['contract_label'] = df['month_abbr'] + df['year_int'].astype(str).str.zfill(2)
 
-        grouped = df.groupby(['date', 'strike'], dropna=True).agg(agg_dict).reset_index()
+        # groupby + agg
+        grouped = df.groupby(KEY_COLS, dropna=True).agg(agg_dict).reset_index()
+
         # contract_label 用 group 內去重版
-        grouped['contract_label'] = df.groupby(['date', 'strike'], dropna=True)['contract_label'].apply(
+        grouped['contract_label'] = df.groupby(KEY_COLS, dropna=True)['contract_label'].apply(
             lambda x: ','.join(sorted(set(x)))
         ).reset_index(drop=True)
 
-        # 重新排序欄位
-        out_cols = [
-            'date', 'series', 'strike',
-            'call_settle_price', 'call_net_change', 'call_net',
-            'call_turnover', 'call_turnover_prev', 'call_deals',
-            'call_gross', 'call_gross_change',
-            'put_settle_price', 'put_net_change', 'put_net',
-            'put_turnover', 'put_turnover_prev', 'put_deals',
-            'put_gross', 'put_gross_change',
-            'contract_label',
-        ]
-        # 只保留存在嘅欄位
-        out_cols = [c for c in out_cols if c in grouped.columns]
+        # 重新排序欄位：date, series, strike, call_*, strike, put_*, contract_label
+        all_cols = list(grouped.columns)
+        # 將 call_settle_price 放最前，put_settle_price 放 strike 後
+        # 其餘保持原本順序
+        out_cols = ['date', 'series', 'strike']
+        for col in all_cols:
+            if col in out_cols or col == 'contract_label':
+                continue
+            out_cols.append(col)
+        out_cols.append('contract_label')
+        # 只保留存在嘅欄位（去重保持順序）
+        seen = set()
+        out_cols = [c for c in out_cols if c in grouped.columns and not (c in seen or seen.add(c))]
+
         grouped = grouped[out_cols]
 
         # 排序：先日期，後 strike
@@ -136,7 +133,7 @@ def build_agg_view(index_code: str):
 
         out_path = dst_dir / f"{index_code}_{ym}_AGG.csv"
         grouped.to_csv(out_path, index=False)
-        print(f"  ✅ {index_code}/{out_path.name}: {len(grouped)} rows ({len(grouped['date'].unique())} dates × {len(grouped['strike'].unique())} strikes)")
+        print(f"  ✅ {index_code}/{out_path.name}: {len(grouped)} rows ({len(grouped['date'].unique())} dates × {len(grouped['strike'].unique())} strikes, {len(grouped.columns)} cols)")
         written += 1
 
     return written
@@ -144,7 +141,7 @@ def build_agg_view(index_code: str):
 
 def main():
     print("=" * 60)
-    print("HKEX 指數期權 — 聚合視圖生成器")
+    print("HKEX 指數期權 — 聚合視圖生成器（全部數值欄位 sum）")
     print(f"當前月份: {datetime.now().strftime('%Y-%m')}")
     print("=" * 60)
     start = datetime.now()
