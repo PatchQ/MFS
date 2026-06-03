@@ -60,6 +60,8 @@ def build_agg_view(index_code: str):
     # 取得當前月份
     cur_month_num = get_current_month_num()
     cur_year_short = get_current_year_short()
+    # 用 2 位年份，例如 26 而非 2026，跟 year_int 對齊
+    cur_contract_num = cur_year_short * 100 + cur_month_num
 
     # 找出所有月度檔
     monthly_files = {}
@@ -89,7 +91,6 @@ def build_agg_view(index_code: str):
         df['month_num'] = df['month_abbr'].astype(str).map(month_to_num)
         df['year_int'] = df['year'].fillna(0).astype(int)
         df['contract_num'] = df['year_int'] * 100 + df['month_num']
-        cur_contract_num = cur_year_short * 100 + cur_month_num
         df = df[df['contract_num'] >= cur_contract_num]
 
         if df.empty:
@@ -106,11 +107,14 @@ def build_agg_view(index_code: str):
             if col in df.columns:
                 agg_dict[col] = 'first'
 
-        # 記錄涉及嘅合約月份
+        # 記錄涉及嘅合約月份（每個 (date, strike) 內先 group 去重再加逗號）
         df['contract_label'] = df['month_abbr'] + df['year_int'].astype(str).str.zfill(2)
-        agg_dict['contract_label'] = lambda x: ','.join(sorted(set(x)))
 
         grouped = df.groupby(['date', 'strike'], dropna=True).agg(agg_dict).reset_index()
+        # contract_label 用 group 內去重版
+        grouped['contract_label'] = df.groupby(['date', 'strike'], dropna=True)['contract_label'].apply(
+            lambda x: ','.join(sorted(set(x)))
+        ).reset_index(drop=True)
 
         # 重新排序欄位
         out_cols = [
