@@ -773,19 +773,16 @@
       return new Set(sorted.slice(0, 3));
     };
 
-    // 所有要 Top-3 highlight 的欄位
-    const TOP_COLS = [
-      'call_turnover_prev', 'call_turnover', 'call_net_change', 'call_net',
-      'call_gross_prev',    'call_gross',
-      'put_gross',          'put_gross_prev',
-      'put_net_change',     'put_net',
-      'put_turnover',      'put_turnover_prev',
-      'put_ratio',
-    ];
+    // 自動偵測所有數值欄位做 Top-3 highlight（除 date/strike/series）
+    const EXCLUDE_TOP_COLS = new Set(['date', 'strike', 'series', 'contract_label']);
     const topVals = {};
-    TOP_COLS.forEach(col => {
-      const idx = data.columns.indexOf(col);
-      if (idx >= 0) topVals[col] = getTopVals(data.rows, idx);
+    data.columns.forEach((col, idx) => {
+      if (EXCLUDE_TOP_COLS.has(col)) return;
+      // 只處理數值欄位
+      const sampleVal = data.rows.find(r => r[idx] !== '' && r[idx] !== null && r[idx] !== undefined)?.[idx];
+      if (typeof sampleVal === 'number' || (typeof sampleVal === 'string' && !isNaN(parseFloat(sampleVal)))) {
+        topVals[col] = getTopVals(data.rows, idx);
+      }
     });
 
     theadEl.innerHTML = '';
@@ -814,7 +811,7 @@
         let val = row[i];
 
         const numVal = parseFloat(val) || 0;
-        if (TOP_COLS.includes(col) && topVals[col].has(numVal)) td.classList.add('top-cell');
+        if (topVals[col] && topVals[col].has(numVal)) td.classList.add('top-cell');
 
         if (val === '' || val === null || val === undefined ||
             (typeof val === 'number' && isNaN(val))) {
@@ -1050,18 +1047,15 @@
       return new Set(sorted.slice(0, 3));
     };
 
-    const TOP_COLS = [
-      'call_turnover_prev', 'call_turnover', 'call_net_change', 'call_net',
-      'call_gross_prev',    'call_gross',
-      'put_gross',          'put_gross_prev',
-      'put_net_change',     'put_net',
-      'put_turnover',      'put_turnover_prev',
-      'put_ratio',
-    ];
+    // 自動偵測所有數值欄位做 Top-3 highlight（除 date/strike/series）
+    const EXCLUDE_TOP_COLS_AGG = new Set(['date', 'strike', 'series', 'contract_label']);
     const topVals = {};
-    TOP_COLS.forEach(col => {
-      const idx = data.columns.indexOf(col);
-      if (idx >= 0) topVals[col] = getTopVals(data.rows, idx);
+    data.columns.forEach((col, idx) => {
+      if (EXCLUDE_TOP_COLS_AGG.has(col)) return;
+      const sampleVal = data.rows.find(r => r[idx] !== '' && r[idx] !== null && r[idx] !== undefined)?.[idx];
+      if (typeof sampleVal === 'number' || (typeof sampleVal === 'string' && !isNaN(parseFloat(sampleVal)))) {
+        topVals[col] = getTopVals(data.rows, idx);
+      }
     });
 
     const aggThead = document.getElementById('agg-table-head');
@@ -1096,7 +1090,7 @@
         let val = row[i];
 
         const numVal = parseFloat(val) || 0;
-        if (TOP_COLS.includes(col) && topVals[col].has(numVal)) td.classList.add('top-cell');
+        if (topVals[col] && topVals[col].has(numVal)) td.classList.add('top-cell');
 
         if (val === '' || val === null || val === undefined ||
             (typeof val === 'number' && isNaN(val))) {
@@ -1252,22 +1246,16 @@
     const displayCols = ["date_display", "month_label", "gross", "gross_change", "net", "net_change", "rise_fall", "settle_price", "turnover", "deals_ratio", "deals"];
     const colKeys = displayCols;
 
-    // Top-3 highlight columns
-    const getTopVals = (rows, colIdx) => {
-      const vals = rows.map(r => parseFloat(r[colIdx]) || 0);
+    // 自動偵測所有數值欄位做 Top-3 highlight（除 date_display/month_label/rise_fall）
+    const EXCLUDE_TOP_COLS_IF = new Set(['date_display', 'month_label']);
+    const ifTopVals = {};
+    data.columns.forEach((col, idx) => {
+      if (EXCLUDE_TOP_COLS_IF.has(col)) return;
+      const vals = data.rows.map(r => parseFloat(r[idx])).filter(v => !isNaN(v));
+      if (vals.length === 0) return;
       const sorted = [...new Set(vals)].sort((a, b) => b - a);
-      return new Set(sorted.slice(0, 3));
-    };
-
-    const netIdx          = data.columns.indexOf('net');
-    const netChangeIdx    = data.columns.indexOf('net_change');
-    const turnoverIdx     = data.columns.indexOf('turnover');
-    const dealsRatioIdx   = data.columns.indexOf('deals_ratio');
-
-    const topNet         = getTopVals(data.rows, netIdx);
-    const topNetChange   = getTopVals(data.rows, netChangeIdx);
-    const topTurnover    = getTopVals(data.rows, turnoverIdx);
-    const topDealsRatio  = getTopVals(data.rows, dealsRatioIdx);
+      ifTopVals[col] = new Set(sorted.slice(0, 3));
+    });
 
     theadEl.innerHTML = '';
     const tr = document.createElement('tr');
@@ -1295,11 +1283,8 @@
 
         const numVal = parseFloat(val);
 
-        // Top-3 red highlight
-        if (col === 'net'          && topNet.has(numVal))         td.classList.add('top-cell');
-        if (col === 'net_change'   && topNetChange.has(numVal))    td.classList.add('top-cell');
-        if (col === 'turnover'     && topTurnover.has(numVal))      td.classList.add('top-cell');
-        if (col === 'deals_ratio'  && topDealsRatio.has(numVal))   td.classList.add('top-cell');
+        // Top-3 red highlight（自動偵測所有數值欄位）
+        if (ifTopVals[col] && ifTopVals[col].has(numVal)) td.classList.add('top-cell');
 
         if (col === 'rise_fall' && !isNaN(numVal)) {
           if (numVal > 0) td.classList.add('val-pos');
@@ -1390,6 +1375,17 @@
     // 排序後的數據
     let rows = data.rows.slice();
 
+    // 自動偵測所有數值欄位做 Top-3 highlight（除 date/strike/code/month_label/contract_label）
+    const EXCLUDE_TOP_COLS_SCAN = new Set(['date', 'strike', 'code', 'month_label', 'contract_label']);
+    const scanTopVals = {};
+    data.columns.forEach((col, idx) => {
+      if (EXCLUDE_TOP_COLS_SCAN.has(col)) return;
+      const vals = data.rows.map(r => parseFloat(r[idx])).filter(v => !isNaN(v));
+      if (vals.length === 0) return;
+      const sorted = [...new Set(vals)].sort((a, b) => b - a);
+      scanTopVals[col] = new Set(sorted.slice(0, 3));
+    });
+
     theadEl.innerHTML = '';
     const tr = document.createElement('tr');
     // Use data.columns order (not col_names_cn key insertion order)
@@ -1460,6 +1456,10 @@
           td.textContent = numVal.toLocaleString('en-US');
           if (numVal > 0) td.classList.add('val-pos');
           else if (numVal < 0) td.classList.add('val-neg');
+          // Top 3 highlight
+          if (scanTopVals[colName] && scanTopVals[colName].has(numVal)) {
+            td.classList.add('top-cell');
+          }
         } else {
           td.textContent = val;
         }
