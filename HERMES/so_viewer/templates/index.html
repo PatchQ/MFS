@@ -1508,7 +1508,7 @@
           ? `自定義: ${stockCodes}`
           : {'all':'全部','SO':'股票期權SO','HSI':'HSI','HTI':'HTI','HHI':'HHI'}[f.product_type] || f.product_type;
         const trunc = data.truncated ? ' ⚠️ 已截斷（最多5000行）' : '';
-        const ratioStr = f.ratio_threshold > 0 ? ` ｜ 比率變化≥${f.ratio_threshold}%` : '';
+        const ratioStr = f.ratio_threshold > 0 ? ` ｜ 比率≥${f.ratio_threshold}` : '';
         setStatus(
           `✅ 找到 ${data.total_rows} 行${trunc} ｜ 淨數≥${f.threshold}${ratioStr} ｜ ${f.month_range} ｜ ${f.side} ｜ ${ptLabel}`,
           'ok'

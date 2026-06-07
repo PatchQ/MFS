@@ -316,7 +316,7 @@ def api_scan():
       month_start / year_start: 合約月份範圍起點（可選）
       month_end   / year_end:   合約月份範圍終點（可選）
       threshold:  淨數變化閾值（默認 1000）
-      ratio_threshold: 比率變化閾值（%，默認 0 = 不過濾）
+      ratio_threshold: 比率變化閾值（直接用 call/put_ratio 原始值，默認 0 = 不過濾）
       side:       call | put | both（默認 both）
     """
     date_from   = request.args.get("date_from", "").strip()
@@ -460,15 +460,15 @@ def api_scan():
             mask_call = pd.to_numeric(cn_col, errors='coerce').fillna(0).astype(float).abs() >= threshold
             mask_put  = pd.to_numeric(pn_col, errors='coerce').fillna(0).astype(float).abs() >= threshold
 
-            # 比率變化 filter（|call_ratio - 1| * 100% >= ratio_threshold）
+            # 比率變化 filter（直接用 call_ratio / put_ratio 原始值 >= ratio_threshold）
             # 0 = 唔過濾
             if ratio_threshold > 0:
-                cr_col = df['call_ratio'] if 'call_ratio' in df.columns else pd.Series([1.0]*len(df))
-                pr_col = df['put_ratio']  if 'put_ratio'  in df.columns else pd.Series([1.0]*len(df))
-                ratio_change_call = (pd.to_numeric(cr_col, errors='coerce').fillna(1.0).astype(float) - 1.0).abs() * 100
-                ratio_change_put  = (pd.to_numeric(pr_col, errors='coerce').fillna(1.0).astype(float) - 1.0).abs() * 100
-                mask_ratio_call = ratio_change_call >= ratio_threshold
-                mask_ratio_put  = ratio_change_put  >= ratio_threshold
+                cr_col = df['call_ratio'] if 'call_ratio' in df.columns else pd.Series([0.0]*len(df))
+                pr_col = df['put_ratio']  if 'put_ratio'  in df.columns else pd.Series([0.0]*len(df))
+                ratio_call = pd.to_numeric(cr_col, errors='coerce').fillna(0.0).astype(float)
+                ratio_put  = pd.to_numeric(pr_col, errors='coerce').fillna(0.0).astype(float)
+                mask_ratio_call = ratio_call >= ratio_threshold
+                mask_ratio_put  = ratio_put  >= ratio_threshold
                 mask_call = mask_call & mask_ratio_call
                 mask_put  = mask_put  & mask_ratio_put
             else:
