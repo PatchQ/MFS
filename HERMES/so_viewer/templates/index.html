@@ -544,6 +544,12 @@
     <input type="number" id="scan-threshold" value="1000" min="0" style="width:80px;" />
   </div>
 
+  <!-- 比率變化閾值（C/P turnover 比率變化，百分比） -->
+  <div class="ctrl-group">
+    <label>比率變化 ≥</label>
+    <input type="number" id="scan-ratio-threshold" value="0" min="0" style="width:80px;" />
+  </div>
+
   <!-- 方向 -->
   <div class="ctrl-group">
     <label>方向</label>
@@ -1471,6 +1477,7 @@
     const monthEnd   = document.getElementById('scan-month-end').value;
     const yearEnd    = document.getElementById('scan-year-end').value;
     const threshold  = document.getElementById('scan-threshold').value;
+    const ratioThreshold = document.getElementById('scan-ratio-threshold').value;
     const side       = document.getElementById('scan-side').value;
     const productType = document.getElementById('scan-product-type').value;
     const stockCodes  = document.getElementById('scan-stock-codes').value.trim();
@@ -1483,7 +1490,7 @@
     setStatus('⏳ 掃描中（需時數秒）…', 'loading');
 
     try {
-      const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo, threshold, side, product_type: productType });
+      const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo, threshold, ratio_threshold: ratioThreshold, side, product_type: productType });
       if (stockCodes) params.set('stock_codes', stockCodes);
       if (monthStart) params.set('month_start', monthStart);
       if (yearStart)  params.set('year_start', yearStart);
@@ -1501,8 +1508,9 @@
           ? `自定義: ${stockCodes}`
           : {'all':'全部','SO':'股票期權SO','HSI':'HSI','HTI':'HTI','HHI':'HHI'}[f.product_type] || f.product_type;
         const trunc = data.truncated ? ' ⚠️ 已截斷（最多5000行）' : '';
+        const ratioStr = f.ratio_threshold > 0 ? ` ｜ 比率變化≥${f.ratio_threshold}%` : '';
         setStatus(
-          `✅ 找到 ${data.total_rows} 行${trunc} ｜ 閾值≥${f.threshold} ｜ ${f.month_range} ｜ ${f.side} ｜ ${ptLabel}`,
+          `✅ 找到 ${data.total_rows} 行${trunc} ｜ 淨數≥${f.threshold}${ratioStr} ｜ ${f.month_range} ｜ ${f.side} ｜ ${ptLabel}`,
           'ok'
         );
     } catch (e) {

@@ -316,6 +316,7 @@ def api_scan():
       month_start / year_start: 合約月份範圍起點（可選）
       month_end   / year_end:   合約月份範圍終點（可選）
       threshold:  淨數變化閾值（默認 1000）
+      ratio_threshold: 比率變化閾值（%，默認 0 = 不過濾）
       side:       call | put | both（默認 both）
     """
     date_from   = request.args.get("date_from", "").strip()
@@ -325,6 +326,7 @@ def api_scan():
     month_end   = request.args.get("month_end",   "").upper()
     year_end    = request.args.get("year_end",    "").strip()
     threshold   = int(request.args.get("threshold", 1000))
+    ratio_threshold = int(request.args.get("ratio_threshold", 0))  # 0 = 唔過濾
     side        = request.args.get("side", "both").lower()
     product_type = request.args.get("product_type", "all").lower()  # all | io | so
 
@@ -458,6 +460,21 @@ def api_scan():
             mask_call = pd.to_numeric(cn_col, errors='coerce').fillna(0).astype(float).abs() >= threshold
             mask_put  = pd.to_numeric(pn_col, errors='coerce').fillna(0).astype(float).abs() >= threshold
 
+            # 比率變化 filter（|call_ratio - 1| * 100% >= ratio_threshold）
+            # 0 = 唔過濾
+            if ratio_threshold > 0:
+                cr_col = df['call_ratio'] if 'call_ratio' in df.columns else pd.Series([1.0]*len(df))
+                pr_col = df['put_ratio']  if 'put_ratio'  in df.columns else pd.Series([1.0]*len(df))
+                ratio_change_call = (pd.to_numeric(cr_col, errors='coerce').fillna(1.0).astype(float) - 1.0).abs() * 100
+                ratio_change_put  = (pd.to_numeric(pr_col, errors='coerce').fillna(1.0).astype(float) - 1.0).abs() * 100
+                mask_ratio_call = ratio_change_call >= ratio_threshold
+                mask_ratio_put  = ratio_change_put  >= ratio_threshold
+                mask_call = mask_call & mask_ratio_call
+                mask_put  = mask_put  & mask_ratio_put
+            else:
+                # ratio_threshold == 0 唔過濾（保持 mask 只反映淨數變化）
+                pass
+
             if side == 'call':
                 df = df[mask_call]
             elif side == 'put':
@@ -518,6 +535,7 @@ def api_scan():
             "date_to": date_to,
             "month_range": f"{month_start}{year_start}～{month_end}{year_end}" if month_start else "全部",
             "threshold": threshold,
+            "ratio_threshold": ratio_threshold,
             "side": side,
             "product_type": product_type,
             "stock_codes": stock_codes_raw,
