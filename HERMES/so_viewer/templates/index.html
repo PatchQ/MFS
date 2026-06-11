@@ -1186,7 +1186,10 @@
 
     const getTopVals = (rows, colIdx, reverse = false) => {
       const vals = rows.map(r => parseFloat(r[colIdx]) || 0);
-      const sorted = [...new Set(vals)].sort((a, b) => reverse ? a - b : b - a);
+      // 排除 0/正數：reverse 模式只計真正負數（用戶語意：最少 = 最負）
+      const filtered = reverse ? vals.filter(v => v < 0) : vals.filter(v => v > 0);
+      if (filtered.length === 0) return new Set();  // 冇正/負值就唔 highlight
+      const sorted = [...new Set(filtered)].sort((a, b) => reverse ? a - b : b - a);
       return new Set(sorted.slice(0, 3));
     };
 
