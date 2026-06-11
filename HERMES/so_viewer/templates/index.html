@@ -1184,9 +1184,9 @@
     ]);
     const RATIO_COLS  = new Set(['call_ratio', 'put_ratio']);
 
-    const getTopVals = (rows, colIdx) => {
+    const getTopVals = (rows, colIdx, reverse = false) => {
       const vals = rows.map(r => parseFloat(r[colIdx]) || 0);
-      const sorted = [...new Set(vals)].sort((a, b) => b - a);
+      const sorted = [...new Set(vals)].sort((a, b) => reverse ? a - b : b - a);
       return new Set(sorted.slice(0, 3));
     };
 
@@ -1197,12 +1197,22 @@
       'call_price_change', 'put_price_change',
       'strike', 'series', 'code', 'contract_label'
     ]);
+    // 6 個負值欄位（_reduce）改為取最少 3 個 highlight（負數最低 = 最大減倉）
+    const BOTTOM_TOP_COLS_AGG = new Set([
+      'call_turnover_change_reduce',  // CVolc-
+      'call_net_change_reduce',       // C淨數c-
+      'call_gross_change_reduce',     // COIc-
+      'put_turnover_change_reduce',   // PVolc-
+      'put_net_change_reduce',        // P淨數c-
+      'put_gross_change_reduce',      // POIc-
+    ]);
     const topVals = {};
     data.columns.forEach((col, idx) => {
       if (EXCLUDE_TOP_COLS_AGG.has(col)) return;
       const sampleVal = data.rows.find(r => r[idx] !== '' && r[idx] !== null && r[idx] !== undefined)?.[idx];
       if (typeof sampleVal === 'number' || (typeof sampleVal === 'string' && !isNaN(parseFloat(sampleVal)))) {
-        topVals[col] = getTopVals(data.rows, idx);
+        const isBottom = BOTTOM_TOP_COLS_AGG.has(col);
+        topVals[col] = getTopVals(data.rows, idx, isBottom);
       }
     });
 
