@@ -1077,25 +1077,27 @@ def api_agg_data():
 
         # 欄位順序：與 OI 期權一致（Strike 放中間）
         # OI 順序：series, month_num, month_abbr, year, call_*, strike, put_*
-        # 聚合視圖冇 month_abbr/year（已聚合），但保持 call_* 全部 → strike → put_* → contract_label
-        # 排除 call/put_settle_price 同 call/put_price_change（唔同合約唔可比）
-        # *_change 已拆成 _add (正值加總) + _reduce (負值加總)，避免 sum=0 嘅假象
+        # 聚合視圖自訂欄位順序（用戶指定 21 欄 + 識別欄 date/series/contract_label）
+        # 排除 *_prev、call/put_deals、settle_price 等輔助欄
+        # *_change 已拆成 _add (正值加總) + _reduce (負值加總)
         OUTPUT_COLS = [
-            "series",
-            "call_ratio", "call_deals",
-            "call_turnover_change_add", "call_turnover_change_reduce",
-            "call_turnover_prev", "call_turnover",
-            "call_net_change_add", "call_net_change_reduce", "call_net",
-            "call_gross_change_add", "call_gross_change_reduce",
-            "call_gross_prev", "call_gross",
-            "strike",
-            "put_gross", "put_gross_prev",
-            "put_gross_change_add", "put_gross_change_reduce",
-            "put_net", "put_net_change_add", "put_net_change_reduce",
-            "put_turnover", "put_turnover_prev",
-            "put_turnover_change_add", "put_turnover_change_reduce",
-            "put_deals", "put_ratio",
-            "contract_label",
+            "date", "series",  # 識別欄
+            "call_ratio",  # 1. C比率
+            "call_turnover_change_reduce", "call_turnover_change_add",  # 2-3. CVolc-, CVolc+
+            "call_turnover",  # 4. CVol
+            "call_net_change_reduce", "call_net_change_add",  # 5-6. C淨數c-, C淨數c+
+            "call_net",  # 7. C淨數
+            "call_gross_change_reduce", "call_gross_change_add",  # 8-9. COIc-, COIc+
+            "call_gross",  # 10. COI
+            "strike",  # 11. 行使價
+            "put_gross",  # 12. POI
+            "put_gross_change_add", "put_gross_change_reduce",  # 13-14. POIc+, POIc-
+            "put_net",  # 15. P淨數
+            "put_net_change_add", "put_net_change_reduce",  # 16-17. P淨數c+, P淨數c-
+            "put_turnover",  # 18. PVol
+            "put_turnover_change_add", "put_turnover_change_reduce",  # 19-20. PVolc+, PVolc-
+            "put_ratio",  # 21. P比率
+            "contract_label",  # 合約月份
         ]
         # 只保留實際存在嘅欄位
         out_cols = [c for c in OUTPUT_COLS if c in df.columns]
