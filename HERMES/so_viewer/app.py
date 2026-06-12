@@ -55,13 +55,16 @@ COLUMN_NAMES_CN = {
     "call_price_change":   "C價c",
     "call_ratio":          "C比率",
     "call_deals":          "C數",
-    "call_turnover_change_add":    "CVolc+",
-    "call_turnover_change_reduce": "CVolc-",
+    "call_turnover_change":       "CVolc",       # 未拆分（Tab 1 顯示用）
+    "call_turnover_change_add":   "CVolc+",
+    "call_turnover_change_reduce":"CVolc-",
     "call_turnover_prev":  "C上日Vol",
     "call_turnover":       "CVol",
+    "call_net_change":     "C淨數c",       # 未拆分（Tab 1 顯示用）
     "call_net_change_add":     "C淨數c+",
     "call_net_change_reduce":  "C淨數c-",
     "call_net":            "C淨數",
+    "call_gross_change":       "COIc",        # 未拆分（Tab 1 顯示用）
     "call_gross_change_add":   "COIc+",
     "call_gross_change_reduce":"COIc-",
     "call_gross_prev":     "C上日OI",
@@ -69,13 +72,16 @@ COLUMN_NAMES_CN = {
     "strike":              "行使價",
     "put_gross":           "POI",
     "put_gross_prev":      "P上日OI",
+    "put_gross_change":        "POIc",        # 未拆分（Tab 1 顯示用）
     "put_gross_change_add":    "POIc+",
     "put_gross_change_reduce": "POIc-",
     "put_net":             "P淨數",
+    "put_net_change":          "P淨數c",      # 未拆分（Tab 1 顯示用）
     "put_net_change_add":      "P淨數c+",
     "put_net_change_reduce":   "P淨數c-",
     "put_turnover":        "PVol",
     "put_turnover_prev":   "P上日Vol",
+    "put_turnover_change":     "PVolc",       # 未拆分（Tab 1 顯示用）
     "put_turnover_change_add":    "PVolc+",
     "put_turnover_change_reduce": "PVolc-",
     "put_deals":           "P數",
