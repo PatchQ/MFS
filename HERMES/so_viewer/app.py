@@ -47,6 +47,10 @@ FIXED_YEARS = [str(y) for y in range(26, 37)]  # 26 ~ 36
 # 中英欄位對照表
 # ============================================================
 COLUMN_NAMES_CN = {
+    "date_from":         "日期FROM",
+    "date_to":           "日期TO",
+    "days_in_range":     "日數",
+    "date":              "日期",
     "series":              None,
     "month_num":           "日",
     "month_abbr":          "月",
@@ -1040,52 +1044,120 @@ def api_agg_dates():
 @app.route("/api/agg/data", methods=["GET"])
 def api_agg_data():
     """
-    GET ?series=HSI&date=20260601  或  ?series=0001_CKH&date=20260601
-    回傳該系列某日嘅聚合視圖（按 strike 聚合本月起所有合約）
+    GET ?series=HSI&date=20260601                          (單日)
+    GET ?series=HSI&date_from=20260601&date_to=20260613    (日期範圍 + 累加 12 個 _change 欄位)
+    回傳該系列嘅聚合視圖（按 strike 聚合本月起所有合約）
+    日期範圍：1 row per strike，12 個 _change 欄位累加，其他欄位取 date_to 該日値
     """
-    series  = request.args.get("series", "").strip()
-    date_str = request.args.get("date", "").strip()
+    series    = request.args.get("series", "").strip()
+    date_str  = request.args.get("date", "").strip()
+    date_from = request.args.get("date_from", "").strip()
+    date_to   = request.args.get("date_to", "").strip()
 
     if not series:
         return jsonify({"error": "需要 series 參數"}), 400
-    if not date_str:
-        return jsonify({"error": "需要 date 參數"}), 400
+
+    # 決定日期模式
+    range_mode = bool(date_from and date_to)
+    if range_mode:
+        date_from = str(date_from).split(".")[0].zfill(8)
+        date_to   = str(date_to).split(".")[0].zfill(8)
+        if date_from > date_to:
+            return jsonify({"error": f"date_from ({date_from}) 不可大於 date_to ({date_to})"}), 400
+    elif date_str:
+        date_str = str(date_str).split(".")[0].zfill(8)
+        date_from = date_to = date_str
+    else:
+        return jsonify({"error": "需要 date 或 date_from+date_to 參數"}), 400
 
     resolved = _resolve_agg_series(series)
     if not resolved:
         return jsonify({"error": f"找不到系列：{series}"}), 404
     agg_root, subdir, _short = resolved
 
-    # 標準化 date (e.g. 20260601)
-    date_str = str(date_str).split(".")[0].zfill(8)
-
-    # 判斷月份 (20260601 → 202606)
-    ym = date_str[:6]
-
+    # 判斷月份（取 date_to 嘅月份，因為 CSV 按月存）
+    ym = date_to[:6]
     csv_path = agg_root / subdir / f"{subdir}_{ym}_AGG.csv"
     if not csv_path.exists():
         return jsonify({"error": f"找不到聚合檔：{csv_path.name}"}), 404
 
     try:
         df = pd.read_csv(csv_path, low_memory=False)
-        # 過濾為該日期
         df["date"] = df["date"].astype(str).str.zfill(8)
-        df = df[df["date"] == date_str]
+        # 過濾日期範圍
+        df = df[(df["date"] >= date_from) & (df["date"] <= date_to)]
 
         if df.empty:
-            return jsonify({"error": f"{date_str} 冇資料"}), 404
+            return jsonify({"error": f"{date_from} ~ {date_to} 冇資料"}), 404
 
         # strike NaN 過濾
         df = df.dropna(subset=["strike"])
         df = df[df["strike"] != ""]
 
-        df = df.fillna("")
+        # 12 個 _change 欄位（要累加）
+        CHANGE_ADD_COLS = [
+            "call_turnover_change_add",
+            "call_net_change_add",
+            "call_gross_change_add",
+            "put_turnover_change_add",
+            "put_net_change_add",
+            "put_gross_change_add",
+        ]
+        CHANGE_REDUCE_COLS = [
+            "call_turnover_change_reduce",
+            "call_net_change_reduce",
+            "call_gross_change_reduce",
+            "put_turnover_change_reduce",
+            "put_net_change_reduce",
+            "put_gross_change_reduce",
+        ]
+        CHANGE_COLS = CHANGE_ADD_COLS + CHANGE_REDUCE_COLS  # 12 個
+
+        # 識別欄：date, series, contract_label, strike
+        ID_COLS = ["date", "series", "contract_label", "strike"]
+
+        if range_mode:
+            # ── 日期範圍模式：1 row per strike ──
+            # 1. 12 個 _change 欄位按 strike 累加
+            agg_dict = {c: "sum" for c in CHANGE_COLS if c in df.columns}
+            df_agg = df.groupby("strike", as_index=False).agg(agg_dict)
+
+            # 2. 其他欄位（call_turnover / call_net / call_gross / put_* / call_ratio / put_ratio）
+            #    取 date_to 該日該 strike 嘅値
+            df_last = df[df["date"] == date_to]
+            if df_last.empty:
+                # date_to 冇資料 → 用 date_to 之前最近一日
+                available_dates = sorted(df["date"].unique(), reverse=True)
+                if not available_dates:
+                    return jsonify({"error": f"{date_from} ~ {date_to} 範圍內 date_to 冇資料"}), 404
+                df_last = df[df["date"] == available_dates[0]]
+            df_last = df_last.drop_duplicates(subset=["strike"], keep="last")
+
+            OTHER_COLS = [c for c in df.columns
+                          if c not in CHANGE_COLS
+                          and c not in ID_COLS
+                          and c not in ["month_num", "month_abbr", "year"]]
+            # 將其他欄位從 df_last merge 落 df_agg（用 strike join）
+            keep_cols = ["strike"] + [c for c in OTHER_COLS if c in df_last.columns]
+            df_agg = df_agg.merge(df_last[keep_cols], on="strike", how="left")
+
+            # 3. 加 date_from / date_to 標記 + days count
+            df_agg["date"] = date_to  # 顯示用：結束日期
+            df_agg["date_from"] = date_from
+            df_agg["date_to"] = date_to
+            # 每個 strike 喺範圍內出現嘅天數
+            days_per_strike = df.groupby("strike")["date"].nunique().reset_index()
+            days_per_strike.columns = ["strike", "days_in_range"]
+            df_agg = df_agg.merge(days_per_strike, on="strike", how="left")
+
+            df_final = df_agg
+        else:
+            # ── 單日模式：保留原邏輯 ──
+            df_final = df
+
+        df_final = df_final.fillna("")
 
         # 欄位順序：與 OI 期權一致（Strike 放中間）
-        # OI 順序：series, month_num, month_abbr, year, call_*, strike, put_*
-        # 聚合視圖自訂欄位順序（用戶指定 21 欄 + 識別欄 date/series/contract_label）
-        # 排除 *_prev、call/put_deals、settle_price 等輔助欄
-        # *_change 已拆成 _add (正值加總) + _reduce (負值加總)
         OUTPUT_COLS = [
             "date", "series",  # 識別欄
             "call_ratio",  # 1. C比率
@@ -1105,16 +1177,33 @@ def api_agg_data():
             "put_ratio",  # 21. P比率
             "contract_label",  # 合約月份
         ]
+        # range_mode 加 date_from / date_to / days_in_range
+        if range_mode:
+            OUTPUT_COLS = ["date_from", "date_to", "days_in_range"] + OUTPUT_COLS
+
         # 只保留實際存在嘅欄位
-        out_cols = [c for c in OUTPUT_COLS if c in df.columns]
+        out_cols = [c for c in OUTPUT_COLS if c in df_final.columns]
+
+        # 處理 numeric (JSON 唔識 NaN，NaN 變 "")
+        for c in out_cols:
+            if df_final[c].dtype == object and c not in ("date", "date_from", "date_to", "contract_label", "series"):
+                try:
+                    df_final[c] = pd.to_numeric(df_final[c], errors="coerce").fillna("")
+                except Exception:
+                    pass
 
         return jsonify({
             "columns": out_cols,
-            "rows": df[out_cols].values.tolist(),
+            "rows": df_final[out_cols].values.tolist(),
             "code": subdir,
-            "date": date_str,
-            "date_display": f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}",
-            "total_rows": len(df),
+            "date": date_to if range_mode else date_str,
+            "date_from": date_from,
+            "date_to": date_to,
+            "date_display": (f"{date_to[:4]}-{date_to[4:6]}-{date_to[6:8]}"
+                             if not range_mode
+                             else f"{date_from[:4]}-{date_from[4:6]}-{date_from[6:8]} ~ {date_to[:4]}-{date_to[4:6]}-{date_to[6:8]}"),
+            "total_rows": len(df_final),
+            "range_mode": range_mode,
             "col_names_cn": COLUMN_NAMES_CN,
         })
     except Exception as e:
