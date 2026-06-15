@@ -28,9 +28,9 @@ IO_M_ROOT = Path("/root/GitHub/SData/HKEX/IO_M")
 
 # IF 指數列表
 IF_INDICES = [
-    {"code": "HSI", "label": "HSI (恒生指數期貨)", "yf_code": "^HSI"},
-    {"code": "HTI", "label": "HTI (恒生科指期貨)", "yf_code": "HSTECH.HK"},
-    {"code": "HHI", "label": "HHI (恒生中國企業指數)", "yf_code": "^HSCE"},
+    {"code": "HSI", "label": "HSI", "yf_code": "^HSI"},
+    {"code": "HTI", "label": "HTI", "yf_code": "HSTECH.HK"},
+    {"code": "HHI", "label": "HHI", "yf_code": "^HSCE"},
 ]
 
 # ============================================================
@@ -391,12 +391,20 @@ def api_scan():
 
     products = get_product_list()
     product_type = request.args.get("product_type", "all").lower()  # all | so | hsi | hti | hhi
-    stock_codes_raw = request.args.get("stock_codes", "").strip()  # e.g. "9992, 0175, 2318"
+    stock_codes_raw = request.args.get("stock_codes", "").strip()  # e.g. "9992, 0175, 2318" 或 "HSI, HTI, HHI, 0001, 0700"
 
-    # 優先：自定義股票編號清單（覆蓋 product_type）
+    # 優先：自定義清單（IO 個股指數 + SO 股票編號都可）
     if stock_codes_raw:
-        code_list = [c.strip().zfill(4) for c in stock_codes_raw.split(",") if c.strip().isdigit() or c.strip().lstrip('0').isdigit()]
-        products = [p for p in products if p["code"] in code_list and p["type"] == "SO"]
+        # 分類：IO（純字母）vs SO（純數字）
+        tokens = [c.strip() for c in stock_codes_raw.split(",") if c.strip()]
+        io_codes = [t.upper() for t in tokens if t.isalpha()]   # HSI, HTI, HHI
+        so_codes = [t.zfill(4) for t in tokens if t.lstrip('0').isdigit() or t.isdigit()]  # 0001, 0700, 1810
+        # 合併篩選：products 要嘛 code 在 io_codes，要嘛 code 在 so_codes
+        products = [
+            p for p in products
+            if (p["type"] == "IO" and p["code"] in io_codes)
+            or (p["type"] == "SO" and p["code"] in so_codes)
+        ]
     elif product_type == 'all':
         pass  # scan all
     elif product_type == 'so':
@@ -510,7 +518,7 @@ def api_scan():
                 strike  = row.get('strike', '')
 
                 result_rows.append([
-                    pcode,
+                    p.get("label") or pcode,  # 顯示 "0001 CKH" / "HSI" 而非只 "0001"
                     r_date,
                     m_label,
                     row.get('call_turnover_prev', ''),
@@ -1219,6 +1227,6 @@ if __name__ == "__main__":
     print("  HKEX Option Viewer（SO + IO）")
     print(f"  SO Root: {SO_ROOT}")
     print(f"  IO Root: {IO_ROOT}")
-    print(f"  URL:     http://0.0.0.0:80")
+    print(f"  URL:     http://0.0.0.0:8080  (backend API only — frontend served by v2 on :80)")
     print("=" * 60)
-    app.run(host="0.0.0.0", port=80, debug=False)
+    app.run(host="0.0.0.0", port=8080, debug=False)
