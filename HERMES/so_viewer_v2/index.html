@@ -484,9 +484,11 @@ select option {
 /* Column filter row (SCAN tab) */
 .data-table th .col-filter {
   display: block;
-  width: 100%;
+  width: auto;
+  min-width: 28px;
+  max-width: 70px;
   margin-top: 4px;
-  padding: 3px 6px;
+  padding: 2px 4px;
   font-size: 11px;
   font-family: var(--mono);
   background: var(--surface);
@@ -1416,15 +1418,24 @@ class TableView {
         }
       }, label);
       th.appendChild(lblSpan);
-      // Filter input
-      if (showFilters) {
-        // Pick input type based on column type
-        const sample = rows.find(r => r[columns.indexOf(col)] !== '' && r[columns.indexOf(col)] != null);
-        const isNum = sample && !isNaN(parseFloat(sample[columns.indexOf(col)]));
+      // Filter input (skip date column — too noisy to type YYYYMMDD)
+      if (showFilters && col !== 'date') {
+        // Pick input type + placeholder based on column
+        let inpType, inpPh;
+        if (col === 'code') {
+          inpType = 'text'; inpPh = 'HSI, 0700';
+        } else if (col === 'month_label') {
+          inpType = 'text'; inpPh = 'JUN26';
+        } else {
+          const sample = rows.find(r => r[columns.indexOf(col)] !== '' && r[columns.indexOf(col)] != null);
+          const isNum = sample && !isNaN(parseFloat(sample[columns.indexOf(col)]));
+          inpType = isNum ? 'number' : 'text';
+          inpPh = isNum ? '≥ 0' : '過濾';
+        }
         const inp = el('input', {
-          type: isNum ? 'number' : 'text',
+          type: inpType,
           class: 'col-filter',
-          placeholder: isNum ? '≥ 0' : '過濾',
+          placeholder: inpPh,
           value: this._colFilters[col] || '',
           onInput: (e) => {
             const val = e.target.value;
