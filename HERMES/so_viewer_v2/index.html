@@ -795,6 +795,14 @@ footer {
 
   .btn { flex: 0 0 auto; }
 
+  /* Filter bar — shrink to match data table font-size for visual hierarchy */
+  .field-label { font-size: 10px; }
+  .filterbar input,
+  .filterbar select,
+  .filterbar textarea,
+  select option { font-size: 12px; }
+  .filterbar .btn { font-size: 12px; padding: 4px 10px; min-height: 28px; }
+
   .summary {
     padding: 12px var(--pad);
     font-size: 13px;
@@ -882,9 +890,6 @@ footer {
   <main>
     <!-- OI Tab -->
     <section class="page" id="page-oi" hidden>
-      <div class="page-head">
-        <h1 class="page-title">OI</h1>
-      </div>
       <div class="filter-toggle-row">
         <button class="btn btn-ghost" id="filter-toggle-oi" style="flex:0 0 auto">⚙ 篩選條件</button>
         <div class="chip-row" id="chip-row-oi"></div>
@@ -896,9 +901,6 @@ footer {
 
     <!-- IF Tab -->
     <section class="page" id="page-if" hidden>
-      <div class="page-head">
-        <h1 class="page-title">IF</h1>
-      </div>
       <div class="filter-toggle-row">
         <button class="btn btn-ghost" id="filter-toggle-if" style="flex:0 0 auto">⚙ 篩選條件</button>
         <div class="chip-row" id="chip-row-if"></div>
@@ -910,9 +912,6 @@ footer {
 
     <!-- SCAN Tab -->
     <section class="page" id="page-scan" hidden>
-      <div class="page-head">
-        <h1 class="page-title">SCAN</h1>
-      </div>
       <div class="filter-toggle-row">
         <button class="btn btn-ghost" id="filter-toggle-scan" style="flex:0 0 auto">⚙ 篩選條件</button>
         <div class="chip-row" id="chip-row-scan"></div>
@@ -924,9 +923,6 @@ footer {
 
     <!-- AGG Tab -->
     <section class="page" id="page-agg" hidden>
-      <div class="page-head">
-        <h1 class="page-title">AGG</h1>
-      </div>
       <div class="filter-toggle-row">
         <button class="btn btn-ghost" id="filter-toggle-agg" style="flex:0 0 auto">⚙ 篩選條件</button>
         <div class="chip-row" id="chip-row-agg"></div>
@@ -1091,9 +1087,9 @@ const Status = {
    Column Mappings (mirroring v1 app.py COLUMN_NAMES_CN + template IF_COL_CN)
    ============================================================ */
 const COLUMN_NAMES_CN = {
-  date_from:         '日期FROM',
-  date_to:           '日期TO',
-  days_in_range:     '日數',
+  date_from:         null,        // hidden in AGG default (no range mode)
+  date_to:           null,
+  days_in_range:     null,
   series:              null,        // null = hide column
   month_num:           '日',
   month_abbr:          '月',
@@ -1469,8 +1465,8 @@ const OITab = (() => {
     bar.append(
       field('產品', select('oi-product', [{ value: '', label: '— 載入中…' }], (v) => { state.code = v; onProductChange(); }, 'oi-product')),
       field('日期', select('oi-date', [{ value: '', label: '— 揀產品先 —' }], (v) => { state.date = v; /* 唔 auto-load — 等用戶 click「↻ 載入」 */ }, 'oi-date')),
-      field('合約月', select('oi-month', [{ value: '', label: '全部' }, ...MONTHS.map(m => ({ value: m, label: m }))], (v) => { state.month = v; /* 唔 auto-load */ }, 'oi-month')),
-      field('年份', input('oi-year', 'e.g. 26', (v) => { state.year = v; /* 唔 auto-load */ }, 'oi-year', '120px')),
+      field('月', select('oi-month', [{ value: '', label: '全部' }, ...MONTHS.map(m => ({ value: m, label: m }))], (v) => { state.month = v; /* 唔 auto-load */ }, 'oi-month')),
+      field('年', input('oi-year', 'e.g. 26', (v) => { state.year = v; /* 唔 auto-load */ }, 'oi-year', '120px')),
       el('div', { class: 'field' }, el('button', { class: 'btn', onClick: load }, '↻ 載入')),
       el('div', { class: 'field' }, el('button', { class: 'btn btn-ghost', onClick: reset }, '↺ 重置')),
     );
@@ -1599,10 +1595,10 @@ const IFTab = (() => {
     const years = ['25','26','27','28','29','30'];
     bar.append(
       field('指數', select('if-code', [{ value: '', label: '— 載入中…' }], null, 'if-code', '160px')),
-      field('合約月', select('if-months', [{ value: '', label: '全部' }, ...MONTHS.map(m => ({ value: m, label: m }))], (v) => { state.months = v; /* 唔 auto-load — 等用戶 click「↻ 載入」 */ }, 'if-months')),
-      field('年份', select('if-year', [{ value: '', label: '全部' }, ...years.map(y => ({ value: y, label: '20' + y }))], (v) => { state.year = v; /* 唔 auto-load — 等用戶 click「↻ 載入」 */ }, 'if-year')),
-      field('日期 FROM', dateInput('if-from', (v) => { state.date_from = v; /* 唔 auto-load */ }, 'if-from', state.date_from)),
-      field('TO', dateInput('if-to', (v) => { state.date_to = v; /* 唔 auto-load */ }, 'if-to', state.date_to)),
+      field('月', select('if-months', [{ value: '', label: '全部' }, ...MONTHS.map(m => ({ value: m, label: m }))], (v) => { state.months = v; /* 唔 auto-load — 等用戶 click「↻ 載入」 */ }, 'if-months')),
+      field('年', select('if-year', [{ value: '', label: '全部' }, ...years.map(y => ({ value: y, label: '20' + y }))], (v) => { state.year = v; /* 唔 auto-load — 等用戶 click「↻ 載入」 */ }, 'if-year')),
+      field('起', dateInput('if-from', (v) => { state.date_from = v; /* 唔 auto-load */ }, 'if-from', state.date_from)),
+      field('止', dateInput('if-to', (v) => { state.date_to = v; /* 唔 auto-load */ }, 'if-to', state.date_to)),
       el('div', { class: 'field' }, el('button', { class: 'btn', onClick: load }, '↻ 載入')),
       el('div', { class: 'field' }, el('button', { class: 'btn btn-ghost', onClick: reset }, '↺ 重置')),
     );
@@ -1721,14 +1717,14 @@ const SCANTab = (() => {
     const bar = $('#filterbar-scan');
     bar.innerHTML = '';
     bar.append(
-      field('日期 FROM', dateInput('scan-from', (v) => { state.date_from = v; }, 'scan-from', state.date_from)),
-      field('TO', dateInput('scan-to', (v) => { state.date_to = v; }, 'scan-to', state.date_to)),
-      field('月份 起', select('scan-ms', [{ value: '', label: '全部' }, ...MONTHS.map(m => ({ value: m, label: m }))], (v) => { state.month_start = v; }, 'scan-ms')),
+      field('起', dateInput('scan-from', (v) => { state.date_from = v; }, 'scan-from', state.date_from)),
+      field('止', dateInput('scan-to', (v) => { state.date_to = v; }, 'scan-to', state.date_to)),
+      field('月起', select('scan-ms', [{ value: '', label: '全部' }, ...MONTHS.map(m => ({ value: m, label: m }))], (v) => { state.month_start = v; }, 'scan-ms')),
       field('年', input('scan-ys', 'YY', (v) => { state.year_start = v; }, 'scan-ys', '70px')),
-      field('月份 終', select('scan-me', [{ value: '', label: '全部' }, ...MONTHS.map(m => ({ value: m, label: m }))], (v) => { state.month_end = v; }, 'scan-me')),
+      field('月止', select('scan-me', [{ value: '', label: '全部' }, ...MONTHS.map(m => ({ value: m, label: m }))], (v) => { state.month_end = v; }, 'scan-me')),
       field('年', input('scan-ye', 'YY', (v) => { state.year_end = v; }, 'scan-ye', '70px')),
-      field('淨數閾值', input('scan-thr', '0', (v) => { state.threshold = Number(v) || 0; }, 'scan-thr', '90px')),
-      field('比率閾值', input('scan-ratio', '100', (v) => { state.ratio_threshold = Number(v) || 0; }, 'scan-ratio', '90px')),
+      field('淨數', input('scan-thr', '0', (v) => { state.threshold = Number(v) || 0; }, 'scan-thr', '90px')),
+      field('比率', input('scan-ratio', '100', (v) => { state.ratio_threshold = Number(v) || 0; }, 'scan-ratio', '90px')),
       field('Side', select('scan-side', [
         { value: 'both', label: 'Call+Put' },
         { value: 'call', label: 'Call' },
@@ -1797,7 +1793,7 @@ const SCANTab = (() => {
    AGG Tab
    ============================================================ */
 const AGGTab = (() => {
-  let state = { series: '', date: '', isRange: true, dateFrom: '20260601', dateTo: '20260613' };
+  let state = { series: 'HSI', date: '', isRange: false, dateFrom: '20260601', dateTo: '20260613' };
   let series = [];
   let dates = [];
   let table;
@@ -1835,12 +1831,12 @@ const AGGTab = (() => {
     if (state.isRange) {
       const _toDate = (v) => v && v.length === 8 ? `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}` : '';
       bar.append(
-        field('日期FROM', el('input', {
+        field('起', el('input', {
           type: 'date', id: 'agg-date-from', value: _toDate(state.dateFrom), class: 'input-date',
           style: { width: '130px' },
           onChange: (e) => { state.dateFrom = e.target.value.replace(/-/g, ''); /* 唔 auto-load */ },
         })),
-        field('日期TO', el('input', {
+        field('止', el('input', {
           type: 'date', id: 'agg-date-to', value: _toDate(state.dateTo), class: 'input-date',
           style: { width: '130px' },
           onChange: (e) => { state.dateTo = e.target.value.replace(/-/g, ''); /* 唔 auto-load */ },
@@ -1854,9 +1850,9 @@ const AGGTab = (() => {
   }
 
   async function reset() {
-    state.series = '';
+    state.series = 'HSI';
     state.date = '';
-    state.isRange = true;
+    state.isRange = false;
     state.dateFrom = '20260601';
     state.dateTo = '20260613';
     renderFilters();
@@ -1939,7 +1935,12 @@ const AGGTab = (() => {
     Status.load(`Loading AGG ${label}…`);
     table.render('Loading…', null, null);
     try {
-      const data = await API.aggData(state.series, state.date, state.dateFrom, state.dateTo);
+      // isRange=false 時，唔送 dateFrom/dateTo，避免 backend 走範圍 mode
+      const data = await API.aggData(
+        state.series, state.date,
+        state.isRange ? state.dateFrom : '',
+        state.isRange ? state.dateTo   : ''
+      );
       renderSummary(data);
       table.render(false, null, data);
       const rangeTag = data.range_mode ? ' (累加模式)' : '';
