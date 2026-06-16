@@ -480,6 +480,33 @@ select option {
 }
 
 .data-table th:hover { color: var(--ink); }
+
+/* Column filter row (SCAN tab) */
+.data-table th .col-filter {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-family: var(--mono);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--ink);
+  cursor: text;
+  pointer-events: auto;
+}
+.data-table th .col-filter:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg);
+}
+.data-table th .col-filter::placeholder {
+  color: var(--muted-2);
+  font-family: var(--mono);
+}
+.data-table th { cursor: default; }  /* override pointer since th click is on label, filter is separate */
+.data-table th .col-label { cursor: pointer; }
 .data-table th.text-left, .data-table td.text-left { text-align: left; }
 .data-table th.text-center, .data-table td.text-center { text-align: center; }
 
@@ -1195,10 +1222,12 @@ class TableView {
     // options: {
     //   mode: 'oi' | 'if' | 'scan' | 'agg'  (controls which columns to show)
     //   defaultSort: { col, dir }
+    //   columnFilters: true | false  (default false; enable for SCAN tab)
     // }
     this.sortKey = null;
     this.sortDir = 'desc';
     this._currentData = null;
+    this._colFilters = {};   // { colKey: filterString }
   }
 
   render(loading, error, data) {
@@ -1320,13 +1349,40 @@ class TableView {
       }
     }
     let sortedRows = rows;
+
+    // Apply column filters (before sort) — SCAN tab only
+    if (this.options.columnFilters && Object.keys(this._colFilters).length > 0) {
+      sortedRows = sortedRows.filter(row => {
+        return displayCols.every(col => {
+          const f = this._colFilters[col];
+          if (!f) return true;
+          const idx = columns.indexOf(col);
+          if (idx < 0) return true;
+          const v = row[idx];
+          if (v === '' || v === null || v === undefined) return false;
+          const fStr = String(f).trim();
+          if (fStr === '') return true;
+          // Number column: parseFloat and compare ≥ filter
+          const numV = parseFloat(v);
+          if (!isNaN(numV)) {
+            const numF = parseFloat(fStr);
+            if (!isNaN(numF)) {
+              return numV >= numF;
+            }
+          }
+          // Text/date column: case-insensitive substring match
+          return String(v).toLowerCase().includes(fStr.toLowerCase());
+        });
+      });
+    }
+
     if (this.sortKey != null) {
       const k = this.sortKey;
       const dir = this.sortDir === 'asc' ? 1 : -1;
       const keyCol = displayCols[k];
       const keyIdx = columns.indexOf(keyCol);
       if (keyIdx >= 0) {
-        sortedRows = [...rows].sort((a, b) => {
+        sortedRows = [...sortedRows].sort((a, b) => {
           const av = a[keyIdx], bv = b[keyIdx];
           const an = Number(av), bn = Number(bv);
           if (Number.isFinite(an) && Number.isFinite(bn)) return (an - bn) * dir;
@@ -1338,11 +1394,16 @@ class TableView {
     // Build header
     const thead = el('thead', {});
     const trh = el('tr', {});
+    const showFilters = !!this.options.columnFilters;
     displayCols.forEach((col, i) => {
       const label = colCn[col] ?? col;
       const th = el('th', {
         class: (i === this.sortKey ? 'sorted' : '') + (this.sortDir === 'asc' && i === this.sortKey ? ' asc' : '') + (STRIKE_COLS.has(col) ? ' strike-col' : ''),
         title: col,
+      });
+      // Label span — click to sort (only if filters enabled; otherwise th itself is clickable)
+      const lblSpan = el('span', {
+        class: 'col-label',
         onClick: () => {
           if (this.sortKey === i) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
           else {
@@ -1354,6 +1415,27 @@ class TableView {
           this.render(false, null, data);
         }
       }, label);
+      th.appendChild(lblSpan);
+      // Filter input
+      if (showFilters) {
+        // Pick input type based on column type
+        const sample = rows.find(r => r[columns.indexOf(col)] !== '' && r[columns.indexOf(col)] != null);
+        const isNum = sample && !isNaN(parseFloat(sample[columns.indexOf(col)]));
+        const inp = el('input', {
+          type: isNum ? 'number' : 'text',
+          class: 'col-filter',
+          placeholder: isNum ? '≥ 0' : '過濾',
+          value: this._colFilters[col] || '',
+          onInput: (e) => {
+            const val = e.target.value;
+            if (val === '') delete this._colFilters[col];
+            else this._colFilters[col] = val;
+            this.render(false, null, data);
+          },
+          onClick: (e) => e.stopPropagation(),  // 唔 trigger th click
+        });
+        th.appendChild(inp);
+      }
       trh.appendChild(th);
     });
     thead.appendChild(trh);
@@ -1715,6 +1797,7 @@ const SCANTab = (() => {
     table = new TableView($('#table-scan'), {
       mode: 'scan',
       defaultSort: { col: 'date', dir: 'desc' },
+      columnFilters: true,    // 啟用每 column header 過濾
     });
     renderFilters();
     // **唔預先載入** — render placeholder
