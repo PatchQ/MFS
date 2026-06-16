@@ -1815,8 +1815,8 @@ const AGGTab = (() => {
     const bar = $('#filterbar-agg');
     bar.innerHTML = '';
     bar.append(
-      field('系列', select('agg-series', [{ value: '', label: '— 載入中…' }], null, 'agg-series', '160px')),
-      field('日期', select('agg-date', [{ value: '', label: '— 揀系列先 —' }], (v) => { state.date = v; /* 唔 auto-load — 等用戶 click「↻ 載入」 */ }, 'agg-date')),
+      field('系列', select('agg-series', _seriesOptions(), (v) => { state.series = v; onSeriesChange(); }, 'agg-series', '160px')),
+      field('日期', select('agg-date', _dateOptions(), (v) => { state.date = v; /* 唔 auto-load — 等用戶 click「↻ 載入」 */ }, 'agg-date')),
       // 📅 日期範圍 toggle
       el('div', { class: 'field' },
         el('label', { class: 'range-toggle', onClick: (e) => e.stopPropagation() },
@@ -1828,6 +1828,15 @@ const AGGTab = (() => {
         )
       ),
     );
+    // Restore selected values after re-render (date dropdown state lives in closure)
+    if (state.series) {
+      const seriesSel = $('#agg-series');
+      if (seriesSel) seriesSel.value = state.series;
+    }
+    if (state.date) {
+      const dateSel = $('#agg-date');
+      if (dateSel) dateSel.value = state.date;
+    }
     if (state.isRange) {
       const _toDate = (v) => v && v.length === 8 ? `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}` : '';
       bar.append(
@@ -1847,6 +1856,32 @@ const AGGTab = (() => {
       el('div', { class: 'field' }, el('button', { class: 'btn', onClick: load }, '↻ 載入')),
       el('div', { class: 'field' }, el('button', { class: 'btn btn-ghost', onClick: reset }, '↺ 重置')),
     );
+  }
+
+  // Build options for series dropdown — uses cached `series` array, never shows "載入中" once loaded
+  function _seriesOptions() {
+    if (series.length === 0) {
+      return [{ value: '', label: '— 載入中…' }];
+    }
+    return [
+      { value: '', label: '— 請選擇 —' },
+      ...series.map(s => {
+        const code = typeof s === 'string' ? s : s.code;
+        const label = typeof s === 'string' ? s : (s.label || s.code);
+        return { value: code, label };
+      })
+    ];
+  }
+
+  // Build options for date dropdown — uses cached `dates` array
+  function _dateOptions() {
+    if (dates.length === 0) {
+      return [{ value: '', label: state.series ? '— 無可用日期 —' : '— 揀系列先 —' }];
+    }
+    return [
+      { value: '', label: '— 請選擇 —' },
+      ...dates.map(d => ({ value: d, label: fmtDate(d) }))
+    ];
   }
 
   async function reset() {
