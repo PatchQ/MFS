@@ -1244,7 +1244,16 @@ class TableView {
     } else {
       // OI / SCAN / AGG: use data.columns order but filter out null/missing CN labels
       // AGG also hides date/series
-      const colCn = col_names_cn || COLUMN_NAMES_CN;
+      // Merge: frontend COLUMN_NAMES_CN governs visibility (null = hide),
+      // backend col_names_cn provides translated labels
+      const beCn = col_names_cn || {};
+      const feCn = COLUMN_NAMES_CN;
+      const colCn = new Proxy({}, {
+        get(_, col) {
+          if (feCn[col] === null) return null;        // frontend explicit hide
+          return beCn[col] ?? feCn[col] ?? col;        // prefer backend label
+        }
+      });
       displayCols = columns.filter(col => {
         if (this.options.mode === 'agg' && (col === 'date' || col === 'series')) return false;
         if (colCn[col] === null || colCn[col] === undefined) return false;
@@ -1253,7 +1262,14 @@ class TableView {
     }
 
     // Build header label lookup
-    const colCn = (this.options.mode === 'if') ? IF_COL_CN : (col_names_cn || COLUMN_NAMES_CN);
+    // Merge frontend hide + backend label map (same logic as displayCols filter)
+    const _beCn = col_names_cn || {};
+    const colCn = (this.options.mode === 'if') ? IF_COL_CN : new Proxy({}, {
+      get(_, col) {
+        if (COLUMN_NAMES_CN[col] === null) return null;
+        return _beCn[col] ?? COLUMN_NAMES_CN[col] ?? col;
+      }
+    });
 
     // Top-3 detection (v1 logic)
     // - OI / SCAN: top 3 largest values (no filter)
