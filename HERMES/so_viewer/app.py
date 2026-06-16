@@ -28,9 +28,9 @@ IO_M_ROOT = Path("/root/GitHub/SData/HKEX/IO_M")
 
 # IF 指數列表
 IF_INDICES = [
-    {"code": "HSI", "label": "HSI (恒生指數期貨)", "yf_code": "^HSI"},
-    {"code": "HTI", "label": "HTI (恒生科指期貨)", "yf_code": "HSTECH.HK"},
-    {"code": "HHI", "label": "HHI (恒生中國企業指數)", "yf_code": "^HSCE"},
+    {"code": "HSI", "label": "HSI", "yf_code": "^HSI"},
+    {"code": "HTI", "label": "HTI", "yf_code": "HSTECH.HK"},
+    {"code": "HHI", "label": "HHI", "yf_code": "^HSCE"},
 ]
 
 # ============================================================
@@ -47,6 +47,10 @@ FIXED_YEARS = [str(y) for y in range(26, 37)]  # 26 ~ 36
 # 中英欄位對照表
 # ============================================================
 COLUMN_NAMES_CN = {
+    "date_from":         "日期FROM",
+    "date_to":           "日期TO",
+    "days_in_range":     "日數",
+    "date":              "日期",
     "series":              None,
     "month_num":           "日",
     "month_abbr":          "月",
@@ -55,23 +59,35 @@ COLUMN_NAMES_CN = {
     "call_price_change":   "C價c",
     "call_ratio":          "C比率",
     "call_deals":          "C數",
-    "call_turnover_change":"CVolc",
+    "call_turnover_change":       "CVolc",       # 未拆分（Tab 1 顯示用）
+    "call_turnover_change_add":   "CVolc+",
+    "call_turnover_change_reduce":"CVolc-",
     "call_turnover_prev":  "C上日Vol",
     "call_turnover":       "CVol",
-    "call_net_change":     "C淨數c",
+    "call_net_change":     "C淨數c",       # 未拆分（Tab 1 顯示用）
+    "call_net_change_add":     "C淨數c+",
+    "call_net_change_reduce":  "C淨數c-",
     "call_net":            "C淨數",
-    "call_gross_change":   "COIc",
+    "call_gross_change":       "COIc",        # 未拆分（Tab 1 顯示用）
+    "call_gross_change_add":   "COIc+",
+    "call_gross_change_reduce":"COIc-",
     "call_gross_prev":     "C上日OI",
     "call_gross":          "COI",
     "strike":              "行使價",
     "put_gross":           "POI",
     "put_gross_prev":      "P上日OI",
-    "put_gross_change":    "POIc",
+    "put_gross_change":        "POIc",        # 未拆分（Tab 1 顯示用）
+    "put_gross_change_add":    "POIc+",
+    "put_gross_change_reduce": "POIc-",
     "put_net":             "P淨數",
-    "put_net_change":      "P淨數c",
+    "put_net_change":          "P淨數c",      # 未拆分（Tab 1 顯示用）
+    "put_net_change_add":      "P淨數c+",
+    "put_net_change_reduce":   "P淨數c-",
     "put_turnover":        "PVol",
     "put_turnover_prev":   "P上日Vol",
-    "put_turnover_change": "PVolc",
+    "put_turnover_change":     "PVolc",       # 未拆分（Tab 1 顯示用）
+    "put_turnover_change_add":    "PVolc+",
+    "put_turnover_change_reduce": "PVolc-",
     "put_deals":           "P數",
     "put_ratio":           "P比率",
     "put_price_change":    "P價c",
@@ -316,6 +332,7 @@ def api_scan():
       month_start / year_start: 合約月份範圍起點（可選）
       month_end   / year_end:   合約月份範圍終點（可選）
       threshold:  淨數變化閾值（默認 1000）
+      ratio_threshold: 比率變化閾值（直接用 call/put_ratio 原始值，默認 0 = 不過濾）
       side:       call | put | both（默認 both）
     """
     date_from   = request.args.get("date_from", "").strip()
@@ -325,6 +342,7 @@ def api_scan():
     month_end   = request.args.get("month_end",   "").upper()
     year_end    = request.args.get("year_end",    "").strip()
     threshold   = int(request.args.get("threshold", 1000))
+    ratio_threshold = int(request.args.get("ratio_threshold", 0))  # 0 = 唔過濾
     side        = request.args.get("side", "both").lower()
     product_type = request.args.get("product_type", "all").lower()  # all | io | so
 
@@ -373,12 +391,20 @@ def api_scan():
 
     products = get_product_list()
     product_type = request.args.get("product_type", "all").lower()  # all | so | hsi | hti | hhi
-    stock_codes_raw = request.args.get("stock_codes", "").strip()  # e.g. "9992, 0175, 2318"
+    stock_codes_raw = request.args.get("stock_codes", "").strip()  # e.g. "9992, 0175, 2318" 或 "HSI, HTI, HHI, 0001, 0700"
 
-    # 優先：自定義股票編號清單（覆蓋 product_type）
+    # 優先：自定義清單（IO 個股指數 + SO 股票編號都可）
     if stock_codes_raw:
-        code_list = [c.strip().zfill(4) for c in stock_codes_raw.split(",") if c.strip().isdigit() or c.strip().lstrip('0').isdigit()]
-        products = [p for p in products if p["code"] in code_list and p["type"] == "SO"]
+        # 分類：IO（純字母）vs SO（純數字）
+        tokens = [c.strip() for c in stock_codes_raw.split(",") if c.strip()]
+        io_codes = [t.upper() for t in tokens if t.isalpha()]   # HSI, HTI, HHI
+        so_codes = [t.zfill(4) for t in tokens if t.lstrip('0').isdigit() or t.isdigit()]  # 0001, 0700, 1810
+        # 合併篩選：products 要嘛 code 在 io_codes，要嘛 code 在 so_codes
+        products = [
+            p for p in products
+            if (p["type"] == "IO" and p["code"] in io_codes)
+            or (p["type"] == "SO" and p["code"] in so_codes)
+        ]
     elif product_type == 'all':
         pass  # scan all
     elif product_type == 'so':
@@ -458,6 +484,21 @@ def api_scan():
             mask_call = pd.to_numeric(cn_col, errors='coerce').fillna(0).astype(float).abs() >= threshold
             mask_put  = pd.to_numeric(pn_col, errors='coerce').fillna(0).astype(float).abs() >= threshold
 
+            # 比率變化 filter（直接用 call_ratio / put_ratio 原始值 >= ratio_threshold）
+            # 0 = 唔過濾
+            if ratio_threshold > 0:
+                cr_col = df['call_ratio'] if 'call_ratio' in df.columns else pd.Series([0.0]*len(df))
+                pr_col = df['put_ratio']  if 'put_ratio'  in df.columns else pd.Series([0.0]*len(df))
+                ratio_call = pd.to_numeric(cr_col, errors='coerce').fillna(0.0).astype(float)
+                ratio_put  = pd.to_numeric(pr_col, errors='coerce').fillna(0.0).astype(float)
+                mask_ratio_call = ratio_call >= ratio_threshold
+                mask_ratio_put  = ratio_put  >= ratio_threshold
+                mask_call = mask_call & mask_ratio_call
+                mask_put  = mask_put  & mask_ratio_put
+            else:
+                # ratio_threshold == 0 唔過濾（保持 mask 只反映淨數變化）
+                pass
+
             if side == 'call':
                 df = df[mask_call]
             elif side == 'put':
@@ -477,7 +518,7 @@ def api_scan():
                 strike  = row.get('strike', '')
 
                 result_rows.append([
-                    pcode,
+                    p.get("label") or pcode,  # 顯示 "0001 CKH" / "HSI" 而非只 "0001"
                     r_date,
                     m_label,
                     row.get('call_turnover_prev', ''),
@@ -518,6 +559,7 @@ def api_scan():
             "date_to": date_to,
             "month_range": f"{month_start}{year_start}～{month_end}{year_end}" if month_start else "全部",
             "threshold": threshold,
+            "ratio_threshold": ratio_threshold,
             "side": side,
             "product_type": product_type,
             "stock_codes": stock_codes_raw,
@@ -1010,74 +1052,166 @@ def api_agg_dates():
 @app.route("/api/agg/data", methods=["GET"])
 def api_agg_data():
     """
-    GET ?series=HSI&date=20260601  或  ?series=0001_CKH&date=20260601
-    回傳該系列某日嘅聚合視圖（按 strike 聚合本月起所有合約）
+    GET ?series=HSI&date=20260601                          (單日)
+    GET ?series=HSI&date_from=20260601&date_to=20260613    (日期範圍 + 累加 12 個 _change 欄位)
+    回傳該系列嘅聚合視圖（按 strike 聚合本月起所有合約）
+    日期範圍：1 row per strike，12 個 _change 欄位累加，其他欄位取 date_to 該日値
     """
-    series  = request.args.get("series", "").strip()
-    date_str = request.args.get("date", "").strip()
+    series    = request.args.get("series", "").strip()
+    date_str  = request.args.get("date", "").strip()
+    date_from = request.args.get("date_from", "").strip()
+    date_to   = request.args.get("date_to", "").strip()
 
     if not series:
         return jsonify({"error": "需要 series 參數"}), 400
-    if not date_str:
-        return jsonify({"error": "需要 date 參數"}), 400
+
+    # 決定日期模式
+    range_mode = bool(date_from and date_to)
+    if range_mode:
+        date_from = str(date_from).split(".")[0].zfill(8)
+        date_to   = str(date_to).split(".")[0].zfill(8)
+        if date_from > date_to:
+            return jsonify({"error": f"date_from ({date_from}) 不可大於 date_to ({date_to})"}), 400
+    elif date_str:
+        date_str = str(date_str).split(".")[0].zfill(8)
+        date_from = date_to = date_str
+    else:
+        return jsonify({"error": "需要 date 或 date_from+date_to 參數"}), 400
 
     resolved = _resolve_agg_series(series)
     if not resolved:
         return jsonify({"error": f"找不到系列：{series}"}), 404
     agg_root, subdir, _short = resolved
 
-    # 標準化 date (e.g. 20260601)
-    date_str = str(date_str).split(".")[0].zfill(8)
-
-    # 判斷月份 (20260601 → 202606)
-    ym = date_str[:6]
-
+    # 判斷月份（取 date_to 嘅月份，因為 CSV 按月存）
+    ym = date_to[:6]
     csv_path = agg_root / subdir / f"{subdir}_{ym}_AGG.csv"
     if not csv_path.exists():
         return jsonify({"error": f"找不到聚合檔：{csv_path.name}"}), 404
 
     try:
         df = pd.read_csv(csv_path, low_memory=False)
-        # 過濾為該日期
         df["date"] = df["date"].astype(str).str.zfill(8)
-        df = df[df["date"] == date_str]
+        # 過濾日期範圍
+        df = df[(df["date"] >= date_from) & (df["date"] <= date_to)]
 
         if df.empty:
-            return jsonify({"error": f"{date_str} 冇資料"}), 404
+            return jsonify({"error": f"{date_from} ~ {date_to} 冇資料"}), 404
 
         # strike NaN 過濾
         df = df.dropna(subset=["strike"])
         df = df[df["strike"] != ""]
 
-        df = df.fillna("")
+        # 12 個 _change 欄位（要累加）
+        CHANGE_ADD_COLS = [
+            "call_turnover_change_add",
+            "call_net_change_add",
+            "call_gross_change_add",
+            "put_turnover_change_add",
+            "put_net_change_add",
+            "put_gross_change_add",
+        ]
+        CHANGE_REDUCE_COLS = [
+            "call_turnover_change_reduce",
+            "call_net_change_reduce",
+            "call_gross_change_reduce",
+            "put_turnover_change_reduce",
+            "put_net_change_reduce",
+            "put_gross_change_reduce",
+        ]
+        CHANGE_COLS = CHANGE_ADD_COLS + CHANGE_REDUCE_COLS  # 12 個
+
+        # 識別欄：date, series, contract_label, strike
+        ID_COLS = ["date", "series", "contract_label", "strike"]
+
+        if range_mode:
+            # ── 日期範圍模式：1 row per strike ──
+            # 1. 12 個 _change 欄位按 strike 累加
+            agg_dict = {c: "sum" for c in CHANGE_COLS if c in df.columns}
+            df_agg = df.groupby("strike", as_index=False).agg(agg_dict)
+
+            # 2. 其他欄位（call_turnover / call_net / call_gross / put_* / call_ratio / put_ratio）
+            #    取 date_to 該日該 strike 嘅値
+            df_last = df[df["date"] == date_to]
+            if df_last.empty:
+                # date_to 冇資料 → 用 date_to 之前最近一日
+                available_dates = sorted(df["date"].unique(), reverse=True)
+                if not available_dates:
+                    return jsonify({"error": f"{date_from} ~ {date_to} 範圍內 date_to 冇資料"}), 404
+                df_last = df[df["date"] == available_dates[0]]
+            df_last = df_last.drop_duplicates(subset=["strike"], keep="last")
+
+            OTHER_COLS = [c for c in df.columns
+                          if c not in CHANGE_COLS
+                          and c not in ID_COLS
+                          and c not in ["month_num", "month_abbr", "year"]]
+            # 將其他欄位從 df_last merge 落 df_agg（用 strike join）
+            keep_cols = ["strike"] + [c for c in OTHER_COLS if c in df_last.columns]
+            df_agg = df_agg.merge(df_last[keep_cols], on="strike", how="left")
+
+            # 3. 加 date_from / date_to 標記 + days count
+            df_agg["date"] = date_to  # 顯示用：結束日期
+            df_agg["date_from"] = date_from
+            df_agg["date_to"] = date_to
+            # 每個 strike 喺範圍內出現嘅天數
+            days_per_strike = df.groupby("strike")["date"].nunique().reset_index()
+            days_per_strike.columns = ["strike", "days_in_range"]
+            df_agg = df_agg.merge(days_per_strike, on="strike", how="left")
+
+            df_final = df_agg
+        else:
+            # ── 單日模式：保留原邏輯 ──
+            df_final = df
+
+        df_final = df_final.fillna("")
 
         # 欄位順序：與 OI 期權一致（Strike 放中間）
-        # OI 順序：series, month_num, month_abbr, year, call_*, strike, put_*
-        # 聚合視圖冇 month_abbr/year（已聚合），但保持 call_* 全部 → strike → put_* → contract_label
-        # 排除 call/put_settle_price 同 call/put_price_change（唔同合約唔可比）
         OUTPUT_COLS = [
-            "series",
-            "call_ratio", "call_deals",
-            "call_turnover_change", "call_turnover_prev", "call_turnover",
-            "call_net_change", "call_net",
-            "call_gross_change", "call_gross_prev", "call_gross",
-            "strike",
-            "put_gross", "put_gross_prev", "put_gross_change",
-            "put_net", "put_net_change",
-            "put_turnover", "put_turnover_prev", "put_turnover_change",
-            "put_deals", "put_ratio",
-            "contract_label",
+            "date", "series",  # 識別欄
+            "call_ratio",  # 1. C比率
+            "call_turnover_change_reduce", "call_turnover_change_add",  # 2-3. CVolc-, CVolc+
+            "call_turnover",  # 4. CVol
+            "call_net_change_reduce", "call_net_change_add",  # 5-6. C淨數c-, C淨數c+
+            "call_net",  # 7. C淨數
+            "call_gross_change_reduce", "call_gross_change_add",  # 8-9. COIc-, COIc+
+            "call_gross",  # 10. COI
+            "strike",  # 11. 行使價
+            "put_gross",  # 12. POI
+            "put_gross_change_add", "put_gross_change_reduce",  # 13-14. POIc+, POIc-
+            "put_net",  # 15. P淨數
+            "put_net_change_add", "put_net_change_reduce",  # 16-17. P淨數c+, P淨數c-
+            "put_turnover",  # 18. PVol
+            "put_turnover_change_add", "put_turnover_change_reduce",  # 19-20. PVolc+, PVolc-
+            "put_ratio",  # 21. P比率
+            "contract_label",  # 合約月份
         ]
+        # range_mode 加 date_from / date_to / days_in_range
+        if range_mode:
+            OUTPUT_COLS = ["date_from", "date_to", "days_in_range"] + OUTPUT_COLS
+
         # 只保留實際存在嘅欄位
-        out_cols = [c for c in OUTPUT_COLS if c in df.columns]
+        out_cols = [c for c in OUTPUT_COLS if c in df_final.columns]
+
+        # 處理 numeric (JSON 唔識 NaN，NaN 變 "")
+        for c in out_cols:
+            if df_final[c].dtype == object and c not in ("date", "date_from", "date_to", "contract_label", "series"):
+                try:
+                    df_final[c] = pd.to_numeric(df_final[c], errors="coerce").fillna("")
+                except Exception:
+                    pass
 
         return jsonify({
             "columns": out_cols,
-            "rows": df[out_cols].values.tolist(),
+            "rows": df_final[out_cols].values.tolist(),
             "code": subdir,
-            "date": date_str,
-            "date_display": f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}",
-            "total_rows": len(df),
+            "date": date_to if range_mode else date_str,
+            "date_from": date_from,
+            "date_to": date_to,
+            "date_display": (f"{date_to[:4]}-{date_to[4:6]}-{date_to[6:8]}"
+                             if not range_mode
+                             else f"{date_from[:4]}-{date_from[4:6]}-{date_from[6:8]} ~ {date_to[:4]}-{date_to[4:6]}-{date_to[6:8]}"),
+            "total_rows": len(df_final),
+            "range_mode": range_mode,
             "col_names_cn": COLUMN_NAMES_CN,
         })
     except Exception as e:
@@ -1093,6 +1227,6 @@ if __name__ == "__main__":
     print("  HKEX Option Viewer（SO + IO）")
     print(f"  SO Root: {SO_ROOT}")
     print(f"  IO Root: {IO_ROOT}")
-    print(f"  URL:     http://0.0.0.0:80")
+    print(f"  URL:     http://0.0.0.0:8080  (backend API only — frontend served by v2 on :80)")
     print("=" * 60)
-    app.run(host="0.0.0.0", port=80, debug=False)
+    app.run(host="0.0.0.0", port=8080, debug=False)

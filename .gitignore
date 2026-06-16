@@ -51,3 +51,9 @@ Sdata/
 # OS
 .DS_Store
 Thumbs.db
+
+# so_viewer_v2 dev assets (24 screenshots + 4 dev tools + 2 backup HTML)
+HERMES/so_viewer_v2/screenshot_*.png
+HERMES/so_viewer_v2/cap_screenshots.js
+HERMES/so_viewer_v2/inspect_sticky.js
+HERMES/so_viewer_v2/index.v*-bak.html

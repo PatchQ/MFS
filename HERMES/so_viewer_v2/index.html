@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0f1620" />
+<title>OI Viewer · OI Dashboard</title>
+<style>
+/* ============================================================
+   Design Tokens (mobile-first)
+   ============================================================ */
+:root {
+  --bg:        oklch(15% 0.012 250);
+  --surface:   oklch(20% 0.018 250);
+  --surface-2: oklch(25% 0.022 250);
+  --surface-3: oklch(30% 0.025 250);
+  --border:    oklch(32% 0.025 250);
+  --border-2:  oklch(40% 0.03 250);
+  --ink:       oklch(96% 0.005 250);
+  --muted:     oklch(72% 0.012 250);
+  --muted-2:   oklch(55% 0.015 250);
+  --accent:    oklch(78% 0.14 200);
+  --accent-2:  oklch(85% 0.16 320);
+  --gain:      oklch(76% 0.16 145);
+  --loss:      oklch(68% 0.20 25);
+  --warn:      oklch(82% 0.16 80);
+  --neutral:   oklch(60% 0.02 250);
+
+  --r:         8px;
+  --r-sm:      6px;
+  --r-lg:      12px;
+  --gap:       10px;
+  --gap-lg:    16px;
+  --pad:       12px;
+  --pad-lg:    16px;
+
+  --font:      system-ui, -apple-system, "Segoe UI", "PingFang HK", "Microsoft JhengHei", sans-serif;
+  --mono:      "JetBrains Mono", "SF Mono", "Cascadia Mono", Menlo, monospace;
+
+  --shadow-1:  0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:  0 4px 16px rgba(0,0,0,.5);
+  --shadow-3:  0 8px 24px rgba(0,0,0,.6);
+
+  --topbar-h:  52px;
+  --bottomnav-h: 60px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:        oklch(98% 0.005 250);
+    --surface:   oklch(100% 0 0);
+    --surface-2: oklch(96% 0.008 250);
+    --surface-3: oklch(92% 0.012 250);
+    --border:    oklch(88% 0.015 250);
+    --border-2:  oklch(75% 0.02 250);
+    --ink:       oklch(18% 0.015 250);
+    --muted:     oklch(40% 0.015 250);
+    --muted-2:   oklch(55% 0.015 250);
+    --shadow-1:  0 1px 2px rgba(0,0,0,.08);
+    --shadow-2:  0 4px 12px rgba(0,0,0,.08);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+input, select, textarea { font-size: 16px; }  /* iOS zoom prevention */
+
+/* ============================================================
+   Layout
+   ============================================================ */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* --- Top bar (mobile: compact, no nav links; nav is in bottom bar) --- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  height: var(--topbar-h);
+  padding: 0 var(--pad-lg);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  flex: 1;
+  min-width: 0;
+}
+
+.brand-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--bg);
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+.topbar-spacer { display: none; }
+
+.topbar-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background .15s, color .15s;
+  font-size: 16px;
+}
+
+.icon-btn:hover, .icon-btn:focus-visible {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+/* --- Top tabs (hidden on mobile) --- */
+.tabs {
+  display: none;
+}
+
+/* --- Main content --- */
+main {
+  flex: 1;
+  padding: var(--pad);
+  padding-bottom: calc(var(--bottomnav-h) + var(--safe-bottom) + var(--pad));
+  width: 100%;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+/* --- Page header --- */
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+  flex-wrap: wrap;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.page-sub {
+  color: var(--muted);
+  font-size: 12px;
+  flex-basis: 100%;
+}
+
+/* ============================================================
+   Filter Bar — collapsed by default on mobile (toggle button)
+   ============================================================ */
+.filter-toggle-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: var(--gap);
+}
+
+.filterbar {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--pad);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  margin-bottom: var(--gap);
+}
+
+.filterbar.open {
+  display: flex;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  width: 100%;
+}
+
+.field-label {
+  font-size: 11px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
+
+.range-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 8px 0;
+  min-height: 44px;
+}
+.range-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.input-mono {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  min-height: 44px;
+  transition: border-color .15s;
+}
+.input-mono:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.field-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  transition: border-color .15s, background .15s;
+}
+
+.field-input:focus-within {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+input, select {
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 100%;
+  min-width: 0;
+  color: var(--ink);
+  font-family: inherit;
+}
+
+input::placeholder { color: var(--muted-2); }
+
+input[type="date"].input-date {
+  font-family: var(--mono);
+  color: var(--ink);
+  font-size: 14px;
+  padding: 6px 8px;
+  min-height: 36px;
+}
+input[type="date"].input-date::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.7);
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 18px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='%23999'%3E%3Cpath d='M5 6L0 0h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0 center;
+  cursor: pointer;
+}
+
+select option {
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 13px;
+}
+
+/* Button row: 載入 / 重置 side by side on mobile */
+.field-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.btn {
+  min-height: 44px;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--r-sm);
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background .15s, transform .05s;
+  flex: 1;
+  white-space: nowrap;
+}
+
+.btn:hover { background: oklch(from var(--accent) 85% 0.14 200); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover { background: var(--surface-2); }
+
+/* --- Active filter chips row (shows above table) --- */
+.chip-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin-bottom: var(--gap);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.chip-row::-webkit-scrollbar { display: none; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.chip strong { color: var(--ink); font-weight: 500; }
+.chip .accent { color: var(--accent); }
+
+/* ============================================================
+   Summary Bar
+   ============================================================ */
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 10px var(--pad);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom: var(--gap);
+  font-size: 12px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.summary-label { color: var(--muted-2); font-size: 11px; }
+.summary-value { color: var(--ink); font-weight: 500; }
+.summary-value.mono { font-family: var(--mono); }
+.summary-value.up { color: var(--gain); }
+.summary-value.down { color: var(--loss); }
+
+/* ============================================================
+   Table (desktop) + Cards (mobile)
+   ============================================================ */
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  /* overflow: visible (唔設 hidden) — 確保 thead sticky 喺 vertical scroll 時鎖住 */
+}
+
+.table-scroll {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--r-lg);
+  /* 限定 vertical scroll area 喺 table-scroll 內 — 令 thead sticky top:0 鎖喺 table-scroll 頂部 */
+  max-height: calc(100vh - 200px);
+}
+
+/* --- Table view (desktop + mobile horizontal scroll) --- */
+.data-table {
+  width: 100%;
+  min-width: max-content;  /* force horizontal scroll if needed, don't squeeze columns */
+  border-collapse: separate;  /* required for position: sticky on cells */
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.data-table th, .data-table td {
+  padding: 7px 10px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.data-table th {
+  background: var(--surface-2);
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  position: sticky;
+  top: 0;
+  cursor: pointer;
+  user-select: none;
+  z-index: 1;
+}
+
+.data-table th:hover { color: var(--ink); }
+.data-table th.text-left, .data-table td.text-left { text-align: left; }
+.data-table th.text-center, .data-table td.text-center { text-align: center; }
+
+.data-table th.sorted { color: var(--accent); }
+.data-table th.sorted::after { content: " ↓"; opacity: 0.6; }
+.data-table th.sorted.asc::after { content: " ↑"; }
+
+.data-table tbody tr:hover { background: var(--surface-2); }
+.data-table tbody tr:last-child td { border-bottom: none; }
+
+.data-table td.mono { font-family: var(--mono); font-size: 12px; }
+.data-table td.up { color: var(--gain); }
+.data-table td.down { color: var(--loss); }
+.data-table td.warn { color: var(--warn); }
+.data-table td.muted { color: var(--muted); }
+
+/* v1 compat */
+.data-table td.top-cell {
+  background: oklch(from var(--warn) 25% 0.12 80);
+  color: var(--warn);
+  font-weight: 500;
+}
+.data-table td.val-pos { color: var(--gain); }
+.data-table td.val-neg { color: var(--loss); }
+.data-table td.val-zero { color: var(--muted-2); }
+.data-table td.strike-col {
+  background: var(--surface-2);
+  font-weight: 600;
+  color: var(--accent);
+  text-align: center;
+}
+.data-table th.strike-col { background: var(--surface-3); color: var(--accent); }
+
+/* Sticky first column (mobile horizontal scroll — keeps code/strike visible) */
+.data-table th:first-child,
+.data-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border-2);
+  box-shadow: 2px 0 4px rgba(0,0,0,.15);
+}
+
+.data-table th:first-child { z-index: 3; background: var(--surface-3); }
+
+/* Strike column gets higher z-index when stuck (overlapping first col) */
+.data-table th.strike-col,
+.data-table td.strike-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.data-table th.strike-col { z-index: 3; }
+
+/* Mobile-specific compact table */
+.data-table th, .data-table td { font-size: 12px; padding: 6px 8px; }
+.data-table th { font-size: 9px; padding: 5px 8px; }
+.data-table td.mono { font-size: 11px; }
+
+/* Scroll hint — gradient on right edge when content is scrollable */
+.table-wrap { position: relative; }
+.table-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 32px;
+  background: linear-gradient(to right, transparent, var(--surface) 80%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s;
+  z-index: 2;
+}
+.table-wrap.has-overflow::after { opacity: 1; }
+/* "→" arrow indicator overlay when scrollable */
+.table-wrap.has-overflow::before {
+  content: "›";
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--accent);
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.85;
+  text-shadow: 0 1px 2px rgba(0,0,0,.3);
+}
+
+
+
+/* --- Empty / loading / error states --- */
+.empty, .loading, .error, .placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  gap: 10px;
+}
+
+.empty .icon, .error .icon { font-size: 28px; opacity: 0.5; }
+.loading .icon { font-size: 24px; animation: pulse 1.4s ease-in-out infinite; }
+.error { color: var(--loss); }
+.error .icon { opacity: 0.8; }
+.placeholder { color: var(--muted); font-size: 14px; }
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* --- Status bar (bottom) --- */
+footer {
+  padding: 6px var(--pad-lg);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  min-height: 32px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neutral);
+  flex-shrink: 0;
+}
+
+.status-dot.ok { background: var(--gain); }
+.status-dot.loading { background: var(--warn); animation: pulse 1.4s ease-in-out infinite; }
+.status-dot.err { background: var(--loss); }
+
+/* ============================================================
+   Bottom Tab Bar (mobile only)
+   ============================================================ */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 20;
+  padding-bottom: var(--safe-bottom);
+  backdrop-filter: blur(12px);
+}
+
+.bottom-nav button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--bottomnav-h);
+  padding: 6px 4px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  transition: color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-nav button .icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.bottom-nav button .label {
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.bottom-nav button[aria-selected="true"] {
+  color: var(--accent);
+}
+
+.bottom-nav button[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 0 0 2px 2px;
+}
+
+.bottom-nav button:active {
+  background: var(--surface-2);
+}
+
+/* ============================================================
+   Scrollbar
+   ============================================================ */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-2); }
+
+/* ============================================================
+   Desktop / tablet enhancements
+   ============================================================ */
+@media (min-width: 768px) {
+  :root {
+    --gap:      12px;
+    --gap-lg:   20px;
+    --pad:      16px;
+    --pad-lg:   20px;
+  }
+
+  main {
+    padding: var(--pad-lg);
+    padding-bottom: var(--pad-lg);
+    max-width: 1600px;
+  }
+
+  .brand { font-size: 15px; gap: 10px; }
+  .brand-mark { width: 28px; height: 28px; font-size: 12px; }
+
+  .topbar { padding: 14px var(--pad-lg); }
+  .icon-btn { width: 32px; height: 32px; font-size: 14px; }
+
+  /* Show top tabs, hide bottom nav */
+  .topbar-spacer { display: block; flex: 1; }
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface-2);
+    padding: 3px;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+  }
+
+  .tab {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: var(--r-sm);
+    font-weight: 500;
+    transition: background .15s, color .15s;
+    min-height: 32px;
+    font-size: 13px;
+  }
+
+  .tab:hover { color: var(--ink); }
+  .tab[aria-selected="true"] {
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: var(--shadow-1);
+  }
+  .tab .num {
+    font-family: var(--mono);
+    font-size: 10px;
+    margin-right: 6px;
+    color: var(--muted-2);
+    font-weight: 400;
+  }
+  .tab[aria-selected="true"] .num { color: var(--accent); }
+
+  .bottom-nav { display: none; }
+
+  .page-title { font-size: 22px; }
+  .page-sub { font-size: 13px; flex-basis: auto; }
+
+  /* Filter bar: horizontal row by default, no toggle */
+  .filter-toggle-row { display: none; }
+  .filterbar {
+    display: flex !important;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--gap);
+    padding: var(--pad);
+  }
+
+  .field {
+    width: auto;
+    min-width: 120px;
+  }
+
+  .field-actions {
+    width: auto;
+  }
+
+  .btn { flex: 0 0 auto; }
+
+  /* Filter bar — shrink to match data table font-size for visual hierarchy */
+  .field-label { font-size: 10px; }
+  .filterbar input,
+  .filterbar select,
+  .filterbar textarea,
+  select option { font-size: 12px; }
+  .filterbar .btn { font-size: 12px; padding: 4px 10px; min-height: 28px; }
+
+  .summary {
+    padding: 12px var(--pad);
+    font-size: 13px;
+  }
+
+  .data-table th, .data-table td {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .data-table th {
+    font-size: 10px;
+    padding: 7px 12px;
+  }
+  .data-table td.mono { font-size: 12px; }
+}
+
+@media (min-width: 1200px) {
+  .summary { flex-wrap: nowrap; }
+}
+
+/* ============================================================
+   Density (compact)
+   ============================================================ */
+.density-compact .data-table th,
+.density-compact .data-table td { padding: 5px 10px; font-size: 12px; }
+.density-compact .data-table th { font-size: 10px; }
+
+/* ============================================================
+   Status Badge
+   ============================================================ */
+.badge {
+  display: inline-block;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--surface-3);
+  color: var(--muted);
+}
+.badge.up { background: oklch(from var(--gain) 30% 0.1 145); color: var(--gain); }
+.badge.down { background: oklch(from var(--loss) 30% 0.12 25); color: var(--loss); }
+.badge.warn { background: oklch(from var(--warn) 30% 0.12 80); color: var(--warn); }
+.badge.accent { background: oklch(from var(--accent) 30% 0.08 200); color: var(--accent); }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">OI</div>
+      <span class="brand-text">OI Dashboard</span>
+    </div>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" aria-selected="true"  data-tab="oi">
+        <span class="num">01</span>OI
+      </button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="if">
+        <span class="num">02</span>IF
+      </button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="scan">
+        <span class="num">03</span>SCAN
+      </button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="agg">
+        <span class="num">04</span>AGG
+      </button>
+    </nav>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="density-btn" title="切換密度" aria-label="切換密度">≡</button>
+      <button class="icon-btn" id="theme-btn"    title="切換主題" aria-label="切換主題">◐</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- OI Tab -->
+    <section class="page" id="page-oi" hidden>
+      <div class="filter-toggle-row">
+        <button class="btn btn-ghost" id="filter-toggle-oi" style="flex:0 0 auto">⚙ 篩選條件</button>
+        <div class="chip-row" id="chip-row-oi"></div>
+      </div>
+      <div class="filterbar" id="filterbar-oi"></div>
+      <div class="summary" id="summary-oi" hidden></div>
+      <div class="table-wrap"><div class="table-scroll" id="table-oi"></div></div>
+    </section>
+
+    <!-- IF Tab -->
+    <section class="page" id="page-if" hidden>
+      <div class="filter-toggle-row">
+        <button class="btn btn-ghost" id="filter-toggle-if" style="flex:0 0 auto">⚙ 篩選條件</button>
+        <div class="chip-row" id="chip-row-if"></div>
+      </div>
+      <div class="filterbar" id="filterbar-if"></div>
+      <div class="summary" id="summary-if" hidden></div>
+      <div class="table-wrap"><div class="table-scroll" id="table-if"></div></div>
+    </section>
+
+    <!-- SCAN Tab -->
+    <section class="page" id="page-scan" hidden>
+      <div class="filter-toggle-row">
+        <button class="btn btn-ghost" id="filter-toggle-scan" style="flex:0 0 auto">⚙ 篩選條件</button>
+        <div class="chip-row" id="chip-row-scan"></div>
+      </div>
+      <div class="filterbar" id="filterbar-scan"></div>
+      <div class="summary" id="summary-scan" hidden></div>
+      <div class="table-wrap"><div class="table-scroll" id="table-scan"></div></div>
+    </section>
+
+    <!-- AGG Tab -->
+    <section class="page" id="page-agg" hidden>
+      <div class="filter-toggle-row">
+        <button class="btn btn-ghost" id="filter-toggle-agg" style="flex:0 0 auto">⚙ 篩選條件</button>
+        <div class="chip-row" id="chip-row-agg"></div>
+      </div>
+      <div class="filterbar" id="filterbar-agg"></div>
+      <div class="summary" id="summary-agg" hidden></div>
+      <div class="table-wrap"><div class="table-scroll" id="table-agg"></div></div>
+    </section>
+  </main>
+
+  <footer>
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-msg">Ready</span>
+    <span style="flex:1"></span>
+    <span id="status-build">v4.0</span>
+  </footer>
+</div>
+
+<!-- Bottom nav (mobile only) -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button role="tab" aria-selected="true"  data-tab="oi">
+    <span class="icon">▦</span>
+    <span class="label">OI</span>
+  </button>
+  <button role="tab" aria-selected="false" data-tab="if">
+    <span class="icon">≡</span>
+    <span class="label">IF</span>
+  </button>
+  <button role="tab" aria-selected="false" data-tab="scan">
+    <span class="icon">⌕</span>
+    <span class="label">SCAN</span>
+  </button>
+  <button role="tab" aria-selected="false" data-tab="agg">
+    <span class="icon">⌘</span>
+    <span class="label">AGG</span>
+  </button>
+</nav>
+
+<script>
+/* ============================================================
+   API Layer
+   ============================================================ */
+const API = (() => {
+  const BASE = '';
+
+  async function get(url) {
+    const r = await fetch(BASE + url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}: ${url}`);
+    return r.json();
+  }
+
+  return {
+    products:  () => get('/api/products'),
+    dates:      (code) => get(`/api/dates?code=${encodeURIComponent(code)}`),
+    data:       (code, date, month, year) => {
+      const p = new URLSearchParams({ code, date });
+      if (month) p.set('month_abbr', month);
+      if (year)  p.set('year', year);
+      return get(`/api/data?${p}`);
+    },
+    scan:       (params) => {
+      const p = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== '' && v !== null && v !== undefined) p.set(k, v);
+      });
+      return get(`/api/scan?${p}`);
+    },
+
+    ifProducts: () => get('/api/if/products'),
+    ifDates:    (code) => get(`/api/if/dates?code=${encodeURIComponent(code)}`),
+    ifData:     (params) => {
+      const p = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== '' && v !== null && v !== undefined) p.set(k, v);
+      });
+      return get(`/api/if/data?${p}`);
+    },
+
+    aggList:    () => get('/api/agg/list'),
+    aggDates:   (series) => get(`/api/agg/dates?series=${encodeURIComponent(series)}`),
+    aggData:    (series, date, dateFrom, dateTo) => {
+      // 三模式：單日 (date) / 範圍 (date_from + date_to) / fallback
+      if (dateFrom && dateTo) {
+        return get(`/api/agg/data?series=${encodeURIComponent(series)}&date_from=${dateFrom}&date_to=${dateTo}`);
+      }
+      return get(`/api/agg/data?series=${encodeURIComponent(series)}&date=${date}`);
+    },
+  };
+})();
+
+/* ============================================================
+   Utilities
+   ============================================================ */
+const $  = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+const el = (tag, props = {}, ...children) => {
+  const node = document.createElement(tag);
+  Object.entries(props).forEach(([k, v]) => {
+    if (k === 'class') node.className = v;
+    else if (k === 'dataset') Object.assign(node.dataset, v);
+    else if (k.startsWith('on')) node.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === 'html') node.innerHTML = v;
+    else if (v !== false && v !== null && v !== undefined) node.setAttribute(k, v);
+  });
+  children.flat().forEach(c => {
+    if (c == null) return;
+    node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  });
+  return node;
+};
+
+const today = {
+  ymd:    () => {
+    const d = new Date();
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  },
+  ymdStr: () => String(today.ymd()),
+  ymFirst: () => {
+    const d = new Date();
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + 1;
+  },
+  minusDays: (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  },
+};
+
+const fmtDate = (s) => {
+  s = String(s).replace(/\D/g, '');
+  if (s.length !== 8) return s;
+  return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
+};
+
+const toNum = (v) => {
+  if (v === '' || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const fmtNum = (n, digits = 0) => {
+  if (n == null || !Number.isFinite(n)) return '';
+  return n.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+};
+
+/* ============================================================
+   Status Bar
+   ============================================================ */
+const Status = {
+  set(msg, kind = '') {
+    $('#status-msg').textContent = msg;
+    const dot = $('#status-dot');
+    dot.className = 'status-dot' + (kind ? ' ' + kind : '');
+  },
+  ok:    (m) => Status.set(m, 'ok'),
+  err:   (m) => Status.set(m, 'err'),
+  load:  (m) => Status.set(m, 'loading'),
+};
+
+/* ============================================================
+   Column Mappings (mirroring v1 app.py COLUMN_NAMES_CN + template IF_COL_CN)
+   ============================================================ */
+const COLUMN_NAMES_CN = {
+  date_from:         null,        // hidden in AGG default (no range mode)
+  date_to:           null,
+  days_in_range:     null,
+  series:              null,        // null = hide column
+  month_num:           '日',
+  month_abbr:          '月',
+  year:                '年',
+  call_settle_price:   'C價',
+  call_price_change:   'C價c',
+  call_ratio:          'C比率',
+  call_deals:          'C數',
+  call_turnover_change:        'CVolc',
+  call_turnover_change_add:    'CVolc+',
+  call_turnover_change_reduce: 'CVolc-',
+  call_turnover_prev:  'C上日Vol',
+  call_turnover:       'CVol',
+  call_net_change:     'C淨數c',
+  call_net_change_add:     'C淨數c+',
+  call_net_change_reduce:  'C淨數c-',
+  call_net:            'C淨數',
+  call_gross_change:       'COIc',
+  call_gross_change_add:   'COIc+',
+  call_gross_change_reduce:'COIc-',
+  call_gross_prev:     'C上日OI',
+  call_gross:          'COI',
+  strike:              '行使價',
+  put_gross:           'POI',
+  put_gross_prev:      'P上日OI',
+  put_gross_change:        'POIc',
+  put_gross_change_add:    'POIc+',
+  put_gross_change_reduce: 'POIc-',
+  put_net:             'P淨數',
+  put_net_change:          'P淨數c',
+  put_net_change_add:      'P淨數c+',
+  put_net_change_reduce:   'P淨數c-',
+  put_turnover:        'PVol',
+  put_turnover_prev:   'P上日Vol',
+  put_turnover_change:     'PVolc',
+  put_turnover_change_add:    'PVolc+',
+  put_turnover_change_reduce: 'PVolc-',
+  put_deals:           'P數',
+  put_ratio:           'P比率',
+  put_price_change:    'P價c',
+  put_settle_price:    'P價',
+  // SCAN extras
+  code:                '產品',
+  month_label:         '合約',
+  contract_label:      '合約',
+  // IF extras
+  date_display:        '日期',
+};
+
+const IF_COL_CN = {
+  date_display:  '日期',
+  month_label:   '合約日期',
+  gross:         '未平倉合約',
+  gross_change:  '未平倉合約增減',
+  net:           '淨倉',
+  net_change:    '淨倉增減',
+  rise_fall:     '升跌',
+  settle_price:  '結算價',
+  turnover:      '成交量',
+  deals_ratio:   '成交比例',
+  deals:         '成交筆數',
+};
+
+// Fixed column order for IF tab (v1 logic)
+const IF_DISPLAY_COLS = ['date_display', 'month_label', 'gross', 'gross_change', 'net', 'net_change', 'rise_fall', 'settle_price', 'turnover', 'deals_ratio', 'deals'];
+
+// Columns treated as v1 "change" cells (for color)
+const CHANGE_COLS = new Set([
+  'call_price_change', 'put_price_change',
+  'call_turnover_change', 'put_turnover_change',
+  'call_turnover_change_add', 'call_turnover_change_reduce',
+  'put_turnover_change_add', 'put_turnover_change_reduce',
+  'call_net_change', 'put_net_change',
+  'call_net_change_add', 'call_net_change_reduce',
+  'put_net_change_add', 'put_net_change_reduce',
+  'call_gross_change', 'put_gross_change',
+  'call_gross_change_add', 'call_gross_change_reduce',
+  'put_gross_change_add', 'put_gross_change_reduce',
+  'gross_change', 'net_change', 'rise_fall',
+]);
+const RATIO_COLS = new Set(['call_ratio', 'put_ratio', 'deals_ratio']);
+const STRIKE_COLS = new Set(['strike']);
+
+const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+// 6 個 _reduce column 取最負 3 個 (v1 AGG logic)
+const BOTTOM_TOP_COLS = new Set([
+  'call_turnover_change_reduce',
+  'call_net_change_reduce',
+  'call_gross_change_reduce',
+  'put_turnover_change_reduce',
+  'put_net_change_reduce',
+  'put_gross_change_reduce',
+]);
+
+/* ============================================================
+   Table Component (v1-compatible rendering)
+   ============================================================ */
+class TableView {
+  constructor(container, options = {}) {
+    this.container = container;
+    this.options = options;
+    // options: {
+    //   mode: 'oi' | 'if' | 'scan' | 'agg'  (controls which columns to show)
+    //   defaultSort: { col, dir }
+    // }
+    this.sortKey = null;
+    this.sortDir = 'desc';
+    this._currentData = null;
+  }
+
+  render(loading, error, data) {
+    this.container.innerHTML = '';
+    if (loading === '__PLACEHOLDER__') {
+      // 純文字 placeholder — 冇 spinner（等用戶 click「↻ 載入」）
+      // 文字用 data.placeholder 傳入
+      const msg = (data && data.placeholder) || '';
+      this.container.appendChild(el('div', { class: 'placeholder' },
+        el('div', {}, msg)
+      ));
+      return;
+    }
+    if (loading) {
+      this.container.appendChild(el('div', { class: 'loading' },
+        el('div', { class: 'spinner' }),
+        el('div', {}, loading)
+      ));
+      return;
+    }
+    if (error) {
+      this.container.appendChild(el('div', { class: 'error' },
+        el('div', { class: 'icon' }, '⚠'),
+        el('div', {}, error)
+      ));
+      return;
+    }
+    if (!data || !data.columns || data.columns.length === 0 || !data.rows || data.rows.length === 0) {
+      this.container.appendChild(el('div', { class: 'empty' },
+        el('div', { class: 'icon' }, '📊'),
+        el('div', {}, '冇數據')
+      ));
+      return;
+    }
+    this._currentData = data;
+    const { columns, rows, col_names_cn, total_rows, date_display, date_range } = data;
+
+    // Determine which columns to display and in what order
+    let displayCols;
+    if (this.options.mode === 'if') {
+      // IF: fixed order, only if column exists in data.columns
+      displayCols = IF_DISPLAY_COLS.filter(c => columns.includes(c));
+    } else {
+      // OI / SCAN / AGG: use data.columns order but filter out null/missing CN labels
+      // AGG also hides date/series
+      const colCn = col_names_cn || COLUMN_NAMES_CN;
+      displayCols = columns.filter(col => {
+        if (this.options.mode === 'agg' && (col === 'date' || col === 'series')) return false;
+        if (colCn[col] === null || colCn[col] === undefined) return false;
+        return true;
+      });
+    }
+
+    // Build header label lookup
+    const colCn = (this.options.mode === 'if') ? IF_COL_CN : (col_names_cn || COLUMN_NAMES_CN);
+
+    // Top-3 detection (v1 logic)
+    // - OI / SCAN: top 3 largest values (no filter)
+    // - IF: top 3 largest values (no filter)
+    // - AGG: top 3 largest positive values; 6 _reduce columns take 3 most negative values
+    const EXCLUDE_TOP = new Set([
+      'date', 'date_display', 'month_num', 'month_abbr', 'year', 'month_label',
+      'call_settle_price', 'put_settle_price',
+      'call_price_change', 'put_price_change',
+      'strike', 'series', 'code', 'contract_label',
+    ]);
+    const topVals = {};
+    displayCols.forEach(col => {
+      if (EXCLUDE_TOP.has(col)) return;
+      const idx = columns.indexOf(col);
+      if (idx < 0) return;
+      const vals = rows.map(r => parseFloat(r[idx])).filter(v => !isNaN(v));
+      if (vals.length === 0) return;
+
+      // AGG: 6 _reduce columns use bottom-3 (most negative 3) logic
+      if (this.options.mode === 'agg' && BOTTOM_TOP_COLS.has(col)) {
+        const negative = vals.filter(v => v < 0);
+        if (negative.length === 0) return;
+        const sorted = [...new Set(negative)].sort((a, b) => a - b);
+        topVals[col] = new Set(sorted.slice(0, 3));
+        return;
+      }
+
+      // AGG (other cols): top 3 positive values
+      // OI / SCAN / IF: top 3 largest values (no positive filter, matching v1)
+      if (this.options.mode === 'agg') {
+        const positive = vals.filter(v => v > 0);
+        if (positive.length === 0) return;
+        const sorted = [...new Set(positive)].sort((a, b) => b - a);
+        topVals[col] = new Set(sorted.slice(0, 3));
+      } else {
+        const sorted = [...new Set(vals)].sort((a, b) => b - a);
+        topVals[col] = new Set(sorted.slice(0, 3));
+      }
+    });
+
+    // Apply default sort
+    if (this.sortKey == null && this.options.defaultSort) {
+      const idx = displayCols.indexOf(this.options.defaultSort.col);
+      if (idx >= 0) {
+        this.sortKey = idx;
+        this.sortDir = this.options.defaultSort.dir || 'desc';
+      }
+    }
+    let sortedRows = rows;
+    if (this.sortKey != null) {
+      const k = this.sortKey;
+      const dir = this.sortDir === 'asc' ? 1 : -1;
+      const keyCol = displayCols[k];
+      const keyIdx = columns.indexOf(keyCol);
+      if (keyIdx >= 0) {
+        sortedRows = [...rows].sort((a, b) => {
+          const av = a[keyIdx], bv = b[keyIdx];
+          const an = Number(av), bn = Number(bv);
+          if (Number.isFinite(an) && Number.isFinite(bn)) return (an - bn) * dir;
+          return String(av).localeCompare(String(bv)) * dir;
+        });
+      }
+    }
+
+    // Build header
+    const thead = el('thead', {});
+    const trh = el('tr', {});
+    displayCols.forEach((col, i) => {
+      const label = colCn[col] ?? col;
+      const th = el('th', {
+        class: (i === this.sortKey ? 'sorted' : '') + (this.sortDir === 'asc' && i === this.sortKey ? ' asc' : '') + (STRIKE_COLS.has(col) ? ' strike-col' : ''),
+        title: col,
+        onClick: () => {
+          if (this.sortKey === i) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+          else {
+            this.sortKey = i;
+            const sample = rows.find(r => r[columns.indexOf(col)] !== '' && r[columns.indexOf(col)] != null);
+            const isNum = sample && !isNaN(parseFloat(sample[columns.indexOf(col)]));
+            this.sortDir = isNum ? 'desc' : 'asc';
+          }
+          this.render(false, null, data);
+        }
+      }, label);
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+
+    // Build body
+    const tbody = el('tbody', {});
+    sortedRows.forEach(row => {
+      const tr = el('tr', {});
+      displayCols.forEach((col, i) => {
+        const idx = columns.indexOf(col);
+        if (idx < 0) return;
+        const v = row[idx];
+        const cls = [];
+        if (STRIKE_COLS.has(col)) cls.push('strike-col');
+
+        // Numeric formatting
+        const numVal = parseFloat(v);
+        const isNum = !isNaN(numVal) && v !== '' && v !== null;
+
+        // Top-3 highlight
+        if (topVals[col] && topVals[col].has(numVal)) cls.push('top-cell');
+
+        // Change column coloring
+        if (CHANGE_COLS.has(col) && isNum) {
+          if (numVal > 0) cls.push('val-pos');
+          else if (numVal < 0) cls.push('val-neg');
+          else cls.push('val-zero');
+        }
+        // Render value
+        let display;
+        if (v === '' || v === null || v === undefined) {
+          display = '—';
+        } else if (col === 'date_from' || col === 'date_to' || col === 'date') {
+          // yyyymmdd → yyyy-mm-dd
+          display = fmtDate(v);
+        } else if (col === 'days_in_range') {
+          // 整數 + 「天」單位
+          display = `${numVal} 天`;
+        } else if (isNum && col !== 'code' && col !== 'date' && col !== 'date_display' && col !== 'month_label' && col !== 'contract_label') {
+          if (RATIO_COLS.has(col)) {
+            display = numVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          } else if (Number.isInteger(numVal)) {
+            display = numVal.toLocaleString('en-US');
+          } else {
+            display = numVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+        } else {
+          display = String(v);
+        }
+
+        tr.appendChild(el('td', { class: cls.join(' ') }, display));
+      });
+      tbody.appendChild(tr);
+    });
+
+    const table = el('table', { class: 'data-table' }, thead, tbody);
+    const scroll = el('div', { class: 'table-scroll' }, table);
+    this.container.appendChild(scroll);
+    // Update scroll hint gradient after layout
+    this._updateScrollHint(scroll);
+  }
+
+  _updateScrollHint(scrollEl) {
+    // this.container is the .table-scroll div; its parent is .table-wrap
+    const wrap = this.container.parentElement;
+    if (!wrap || !wrap.classList.contains('table-wrap')) return;
+    // Defer to next frame to let layout settle
+    requestAnimationFrame(() => {
+      const hasOverflow = scrollEl.scrollWidth > scrollEl.clientWidth + 1;
+      wrap.classList.toggle('has-overflow', hasOverflow);
+    });
+  }
+
+}
+
+/* ============================================================
+   OI Tab
+   ============================================================ */
+const OITab = (() => {
+  let state = { code: '', date: '', month: '', year: '' };
+  let products = [];
+  let dates = [];
+  let table;
+
+  // Default state
+  function getDefaults() {
+    const now = new Date();
+    return {
+      code: 'HSI',
+      date: '',  // populated after products load (latest)
+      month: MONTHS[now.getMonth()],
+      year: String(now.getFullYear()).slice(-2),
+    };
+  }
+
+  function applyDefaults() {
+    Object.assign(state, getDefaults());
+  }
+
+  async function mount() {
+    table = new TableView($('#table-oi'), {
+      mode: 'oi',
+    });
+    applyDefaults();
+    renderFilters();
+    table.render('__PLACEHOLDER__', null, { placeholder: '請選條件並載入' });
+    await loadProducts();
+    // Populate dates dropdown for default product (no auto-load — 等用戶 click「↻ 載入」)
+    if (state.code) {
+      await onProductChange();
+    }
+  }
+
+  async function reset() {
+    applyDefaults();
+    renderFilters();
+    // Always re-run loadProducts to repopulate the product dropdown
+    // (renderFilters() recreates the <select> element, losing the cached options)
+    await loadProducts();
+  }
+
+  function renderFilters() {
+    const bar = $('#filterbar-oi');
+    bar.innerHTML = '';
+    bar.append(
+      field('產品', select('oi-product', [{ value: '', label: '— 載入中…' }], (v) => { state.code = v; onProductChange(); }, 'oi-product')),
+      field('日期', select('oi-date', [{ value: '', label: '— 揀產品先 —' }], (v) => { state.date = v; /* 唔 auto-load — 等用戶 click「↻ 載入」 */ }, 'oi-date')),
+      field('月', select('oi-month', [{ value: '', label: '全部' }, ...MONTHS.map(m => ({ value: m, label: m }))], (v) => { state.month = v; /* 唔 auto-load */ }, 'oi-month')),
+      field('年', input('oi-year', 'e.g. 26', (v) => { state.year = v; /* 唔 auto-load */ }, 'oi-year', '120px')),
+      el('div', { class: 'field' }, el('button', { class: 'btn', onClick: load }, '↻ 載入')),
+      el('div', { class: 'field' }, el('button', { class: 'btn btn-ghost', onClick: reset }, '↺ 重置')),
+    );
+  }
+
+  async function loadProducts() {
+    try {
+      products = await API.products();
+      const sel = $('#oi-product');
+      sel.innerHTML = '<option value="">— 請選擇 —</option>' +
+        products.map(p => `<option value="${esc(p.code)}">${esc(p.label || p.code)} [${p.type}]</option>`).join('');
+      sel.onchange = (e) => { state.code = e.target.value; onProductChange(); };
+
+      // Set default values
+      $('#oi-month').value = state.month;
+      $('#oi-year').value = state.year;
+
+      // Set default selection in dropdown (no auto-load — 用戶必須 click「↻ 載入」)
+      if (state.code && products.find(p => p.code === state.code)) {
+        sel.value = state.code;
+      }
+    } catch (err) {
+      Status.err('Products load failed: ' + err.message);
+    }
+  }
+
+  async function onProductChange() {
+    const dateSel = $('#oi-date');
+    if (!state.code) {
+      dateSel.innerHTML = '<option value="">— 揀產品先 —</option>';
+      return;
+    }
+    try {
+      const res = await API.dates(state.code);
+      dates = res.dates || [];
+      dateSel.innerHTML = '<option value="">— 請選擇 —</option>' +
+        dates.map(d => `<option value="${d}">${fmtDate(d)}</option>`).join('');
+      // Auto-pick latest in dropdown (no auto-load — 用戶必須 click「↻ 載入」)
+      if (dates.length > 0) {
+        state.date = dates[0];
+        dateSel.value = dates[0];
+      }
+    } catch (err) {
+      Status.err('Dates load failed: ' + err.message);
+    }
+  }
+
+  async function load() {
+    if (!state.code || !state.date) return;
+    Status.load(`Loading ${state.code} / ${fmtDate(state.date)}…`);
+    table.render('Loading…', null, null);
+    try {
+      const data = await API.data(state.code, state.date, state.month, state.year);
+      renderSummary(data);
+      table.render(false, null, data);
+      Status.ok(`Loaded ${fmtDate(state.date)} · ${data.total_rows ?? data.rows.length} rows`);
+    } catch (err) {
+      table.render(false, err.message, null);
+      Status.err('Load failed: ' + err.message);
+    }
+  }
+
+  function renderSummary(data) {
+    const sum = $('#summary-oi');
+    sum.hidden = false;
+    sum.innerHTML = `
+      <div class="summary-item"><span class="summary-label">產品</span><span class="summary-value">${esc(state.code)}</span></div>
+      <div class="summary-item"><span class="summary-label">日期</span><span class="summary-value mono">${esc(fmtDate(state.date))}</span></div>
+      <div class="summary-item"><span class="summary-label">類型</span><span class="summary-value">${esc(data.type || '')}</span></div>
+      <div class="summary-item"><span class="summary-label">行數</span><span class="summary-value mono">${data.total_rows ?? data.rows.length}</span></div>
+    `;
+  }
+
+  return { mount, load, reset, get state() { return state; } };
+})();
+
+/* ============================================================
+   IF Tab
+   ============================================================ */
+const IFTab = (() => {
+  let state = { code: '', months: 'JUN', year: '26', date_from: '', date_to: '' };
+  let products = [];
+  let table;
+
+  async function mount() {
+    table = new TableView($('#table-if'), {
+      mode: 'if',
+    });
+    applyDefaults();
+    renderFilters();
+    table.render('__PLACEHOLDER__', null, { placeholder: '請選條件並載入' });
+    await loadProducts();
+    // 唔 auto-load data — 等用戶 click「↻ 載入」(dates 係 user input, 唔需要 populate dropdown)
+  }
+
+  async function reset() {
+    applyDefaults();
+    renderFilters();
+    // Always re-run loadProducts to repopulate the index dropdown
+    await loadProducts();
+  }
+
+  function getDefaults() {
+    const now = new Date();
+    const monthAbbr = MONTHS[now.getMonth()];
+    const yearYY = String(now.getFullYear()).slice(-2);
+    const today_ = today.ymd();
+    // FROM = current year 1/1
+    const fromYmd = now.getFullYear() * 10000 + 101;
+    return {
+      code: 'HSI',
+      months: monthAbbr,
+      year: yearYY,
+      date_from: String(fromYmd),
+      date_to: String(today_),
+    };
+  }
+
+  function applyDefaults() {
+    Object.assign(state, getDefaults());
+  }
+
+  function renderFilters() {
+    const bar = $('#filterbar-if');
+    bar.innerHTML = '';
+    const years = ['25','26','27','28','29','30'];
+    bar.append(
+      field('指數', select('if-code', [{ value: '', label: '— 載入中…' }], null, 'if-code', '160px')),
+      field('月', select('if-months', [{ value: '', label: '全部' }, ...MONTHS.map(m => ({ value: m, label: m }))], (v) => { state.months = v; /* 唔 auto-load — 等用戶 click「↻ 載入」 */ }, 'if-months')),
+      field('年', select('if-year', [{ value: '', label: '全部' }, ...years.map(y => ({ value: y, label: '20' + y }))], (v) => { state.year = v; /* 唔 auto-load — 等用戶 click「↻ 載入」 */ }, 'if-year')),
+      field('起', dateInput('if-from', (v) => { state.date_from = v; /* 唔 auto-load */ }, 'if-from', state.date_from)),
+      field('止', dateInput('if-to', (v) => { state.date_to = v; /* 唔 auto-load */ }, 'if-to', state.date_to)),
+      el('div', { class: 'field' }, el('button', { class: 'btn', onClick: load }, '↻ 載入')),
+      el('div', { class: 'field' }, el('button', { class: 'btn btn-ghost', onClick: reset }, '↺ 重置')),
+    );
+  }
+
+  async function loadProducts() {
+    try {
+      products = await API.ifProducts();
+      const sel = $('#if-code');
+      sel.innerHTML = '<option value="">— 請選擇 —</option>' +
+        products.map(p => `<option value="${esc(p.code)}">${esc(p.label || p.code)}</option>`).join('');
+      sel.onchange = (e) => { state.code = e.target.value; /* 唔 auto-load — 等用戶 click「↻ 載入」 */ };
+
+      // Set defaults
+      $('#if-months').value = state.months;
+      $('#if-year').value = state.year;
+      // date input requires YYYY-MM-DD
+      const _toDate = (v) => v && v.length === 8 ? `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}` : '';
+      $('#if-from').value = _toDate(state.date_from);
+      $('#if-to').value   = _toDate(state.date_to);
+
+      // Set default selection in dropdown (no auto-load — 用戶必須 click「↻ 載入」)
+      if (state.code && products.find(p => p.code === state.code)) {
+        sel.value = state.code;
+      }
+    } catch (err) {
+      Status.err('IF products load failed: ' + err.message);
+    }
+  }
+
+  async function load() {
+    if (!state.code) {
+      table.render(false, null, { columns: [], rows: [] });
+      return;
+    }
+    Status.load(`Loading IF ${state.code}…`);
+    table.render('Loading…', null, null);
+    try {
+      const params = { code: state.code };
+      if (state.months) params.months = state.months;
+      if (state.year) params.year = state.year;
+      if (state.date_from) params.date_from = state.date_from;
+      if (state.date_to) params.date_to = state.date_to;
+      const data = await API.ifData(params);
+      renderSummary(data);
+      table.render(false, null, data);
+      Status.ok(`Loaded ${state.code} · ${data.total_rows ?? data.rows.length} rows · ${data.date_range || ''}`);
+    } catch (err) {
+      table.render(false, err.message, null);
+      Status.err('IF load failed: ' + err.message);
+    }
+  }
+
+  function renderSummary(data) {
+    const sum = $('#summary-if');
+    sum.hidden = false;
+    sum.innerHTML = `
+      <div class="summary-item"><span class="summary-label">指數</span><span class="summary-value">${esc(state.code)}</span></div>
+      <div class="summary-item"><span class="summary-label">合約</span><span class="summary-value">${esc(state.months || '全部')} 20${esc(state.year || 'YY')}</span></div>
+      <div class="summary-item"><span class="summary-label">日期範圍</span><span class="summary-value mono">${esc(data.date_range || (state.date_from + ' ~ ' + state.date_to))}</span></div>
+      <div class="summary-item"><span class="summary-label">行數</span><span class="summary-value mono">${data.total_rows ?? data.rows.length}</span></div>
+    `;
+  }
+
+  return { mount, load, reset };
+})();
+
+/* ============================================================
+   SCAN Tab
+   ============================================================ */
+const SCANTab = (() => {
+  const today_ = today.ymd();
+
+  function getDefaults() {
+    const now = new Date();
+    const monthAbbr = MONTHS[now.getMonth()];
+    const yearYY = String(now.getFullYear()).slice(-2);
+    const monthFirst = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + 1;
+    return {
+      date_from:     String(monthFirst),
+      date_to:       String(today.ymd()),
+      month_start:   monthAbbr,
+      year_start:    yearYY,
+      month_end:     monthAbbr,
+      year_end:      yearYY,
+      threshold:     0,
+      ratio_threshold: 100,
+      side:          'both',
+      products:      '',   // 自由輸入：HSI, HTI, HHI, 0700, 1810 （IO 大寫字母、SO 4位數字）
+    };
+  }
+
+  let state = getDefaults();
+  let table;
+  let isLoaded = false;  // 用戶按過「掃描」先為 true，避免 tab 切換時 auto-load
+
+  async function mount() {
+    table = new TableView($('#table-scan'), {
+      mode: 'scan',
+      defaultSort: { col: 'date', dir: 'desc' },
+    });
+    renderFilters();
+    // **唔預先載入** — render placeholder
+    table.render('__PLACEHOLDER__', null, { placeholder: '請選條件並載入' });
+    isLoaded = false;
+  }
+
+  async function reset() {
+    state = getDefaults();
+    renderFilters();
+    isLoaded = false;
+    table.render('__PLACEHOLDER__', null, { placeholder: '請選條件並載入' });
+  }
+
+  function renderFilters() {
+    const bar = $('#filterbar-scan');
+    bar.innerHTML = '';
+    bar.append(
+      field('起', dateInput('scan-from', (v) => { state.date_from = v; }, 'scan-from', state.date_from)),
+      field('止', dateInput('scan-to', (v) => { state.date_to = v; }, 'scan-to', state.date_to)),
+      field('月起', select('scan-ms', [{ value: '', label: '全部' }, ...MONTHS.map(m => ({ value: m, label: m }))], (v) => { state.month_start = v; }, 'scan-ms')),
+      field('年', input('scan-ys', 'YY', (v) => { state.year_start = v; }, 'scan-ys', '70px')),
+      field('月止', select('scan-me', [{ value: '', label: '全部' }, ...MONTHS.map(m => ({ value: m, label: m }))], (v) => { state.month_end = v; }, 'scan-me')),
+      field('年', input('scan-ye', 'YY', (v) => { state.year_end = v; }, 'scan-ye', '70px')),
+      field('淨數', input('scan-thr', '0', (v) => { state.threshold = Number(v) || 0; }, 'scan-thr', '90px')),
+      field('比率', input('scan-ratio', '100', (v) => { state.ratio_threshold = Number(v) || 0; }, 'scan-ratio', '90px')),
+      field('Side', select('scan-side', [
+        { value: 'both', label: 'Call+Put' },
+        { value: 'call', label: 'Call' },
+        { value: 'put',  label: 'Put' },
+      ], (v) => { state.side = v; }, 'scan-side', '110px')),
+      // **改：產品自由輸入** — IO (HSI/HTI/HHI/MCH/MHI) + SO (4位數字)
+      field('產品', input('scan-products', 'HSI, HTI, HHI, 0700, 1810', (v) => { state.products = v; }, 'scan-products', '220px')),
+      el('div', { class: 'field' }, el('button', { class: 'btn', onClick: load }, '↻ 掃描')),
+      el('div', { class: 'field' }, el('button', { class: 'btn btn-ghost', onClick: reset }, '↺ 重置')),
+    );
+    // Set default values
+    const _toDate = (v) => v && v.length === 8 ? `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}` : '';
+    $('#scan-from').value = _toDate(state.date_from);
+    $('#scan-to').value   = _toDate(state.date_to);
+    $('#scan-ms').value         = state.month_start;
+    $('#scan-ys').value         = state.year_start;
+    $('#scan-me').value         = state.month_end;
+    $('#scan-ye').value         = state.year_end;
+    $('#scan-thr').value        = state.threshold;
+    $('#scan-ratio').value      = state.ratio_threshold;
+    $('#scan-side').value       = state.side;
+    $('#scan-products').value   = state.products;
+  }
+
+  async function load() {
+    Status.load('Scanning…');
+    table.render('掃描中…', null, null);
+    try {
+      // 將 products 拆成 IO 個股 + SO 股票編號
+      // Backend `/api/scan` 用 `stock_codes` 參數同時接受 IO 同 SO
+      const stateWithCodes = { ...state };
+      stateWithCodes.stock_codes = state.products;  // 改名配合 backend
+      // 後端 API.scan 接受 params spread
+      const data = await API.scan(stateWithCodes);
+      renderSummary(data);
+      table.render(false, null, data);
+      Status.ok(`Scan complete · ${data.total_rows ?? data.rows.length} rows`);
+      isLoaded = true;
+    } catch (err) {
+      table.render(false, err.message, null);
+      Status.err('Scan failed: ' + err.message);
+    }
+  }
+
+  function renderSummary(data) {
+    const sum = $('#summary-scan');
+    sum.hidden = false;
+    // Parse 返 products 顯示
+    const productLabel = state.products
+      ? state.products
+      : '全部 (All)';
+    sum.innerHTML = `
+      <div class="summary-item"><span class="summary-label">日期範圍</span><span class="summary-value mono">${esc(fmtDate(state.date_from))} → ${esc(fmtDate(state.date_to))}</span></div>
+      <div class="summary-item"><span class="summary-label">淨數閾值</span><span class="summary-value mono">${state.threshold.toLocaleString()}</span></div>
+      <div class="summary-item"><span class="summary-label">比率閾值</span><span class="summary-value mono">${state.ratio_threshold.toLocaleString()}</span></div>
+      <div class="summary-item"><span class="summary-label">Side</span><span class="summary-value">${esc(state.side)}</span></div>
+      <div class="summary-item"><span class="summary-label">產品</span><span class="summary-value mono">${esc(productLabel)}</span></div>
+      <div class="summary-item"><span class="summary-label">命中</span><span class="summary-value mono">${data.total_rows ?? data.rows.length}</span></div>
+    `;
+  }
+
+  return { mount, load, reset };
+})();
+
+/* ============================================================
+   AGG Tab
+   ============================================================ */
+const AGGTab = (() => {
+  let state = { series: 'HSI', date: '', isRange: false, dateFrom: '20260601', dateTo: '20260613' };
+  let series = [];
+  let dates = [];
+  let table;
+
+  async function mount() {
+    table = new TableView($('#table-agg'), {
+      mode: 'agg',
+    });
+    renderFilters();
+    table.render('__PLACEHOLDER__', null, { placeholder: '請選條件並載入' });
+    await loadSeries();
+    // Populate dates dropdown for default series (no auto-load — 等用戶 click「↻ 載入」)
+    if (state.series) {
+      await onSeriesChange();
+    }
+  }
+
+  function renderFilters() {
+    const bar = $('#filterbar-agg');
+    bar.innerHTML = '';
+    bar.append(
+      field('系列', select('agg-series', _seriesOptions(), (v) => { state.series = v; onSeriesChange(); }, 'agg-series', '160px')),
+      field('日期', select('agg-date', _dateOptions(), (v) => { state.date = v; /* 唔 auto-load — 等用戶 click「↻ 載入」 */ }, 'agg-date')),
+      // 📅 日期範圍 toggle
+      el('div', { class: 'field' },
+        el('label', { class: 'range-toggle', onClick: (e) => e.stopPropagation() },
+          el('input', {
+            type: 'checkbox', id: 'agg-range-toggle', checked: state.isRange,
+            onChange: (e) => { state.isRange = e.target.checked; renderFilters(); /* 唔 auto-load — 等用戶 click「↻ 載入」 */ },
+          }),
+          ' 📅 日期範圍（累加 12 個 _change）'
+        )
+      ),
+    );
+    // Restore selected values after re-render (date dropdown state lives in closure)
+    if (state.series) {
+      const seriesSel = $('#agg-series');
+      if (seriesSel) seriesSel.value = state.series;
+    }
+    if (state.date) {
+      const dateSel = $('#agg-date');
+      if (dateSel) dateSel.value = state.date;
+    }
+    if (state.isRange) {
+      const _toDate = (v) => v && v.length === 8 ? `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}` : '';
+      bar.append(
+        field('起', el('input', {
+          type: 'date', id: 'agg-date-from', value: _toDate(state.dateFrom), class: 'input-date',
+          style: { width: '130px' },
+          onChange: (e) => { state.dateFrom = e.target.value.replace(/-/g, ''); /* 唔 auto-load */ },
+        })),
+        field('止', el('input', {
+          type: 'date', id: 'agg-date-to', value: _toDate(state.dateTo), class: 'input-date',
+          style: { width: '130px' },
+          onChange: (e) => { state.dateTo = e.target.value.replace(/-/g, ''); /* 唔 auto-load */ },
+        })),
+      );
+    }
+    bar.append(
+      el('div', { class: 'field' }, el('button', { class: 'btn', onClick: load }, '↻ 載入')),
+      el('div', { class: 'field' }, el('button', { class: 'btn btn-ghost', onClick: reset }, '↺ 重置')),
+    );
+  }
+
+  // Build options for series dropdown — uses cached `series` array, never shows "載入中" once loaded
+  function _seriesOptions() {
+    if (series.length === 0) {
+      return [{ value: '', label: '— 載入中…' }];
+    }
+    return [
+      { value: '', label: '— 請選擇 —' },
+      ...series.map(s => {
+        const code = typeof s === 'string' ? s : s.code;
+        const label = typeof s === 'string' ? s : (s.label || s.code);
+        return { value: code, label };
+      })
+    ];
+  }
+
+  // Build options for date dropdown — uses cached `dates` array
+  function _dateOptions() {
+    if (dates.length === 0) {
+      return [{ value: '', label: state.series ? '— 無可用日期 —' : '— 揀系列先 —' }];
+    }
+    return [
+      { value: '', label: '— 請選擇 —' },
+      ...dates.map(d => ({ value: d, label: fmtDate(d) }))
+    ];
+  }
+
+  async function reset() {
+    state.series = 'HSI';
+    state.date = '';
+    state.isRange = false;
+    state.dateFrom = '20260601';
+    state.dateTo = '20260613';
+    renderFilters();
+    // Always re-run loadSeries to repopulate the series dropdown
+    await loadSeries();
+  }
+
+  async function loadSeries() {
+    try {
+      const res = await API.aggList();
+      series = res.series || res || [];
+      const sel = $('#agg-series');
+      sel.innerHTML = '<option value="">— 請選擇 —</option>' +
+        series.map(s => {
+          const code = typeof s === 'string' ? s : s.code;
+          const label = typeof s === 'string' ? s : (s.label || s.code);
+          return `<option value="${esc(code)}">${esc(label)}</option>`;
+        }).join('');
+      sel.onchange = (e) => { state.series = e.target.value; onSeriesChange(); };
+      // Set default selection in dropdown (no auto-load — 用戶必須 click「↻ 載入」)
+      const preferred = series.find(s => (typeof s === 'string' ? s : s.code) === 'HSI');
+      if (preferred) {
+        const code = typeof preferred === 'string' ? preferred : preferred.code;
+        state.series = code;
+        sel.value = code;
+      } else if (series.length > 0) {
+        const first = series[0];
+        const code = typeof first === 'string' ? first : first.code;
+        state.series = code;
+        sel.value = code;
+      }
+    } catch (err) {
+      Status.err('AGG list load failed: ' + err.message);
+    }
+  }
+
+  async function onSeriesChange() {
+    if (state.isRange) {
+      // 範圍 mode：用當前 dateFrom/dateTo（唔 auto-load — 等用戶 click「↻ 載入」）
+      return;
+    }
+    const dateSel = $('#agg-date');
+    if (!state.series) {
+      dateSel.innerHTML = '<option value="">— 揀系列先 —</option>';
+      return;
+    }
+    try {
+      const res = await API.aggDates(state.series);
+      dates = res.dates || [];
+      dateSel.innerHTML = '<option value="">— 請選擇 —</option>' +
+        dates.map(d => `<option value="${d}">${fmtDate(d)}</option>`).join('');
+      // Auto-pick latest in dropdown (no auto-load — 用戶必須 click「↻ 載入」)
+      if (dates.length > 0) {
+        state.date = dates[0];
+        dateSel.value = dates[0];
+      }
+    } catch (err) {
+      Status.err('AGG dates load failed: ' + err.message);
+    }
+  }
+
+  async function load() {
+    if (!state.series) return;
+    if (state.isRange) {
+      if (!state.dateFrom || !state.dateTo) {
+        Status.err('請填 date_from + date_to (yyyymmdd)');
+        return;
+      }
+      if (state.dateFrom > state.dateTo) {
+        Status.err('date_from 不可大於 date_to');
+        return;
+      }
+    } else if (!state.date) {
+      return;
+    }
+
+    const label = state.isRange
+      ? `${state.series} 範圍 ${state.dateFrom}~${state.dateTo}`
+      : `${state.series} / ${fmtDate(state.date)}`;
+    Status.load(`Loading AGG ${label}…`);
+    table.render('Loading…', null, null);
+    try {
+      // isRange=false 時，唔送 dateFrom/dateTo，避免 backend 走範圍 mode
+      const data = await API.aggData(
+        state.series, state.date,
+        state.isRange ? state.dateFrom : '',
+        state.isRange ? state.dateTo   : ''
+      );
+      renderSummary(data);
+      table.render(false, null, data);
+      const rangeTag = data.range_mode ? ' (累加模式)' : '';
+      Status.ok(`Loaded ${label} · ${data.total_rows ?? data.rows.length} rows${rangeTag}`);
+    } catch (err) {
+      table.render(false, err.message, null);
+      Status.err('AGG load failed: ' + err.message);
+    }
+  }
+
+  function renderSummary(data) {
+    const sum = $('#summary-agg');
+    sum.hidden = false;
+    // 從第一個 row 拎 days_in_range（per-strike 都係同一個值，nunique）
+    let daysLabel = '?';
+    if (data.columns && data.columns.indexOf('days_in_range') >= 0 && data.rows.length > 0) {
+      const idx = data.columns.indexOf('days_in_range');
+      daysLabel = data.rows[0][idx];
+    }
+    const dateLabel = data.range_mode
+      ? `${fmtDate(data.date_from)} ~ ${fmtDate(data.date_to)} (${daysLabel} 天)`
+      : fmtDate(state.date);
+    sum.innerHTML = `
+      <div class="summary-item"><span class="summary-label">系列</span><span class="summary-value">${esc(state.series)}</span></div>
+      <div class="summary-item"><span class="summary-label">${data.range_mode ? '日期範圍' : '日期'}</span><span class="summary-value mono">${esc(dateLabel)}</span></div>
+      <div class="summary-item"><span class="summary-label">行數</span><span class="summary-value mono">${data.total_rows ?? data.rows.length}</span></div>
+      ${data.range_mode ? '<div class="summary-item"><span class="summary-label">模式</span><span class="summary-value" style="color:var(--accent)">📅 累加 12 個 _change 欄位</span></div>' : ''}
+    `;
+  }
+
+  return { mount, load, reset };
+})();
+
+/* ============================================================
+   Form helpers
+   ============================================================ */
+function field(label, control) {
+  return el('div', { class: 'field' },
+    el('span', { class: 'field-label' }, label),
+    control
+  );
+}
+
+function select(id, options, onChange, domId, minWidth) {
+  const wrap = el('div', { class: 'field-input' });
+  const sel = el('select', { id: domId || id, style: minWidth ? `min-width:${minWidth}` : '' });
+  options.forEach(o => {
+    const opt = el('option', { value: o.value }, o.label);
+    sel.appendChild(opt);
+  });
+  if (onChange) sel.addEventListener('change', (e) => onChange(e.target.value));
+  wrap.appendChild(sel);
+  return wrap;
+}
+
+function input(id, placeholder, onChange, domId, minWidth) {
+  const wrap = el('div', { class: 'field-input' });
+  const inp = el('input', { id: domId || id, type: 'text', placeholder, style: minWidth ? `min-width:${minWidth}` : '' });
+  inp.addEventListener('input', (e) => onChange(e.target.value));
+  wrap.appendChild(inp);
+  return wrap;
+}
+
+// HTML5 date input — value 顯示 YYYY-MM-DD (browser native datepicker)
+// getValue() 返 YYYYMMDD (API format), setValue() 接受 YYYYMMDD or YYYY-MM-DD
+function dateInput(id, onChange, domId, defaultVal) {
+  const wrap = el('div', { class: 'field-input' });
+  const inp = el('input', { id: domId || id, type: 'date', class: 'input-date' });
+  // Set initial value if provided (accept YYYYMMDD or YYYY-MM-DD)
+  if (defaultVal) {
+    const v = String(defaultVal).replace(/-/g, '');
+    if (v.length === 8) inp.value = `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
+  }
+  inp.addEventListener('change', (e) => {
+    const v = e.target.value.replace(/-/g, '');  // YYYY-MM-DD → YYYYMMDD
+    onChange(v);
+  });
+  // Expose setValue method via dataset for later updates
+  wrap._setValue = (val) => {
+    const v = String(val || '').replace(/-/g, '');
+    if (v.length === 8) inp.value = `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
+    else inp.value = '';
+  };
+  wrap.appendChild(inp);
+  return wrap;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+}
+
+/* ============================================================
+   App Shell
+   ============================================================ */
+const App = {
+  currentTab: 'oi',
+  density: localStorage.getItem('density') || 'cozy',
+
+  async init() {
+    this.bindTabs();
+    this.bindTopbar();
+    this.applyDensity();
+    // Show filter toggle row for the initial tab
+    await this.switchTab('oi');
+  },
+
+  bindTabs() {
+    const allTabs = $$('.tab, #bottom-nav button');
+    allTabs.forEach(btn => {
+      btn.addEventListener('click', () => this.switchTab(btn.dataset.tab));
+    });
+  },
+
+  async switchTab(name) {
+    this.currentTab = name;
+    $$('.tab, #bottom-nav button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === name ? 'true' : 'false'));
+    $$('.page').forEach(p => p.hidden = (p.id !== `page-${name}`));
+    // Show / hide the right filter toggle row + chip row
+    $$('.filter-toggle-row').forEach(el => el.style.display = 'none');
+    const tRow = $(`#page-${name} .filter-toggle-row`);
+    if (tRow) tRow.style.display = '';
+    // On mobile, auto-close filter on tab switch
+    $$('.filterbar').forEach(b => b.classList.remove('open'));
+
+    switch (name) {
+      case 'oi':   if (!OITab._mounted)   { await OITab.mount();   OITab._mounted = true; }   else { /* 唔 auto-load — 用戶必須 click「↻ 載入」 */ } break;
+      case 'if':   if (!IFTab._mounted)   { await IFTab.mount();   IFTab._mounted = true; }   else { /* 唔 auto-load — 用戶必須 click「↻ 載入」 */ } break;
+      case 'scan': if (!SCANTab._mounted) { await SCANTab.mount(); SCANTab._mounted = true; } else { /* 唔 auto-load — 用戶必須按掃描 */ } break;
+      case 'agg':  if (!AGGTab._mounted)  { await AGGTab.mount();  AGGTab._mounted = true; }  else { /* 唔 auto-load — 用戶必須 click「↻ 載入」 */ } break;
+    }
+    // Reflect tab in URL
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', name);
+    history.replaceState(null, '', url);
+  },
+
+  bindTopbar() {
+    $('#density-btn').addEventListener('click', () => {
+      this.density = this.density === 'compact' ? 'cozy' : 'compact';
+      localStorage.setItem('density', this.density);
+      this.applyDensity();
+    });
+    $('#theme-btn').addEventListener('click', () => {
+      const cur = document.documentElement.style.colorScheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.style.colorScheme = next;
+      localStorage.setItem('theme', next);
+    });
+    // Initial theme
+    if (localStorage.getItem('theme')) {
+      document.documentElement.style.colorScheme = localStorage.getItem('theme');
+    }
+    // Filter toggle buttons (one per tab)
+    ['oi','if','scan','agg'].forEach(t => {
+      const btn = $(`#filter-toggle-${t}`);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          const bar = $(`#filterbar-${t}`);
+          if (bar) bar.classList.toggle('open');
+        });
+      }
+    });
+  },
+
+  applyDensity() {
+    document.body.classList.toggle('density-compact', this.density === 'compact');
+  },
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+  // Initial tab from URL
+  const url = new URL(window.location.href);
+  const initialTab = url.searchParams.get('tab') || 'oi';
+  App.init();
+  if (initialTab !== 'oi') App.switchTab(initialTab);
+});
+</script>
+</body>
+</html>

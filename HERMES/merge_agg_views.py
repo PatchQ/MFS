@@ -97,7 +97,20 @@ def build_agg_view(src_dir: Path, dst_dir: Path, subdir_name: str, kind: str):
         df['strike'] = pd.to_numeric(df['strike'], errors='coerce')
 
         # 構建聚合字典
+        # *_settle_price、*_price_change：唔同合約有唔同值，sum 冇意義 → 完全排除
+        # *_change（淨變化類）：拆成 _add (正值加) + _reduce (負值加)，避免 6月+1000 + 7月-1000 = 0 嘅假象
         EXCLUDED_COLS = ['call_settle_price', 'put_settle_price', 'call_price_change', 'put_price_change']
+        CHANGE_COLS = ['call_net_change', 'put_net_change',
+                        'call_turnover_change', 'put_turnover_change',
+                        'call_gross_change', 'put_gross_change']
+
+        # 預處理：將 *_change 拆成 _add / _reduce 兩欄（加總後有意義）
+        for col in CHANGE_COLS:
+            if col in df.columns:
+                df[f'{col}_add']    = pd.to_numeric(df[col], errors='coerce').fillna(0).clip(lower=0)  # 只保留正值
+                df[f'{col}_reduce'] = pd.to_numeric(df[col], errors='coerce').fillna(0).clip(upper=0)  # 只保留負值（保持負號）
+                df.drop(columns=[col], inplace=True)  # 移除原欄，避免 sum 出 0
+
         agg_dict = {}
         for col in df.columns:
             if col in KEY_COLS or col in ['month_num', 'year_int', 'contract_num', 'month_abbr', 'year']:
@@ -116,11 +129,11 @@ def build_agg_view(src_dir: Path, dst_dir: Path, subdir_name: str, kind: str):
         # groupby + agg
         grouped = df.groupby(KEY_COLS, dropna=True).agg(agg_dict).reset_index()
 
-        # 重算 ratio
-        if 'call_turnover' in grouped.columns and 'call_turnover_prev' in grouped.columns:
-            grouped['call_ratio'] = grouped['call_turnover'] / grouped['call_turnover_prev'].replace(0, 1)
-        if 'put_turnover' in grouped.columns and 'put_turnover_prev' in grouped.columns:
-            grouped['put_ratio'] = grouped['put_turnover'] / grouped['put_turnover_prev'].replace(0, 1)
+        # 重算 ratio（總成交金額 / 總成交筆數 = 每筆平均金額）
+        if 'call_turnover' in grouped.columns and 'call_deals' in grouped.columns:
+            grouped['call_ratio'] = grouped['call_turnover'] / grouped['call_deals'].replace(0, float('nan'))
+        if 'put_turnover' in grouped.columns and 'put_deals' in grouped.columns:
+            grouped['put_ratio'] = grouped['put_turnover'] / grouped['put_deals'].replace(0, float('nan'))
 
         for col in ['call_ratio', 'put_ratio']:
             if col in grouped.columns:

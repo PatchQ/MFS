@@ -544,6 +544,12 @@
     <input type="number" id="scan-threshold" value="1000" min="0" style="width:80px;" />
   </div>
 
+  <!-- 比率變化閾值（C/P turnover 比率變化，百分比） -->
+  <div class="ctrl-group">
+    <label>比率變化 ≥</label>
+    <input type="number" id="scan-ratio-threshold" value="0" min="0" style="width:80px;" />
+  </div>
+
   <!-- 方向 -->
   <div class="ctrl-group">
     <label>方向</label>
@@ -575,6 +581,18 @@
       <select id="agg-date-select">
         <option value="">—</option>
       </select>
+    </div>
+
+    <div class="ctrl-group" style="display:flex;flex-direction:column;gap:4px;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="agg-range-toggle" style="width:auto;margin:0;">
+        📅 日期範圍（累加 12 個 _change 欄位）
+      </label>
+      <div id="agg-range-inputs" style="display:none; display:flex; gap:6px; align-items:center;">
+        <input type="text" id="agg-date-from" placeholder="20260601" maxlength="8" style="width:90px;">
+        <span style="color:var(--text-dim);">→</span>
+        <input type="text" id="agg-date-to" placeholder="20260613" maxlength="8" style="width:90px;">
+      </div>
     </div>
 
     <button class="btn-load" id="btn-load-agg">🔍 載入</button>
@@ -1094,23 +1112,68 @@
   // 載入聚合視圖數據
   document.getElementById('btn-load-agg').addEventListener('click', loadAggData);
 
+  // 日期範圍 toggle
+  document.getElementById('agg-range-toggle').addEventListener('change', (e) => {
+    const isRange = e.target.checked;
+    document.getElementById('agg-range-inputs').style.display = isRange ? 'flex' : 'none';
+    document.getElementById('agg-date-select').disabled = isRange;
+    if (isRange) {
+      // 預設 date_from / date_to 為 date_select 嘅當前值
+      const cur = document.getElementById('agg-date-select').value;
+      if (cur) {
+        document.getElementById('agg-date-from').value = cur;
+        document.getElementById('agg-date-to').value = cur;
+      } else {
+        // 預設 20260601 ~ 20260613（用戶指定）
+        document.getElementById('agg-date-from').value = '20260601';
+        document.getElementById('agg-date-to').value = '20260613';
+      }
+    }
+  });
+
   async function loadAggData() {
     const series  = document.getElementById('agg-series-input').value.trim();
+    const isRange = document.getElementById('agg-range-toggle').checked;
     const dateStr = document.getElementById('agg-date-select').value;
-    if (!series || !dateStr) {
-      setStatus('⚠️ 請先輸入系列及選擇日期', 'error');
+    const dateFrom = document.getElementById('agg-date-from').value.trim();
+    const dateTo   = document.getElementById('agg-date-to').value.trim();
+
+    if (!series) {
+      setStatus('⚠️ 請先輸入系列', 'error');
       return;
     }
+
+    let url;
+    if (isRange) {
+      // 驗證 yyyymmdd 格式
+      if (!/^\d{8}$/.test(dateFrom) || !/^\d{8}$/.test(dateTo)) {
+        setStatus('⚠️ 日期範圍請用 8 位數字格式 (yyyymmdd)', 'error');
+        return;
+      }
+      if (dateFrom > dateTo) {
+        setStatus('⚠️ date_from 不可大於 date_to', 'error');
+        return;
+      }
+      url = `/api/agg/data?series=${encodeURIComponent(series)}&date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`;
+    } else {
+      if (!dateStr) {
+        setStatus('⚠️ 請選擇日期', 'error');
+        return;
+      }
+      url = `/api/agg/data?series=${encodeURIComponent(series)}&date=${encodeURIComponent(dateStr)}`;
+    }
+
     setStatus('⏳ 載入中…', 'loading');
     try {
-      const res = await fetch(`/api/agg/data?series=${encodeURIComponent(series)}&date=${encodeURIComponent(dateStr)}`);
+      const res = await fetch(url);
       const data = await res.json();
       if (data.error) { setStatus('❌ ' + data.error, 'error'); return; }
       renderAggTable(data);
-      infoEl.textContent = `${data.code} [聚合視圖] ｜ ${data.date_display} ｜ ${data.total_rows} 行`;
-      setStatus(`✅ 顯示 ${data.total_rows} 行`, 'ok');
-      // 載入現貨價面板（跟 Tab 1 一致）
-      loadAggSPPrice(series, dateStr);
+      infoEl.textContent = `${data.code} [聚合視圖${data.range_mode ? '📅範圍' : ''}] ｜ ${data.date_display} ｜ ${data.total_rows} 行`;
+      setStatus(`✅ 顯示 ${data.total_rows} 行${data.range_mode ? ' (累加模式)' : ''}`, 'ok');
+      // 載入現貨價面板（用 date_to 或 dateStr）
+      const displayDate = data.date_to || dateStr;
+      loadAggSPPrice(series, displayDate);
     } catch (e) {
       setStatus('❌ 載入失敗：' + e.message, 'error');
     }
@@ -1175,28 +1238,49 @@
       'call_turnover_change', 'put_turnover_change',
       'call_net_change', 'put_net_change',
       'call_gross_change', 'put_gross_change',
+      // 累加模式用嘅 _add / _reduce 欄位
+      'call_turnover_change_add', 'call_turnover_change_reduce',
+      'put_turnover_change_add', 'put_turnover_change_reduce',
+      'call_net_change_add',      'call_net_change_reduce',
+      'put_net_change_add',       'put_net_change_reduce',
+      'call_gross_change_add',    'call_gross_change_reduce',
+      'put_gross_change_add',     'put_gross_change_reduce',
     ]);
     const RATIO_COLS  = new Set(['call_ratio', 'put_ratio']);
 
-    const getTopVals = (rows, colIdx) => {
+    const getTopVals = (rows, colIdx, reverse = false) => {
       const vals = rows.map(r => parseFloat(r[colIdx]) || 0);
-      const sorted = [...new Set(vals)].sort((a, b) => b - a);
+      // 排除 0/正數：reverse 模式只計真正負數（用戶語意：最少 = 最負）
+      const filtered = reverse ? vals.filter(v => v < 0) : vals.filter(v => v > 0);
+      if (filtered.length === 0) return new Set();  // 冇正/負值就唔 highlight
+      const sorted = [...new Set(filtered)].sort((a, b) => reverse ? a - b : b - a);
       return new Set(sorted.slice(0, 3));
     };
 
     // 自動偵測所有數值欄位做 Top-3 highlight（除 date/strike/series）
     const EXCLUDE_TOP_COLS_AGG = new Set([
-      'date', 'month_num', 'month_abbr', 'year',
+      'date', 'date_from', 'date_to', 'days_in_range',
+      'month_num', 'month_abbr', 'year',
       'call_settle_price', 'put_settle_price',
       'call_price_change', 'put_price_change',
       'strike', 'series', 'code', 'contract_label'
+    ]);
+    // 6 個負值欄位（_reduce）改為取最少 3 個 highlight（負數最低 = 最大減倉）
+    const BOTTOM_TOP_COLS_AGG = new Set([
+      'call_turnover_change_reduce',  // CVolc-
+      'call_net_change_reduce',       // C淨數c-
+      'call_gross_change_reduce',     // COIc-
+      'put_turnover_change_reduce',   // PVolc-
+      'put_net_change_reduce',        // P淨數c-
+      'put_gross_change_reduce',      // POIc-
     ]);
     const topVals = {};
     data.columns.forEach((col, idx) => {
       if (EXCLUDE_TOP_COLS_AGG.has(col)) return;
       const sampleVal = data.rows.find(r => r[idx] !== '' && r[idx] !== null && r[idx] !== undefined)?.[idx];
       if (typeof sampleVal === 'number' || (typeof sampleVal === 'string' && !isNaN(parseFloat(sampleVal)))) {
-        topVals[col] = getTopVals(data.rows, idx);
+        const isBottom = BOTTOM_TOP_COLS_AGG.has(col);
+        topVals[col] = getTopVals(data.rows, idx, isBottom);
       }
     });
 
@@ -1207,7 +1291,7 @@
     aggThead.innerHTML = '';
     const tr = document.createElement('tr');
     data.columns.forEach(col => {
-      if (col === 'date' || col === 'series') return;  // 隱藏 date/series（已知）
+      if (col === 'series') return;  // 隱藏 series (已知)
       if (COL_CN[col] === null || COL_CN[col] === undefined) return;
       const th = document.createElement('th');
       th.textContent = COL_CN[col] || col;
@@ -1226,10 +1310,24 @@
     data.rows.forEach((row) => {
       const tr = document.createElement('tr');
       data.columns.forEach((col, i) => {
-        if (col === 'date' || col === 'series') return;
+        if (col === 'series') return;
         if (COL_CN[col] === null || COL_CN[col] === undefined) return;
         const td = document.createElement('td');
         let val = row[i];
+
+        // 處理 date / date_from / date_to 顯示 (yyyymmdd → yyyy-mm-dd)
+        if ((col === 'date' || col === 'date_from' || col === 'date_to') && typeof val === 'string' && val.length === 8) {
+          td.textContent = `${val.slice(0,4)}-${val.slice(4,6)}-${val.slice(6,8)}`;
+          tr.appendChild(td);
+          return;
+        }
+
+        // days_in_range 顯示為整數
+        if (col === 'days_in_range') {
+          td.textContent = (val === '' || val === null || val === undefined) ? '—' : `${val} 天`;
+          tr.appendChild(td);
+          return;
+        }
 
         const numVal = parseFloat(val) || 0;
         if (topVals[col] && topVals[col].has(numVal)) td.classList.add('top-cell');
@@ -1471,6 +1569,7 @@
     const monthEnd   = document.getElementById('scan-month-end').value;
     const yearEnd    = document.getElementById('scan-year-end').value;
     const threshold  = document.getElementById('scan-threshold').value;
+    const ratioThreshold = document.getElementById('scan-ratio-threshold').value;
     const side       = document.getElementById('scan-side').value;
     const productType = document.getElementById('scan-product-type').value;
     const stockCodes  = document.getElementById('scan-stock-codes').value.trim();
@@ -1483,7 +1582,7 @@
     setStatus('⏳ 掃描中（需時數秒）…', 'loading');
 
     try {
-      const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo, threshold, side, product_type: productType });
+      const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo, threshold, ratio_threshold: ratioThreshold, side, product_type: productType });
       if (stockCodes) params.set('stock_codes', stockCodes);
       if (monthStart) params.set('month_start', monthStart);
       if (yearStart)  params.set('year_start', yearStart);
@@ -1501,8 +1600,9 @@
           ? `自定義: ${stockCodes}`
           : {'all':'全部','SO':'股票期權SO','HSI':'HSI','HTI':'HTI','HHI':'HHI'}[f.product_type] || f.product_type;
         const trunc = data.truncated ? ' ⚠️ 已截斷（最多5000行）' : '';
+        const ratioStr = f.ratio_threshold > 0 ? ` ｜ 比率≥${f.ratio_threshold}` : '';
         setStatus(
-          `✅ 找到 ${data.total_rows} 行${trunc} ｜ 閾值≥${f.threshold} ｜ ${f.month_range} ｜ ${f.side} ｜ ${ptLabel}`,
+          `✅ 找到 ${data.total_rows} 行${trunc} ｜ 淨數≥${f.threshold}${ratioStr} ｜ ${f.month_range} ｜ ${f.side} ｜ ${ptLabel}`,
           'ok'
         );
     } catch (e) {
