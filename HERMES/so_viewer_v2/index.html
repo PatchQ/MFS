@@ -1307,7 +1307,7 @@ class TableView {
         }
       });
       displayCols = columns.filter(col => {
-        if (this.options.mode === 'agg' && (col === 'date' || col === 'series')) return false;
+        if (this.options.mode === 'agg' && (col === 'date' || col === 'series' || col === 'contract_label')) return false;
         if (colCn[col] === null || colCn[col] === undefined) return false;
         return true;
       });
