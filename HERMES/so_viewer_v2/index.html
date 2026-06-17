@@ -571,6 +571,12 @@ select option {
 }
 .data-table th.accent-col { background: var(--surface-3); color: var(--accent); }
 
+/* Accent column + top-3 — 加 warn 字色 + 加重 weight, 保持 accent 底色 */
+.data-table td.accent-col.top-cell {
+  color: var(--warn);
+  font-weight: 700;
+}
+
 /* Sticky first column (mobile horizontal scroll — keeps code/strike visible) */
 .data-table th:first-child,
 .data-table td:first-child {
