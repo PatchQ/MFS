@@ -937,15 +937,14 @@ def api_sp():
 
 
 # ============================================================
-# 本地 OHLCV API — 從 SPPATH 本地 CSV 讀，唔使 hit yfinance
+# OHLCV API — 優先 Yahoo Finance (即時)，fallback 本地 SP CSV
 # ============================================================
-def _read_ohlcv_local(code: str, date_str: str) -> dict | None:
+def _read_ohlcv_local_fallback(code: str, date_str: str) -> dict | None:
     """
-    從 SPPATH/<CODE>/<CODE>_<YYYY-MM-DD>.csv 讀 OHLCV
-
-    - 找不到對應日期 → 自動 fallback 攞最近一個交易日
-    - 回傳 { code, date, date_display, open, high, low, close, adj_close, volume,
-             dividends, stock_splits, prev_date (fallback 提示用) }
+    Fallback: 從 SPPATH/<CODE>/<CODE>_<YYYY-MM-DD>.csv 讀 OHLCV
+    找不到對應日期 → 自動 fallback 攞最近一個交易日
+    回傳 { code, date, date_display, open, high, low, close, adj_close, volume,
+            dividends, stock_splits, prev_date (fallback 提示用) }
     """
     import numpy as np
     upper = code.upper()
@@ -967,15 +966,13 @@ def _read_ohlcv_local(code: str, date_str: str) -> dict | None:
                 candidates.append((parts[1], f))
         if not candidates:
             return None
-        # sort by date asc
         candidates.sort(key=lambda x: x[0])
-        # pick largest <= target
         pick = None
         for d, f in candidates:
             if d <= ymd:
                 pick = (d, f)
         if pick is None:
-            pick = candidates[-1]  # 完全冇對應 → 攞最新
+            pick = candidates[-1]
         prev_date = pick[0]
         target = pick[1]
 
@@ -1008,18 +1005,36 @@ def _read_ohlcv_local(code: str, date_str: str) -> dict | None:
             "volume": _i(row.get("Volume")),
             "dividends": _f(row.get("Dividends")),
             "stock_splits": _f(row.get("Stock Splits")),
-            "prev_date": prev_date,  # 唔同 requested date 時提示用
+            "prev_date": prev_date,
         }
     except Exception as e:
-        print(f"[OHLCV API] Error reading {target}: {e}")
+        print(f"[OHLCV Local] Error reading {target}: {e}")
         return None
+
+
+def _fetch_ohlcv(code: str, date_str: str) -> dict | None:
+    """
+    攞 OHLCV 嘅總入口
+    1. Yahoo Finance API (即時，可拿對應日期的精確數據)
+    2. 本地 SP CSV (fallback when YF fails / rate limit / 404)
+    """
+    # 1. 試 Yahoo Finance（已有 5min cache via _sp_cache）
+    yf_result = _fetch_sp_from_yf(code, date_str)
+    if yf_result:
+        # YF 已經返 requested date，唔需要 prev_date fallback
+        yf_result["prev_date"] = None
+        return yf_result
+
+    # 2. Fallback: 本地 SP CSV
+    print(f"[OHLCV] YF 失敗 for {code}/{date_str}，fallback 落本地 SP CSV")
+    return _read_ohlcv_local_fallback(code, date_str)
 
 
 @app.route("/api/ohlcv", methods=["GET"])
 def api_ohlcv():
     """
     GET /api/ohlcv?code=HSI&date=20260616
-    從 SP_ROOT 本地 CSV 讀 OHLCV（冇對應日期自動 fallback）
+    優先 Yahoo Finance (即時)；fallback 本地 SP CSV
     """
     code = request.args.get("code", "").strip()
     date_str = request.args.get("date", "").strip()
@@ -1029,8 +1044,20 @@ def api_ohlcv():
     if not date_str or len(date_str) != 8:
         return jsonify({"error": "缺少 date 參數（YYYYMMDD）"}), 400
 
-    result = _read_ohlcv_local(code, date_str)
+    # 用 YF 嘅 cache (5min TTL) — 避免重複 hit YF
+    cache_key = (code, date_str)
+    now = _t.time()
+    if cache_key in _sp_cache:
+        result, ts = _sp_cache[cache_key]
+        if now - ts < _CACHE_TTL:
+            return jsonify(result)
+
+    result = _fetch_ohlcv(code, date_str)
     if result:
+        # YF 結果寫入 _sp_cache (跟 /api/sp 共用 cache)
+        # 本地 fallback 結果唔 cache (因為 SP CSV 唔會變, cache 冇意義)
+        if result.get("prev_date") is None:
+            _sp_cache[cache_key] = (result, now)
         return jsonify(result)
     return jsonify({"error": f"找不到 {code} 嘅 OHLCV 數據"}), 404
 
