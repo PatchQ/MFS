@@ -2160,7 +2160,37 @@ const AGGTab = (() => {
       <div class="summary-item"><span class="summary-label">${data.range_mode ? '日期範圍' : '日期'}</span><span class="summary-value mono">${esc(dateLabel)}</span></div>
       <div class="summary-item"><span class="summary-label">行數</span><span class="summary-value mono">${data.total_rows ?? data.rows.length}</span></div>
       ${data.range_mode ? '<div class="summary-item"><span class="summary-label">模式</span><span class="summary-value" style="color:var(--accent)">📅 累加 12 個 _change 欄位</span></div>' : ''}
+      <div class="summary-item ohlcv" id="ohlcv-agg">
+        <span class="summary-label">OHLCV</span>
+        <span class="summary-value mono">載入中…</span>
+      </div>
     `;
+    // 異步攞 OHLCV
+    // 單日 mode → 用 state.date
+    // 範圍 mode → 用 date_from (起日)
+    const ohlcvDate = data.range_mode ? data.date_from : state.date;
+    API.ohlcv(state.series, ohlcvDate).then(oh => {
+      const el = $('#ohlcv-agg');
+      if (!el || !oh || oh.error) return;
+      const fmtN = (v, d = 2) => v == null ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+      const fmtV = v => v == null ? '—' : Number(v).toLocaleString('en-US');
+      const ohlcvDateStr = oh.date;
+      const dateTag = ohlcvDateStr !== ohlcvDate
+        ? `<span class="summary-label" title="無 ${fmtDate(ohlcvDate)} 數據，使用最近交易日">↻ ${esc(fmtDate(oh.date))}</span>`
+        : '';
+      el.innerHTML = `
+        <span class="summary-label">OHLCV</span>
+        ${dateTag}
+        <span class="summary-label">開</span><span class="summary-value">${fmtN(oh.open)}</span>
+        <span class="summary-label">高</span><span class="summary-value">${fmtN(oh.high)}</span>
+        <span class="summary-label">低</span><span class="summary-value">${fmtN(oh.low)}</span>
+        <span class="summary-label">收</span><span class="summary-value">${fmtN(oh.close)}</span>
+        <span class="summary-label">量</span><span class="summary-value">${fmtV(oh.volume)}</span>
+      `;
+    }).catch(() => {
+      const el = $('#ohlcv-agg');
+      if (el) el.innerHTML = `<span class="summary-label">OHLCV</span><span class="summary-value">—</span>`;
+    });
   }
 
   return { mount, load, reset };
