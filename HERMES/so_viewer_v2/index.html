@@ -431,6 +431,26 @@ select option {
 .summary-value.up { color: var(--gain); }
 .summary-value.down { color: var(--loss); }
 
+/* OHLCV group: pushed to the right of the summary bar */
+.summary-item.ohlcv {
+  margin-left: auto;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+  gap: 6px 10px;
+}
+.summary-item.ohlcv .summary-label { font-size: 10px; }
+.summary-item.ohlcv .summary-value { font-family: var(--mono); font-size: 12px; }
+@media (max-width: 767px) {
+  .summary-item.ohlcv {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    width: 100%;
+    border-top: 1px solid var(--border);
+    padding-top: 6px;
+  }
+}
+
 /* ============================================================
    Table (desktop) + Cards (mobile)
    ============================================================ */
@@ -1012,6 +1032,7 @@ const API = (() => {
       if (year)  p.set('year', year);
       return get(`/api/data?${p}`);
     },
+    ohlcv:      (code, date) => get(`/api/ohlcv?code=${encodeURIComponent(code)}&date=${date}`),
     scan:       (params) => {
       const p = new URLSearchParams();
       Object.entries(params).forEach(([k, v]) => {
@@ -1646,7 +1667,33 @@ const OITab = (() => {
       <div class="summary-item"><span class="summary-label">日期</span><span class="summary-value mono">${esc(fmtDate(state.date))}</span></div>
       <div class="summary-item"><span class="summary-label">類型</span><span class="summary-value">${esc(data.type || '')}</span></div>
       <div class="summary-item"><span class="summary-label">行數</span><span class="summary-value mono">${data.total_rows ?? data.rows.length}</span></div>
+      <div class="summary-item ohlcv" id="ohlcv-oi">
+        <span class="summary-label">OHLCV</span>
+        <span class="summary-value mono">載入中…</span>
+      </div>
     `;
+    // 異步攞 OHLCV（從 SP_ROOT 本地 CSV，唔會 block 載入）
+    API.ohlcv(state.code, state.date).then(oh => {
+      const el = $('#ohlcv-oi');
+      if (!el || !oh || oh.error) return;
+      const fmtN = (v, d = 2) => v == null ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+      const fmtV = v => v == null ? '—' : Number(v).toLocaleString('en-US');
+      const dateStr = oh.prev_date && oh.prev_date.replace('-', '').replace('-', '') !== state.date
+        ? `<span class="summary-label" title="無 ${fmtDate(state.date)} 數據，使用最近交易日">↻ ${esc(fmtDate(oh.date))}</span>`
+        : '';
+      el.innerHTML = `
+        <span class="summary-label">OHLCV</span>
+        ${dateStr}
+        <span class="summary-label">開</span><span class="summary-value">${fmtN(oh.open)}</span>
+        <span class="summary-label">高</span><span class="summary-value">${fmtN(oh.high)}</span>
+        <span class="summary-label">低</span><span class="summary-value">${fmtN(oh.low)}</span>
+        <span class="summary-label">收</span><span class="summary-value">${fmtN(oh.close)}</span>
+        <span class="summary-label">量</span><span class="summary-value">${fmtV(oh.volume)}</span>
+      `;
+    }).catch(() => {
+      const el = $('#ohlcv-oi');
+      if (el) el.innerHTML = `<span class="summary-label">OHLCV</span><span class="summary-value">—</span>`;
+    });
   }
 
   return { mount, load, reset, get state() { return state; } };

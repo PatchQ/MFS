@@ -937,6 +937,105 @@ def api_sp():
 
 
 # ============================================================
+# 本地 OHLCV API — 從 SPPATH 本地 CSV 讀，唔使 hit yfinance
+# ============================================================
+def _read_ohlcv_local(code: str, date_str: str) -> dict | None:
+    """
+    從 SPPATH/<CODE>/<CODE>_<YYYY-MM-DD>.csv 讀 OHLCV
+
+    - 找不到對應日期 → 自動 fallback 攞最近一個交易日
+    - 回傳 { code, date, date_display, open, high, low, close, adj_close, volume,
+             dividends, stock_splits, prev_date (fallback 提示用) }
+    """
+    import numpy as np
+    upper = code.upper()
+    sp_dir = SP_ROOT / upper
+    if not sp_dir.exists():
+        return None
+
+    # 1. 試搵精確日期
+    ymd = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}" if len(date_str) == 8 else date_str
+    target = sp_dir / f"{upper}_{ymd}.csv"
+    prev_date = None
+    if not target.exists():
+        # 2. Fallback: 攞最近一個交易日（最大日期 <= 目標）
+        candidates = []
+        for f in sp_dir.glob(f"{upper}_*.csv"):
+            stem = f.stem  # e.g. HSI_2026-05-06
+            parts = stem.split('_', 1)
+            if len(parts) == 2 and parts[0] == upper:
+                candidates.append((parts[1], f))
+        if not candidates:
+            return None
+        # sort by date asc
+        candidates.sort(key=lambda x: x[0])
+        # pick largest <= target
+        pick = None
+        for d, f in candidates:
+            if d <= ymd:
+                pick = (d, f)
+        if pick is None:
+            pick = candidates[-1]  # 完全冇對應 → 攞最新
+        prev_date = pick[0]
+        target = pick[1]
+
+    try:
+        df = pd.read_csv(target)
+        if len(df) == 0:
+            return None
+        row = df.iloc[0]
+        def _f(v):
+            try:
+                f = float(v)
+                return f if not np.isnan(f) else None
+            except (TypeError, ValueError):
+                return None
+        def _i(v):
+            try:
+                return int(float(v))
+            except (TypeError, ValueError):
+                return None
+        date_iso = prev_date or ymd
+        return {
+            "code": code,
+            "date": date_iso.replace("-", ""),
+            "date_display": date_iso,
+            "open": _f(row.get("Open")),
+            "high": _f(row.get("High")),
+            "low": _f(row.get("Low")),
+            "close": _f(row.get("Close")),
+            "adj_close": _f(row.get("Adj Close")),
+            "volume": _i(row.get("Volume")),
+            "dividends": _f(row.get("Dividends")),
+            "stock_splits": _f(row.get("Stock Splits")),
+            "prev_date": prev_date,  # 唔同 requested date 時提示用
+        }
+    except Exception as e:
+        print(f"[OHLCV API] Error reading {target}: {e}")
+        return None
+
+
+@app.route("/api/ohlcv", methods=["GET"])
+def api_ohlcv():
+    """
+    GET /api/ohlcv?code=HSI&date=20260616
+    從 SP_ROOT 本地 CSV 讀 OHLCV（冇對應日期自動 fallback）
+    """
+    code = request.args.get("code", "").strip()
+    date_str = request.args.get("date", "").strip()
+
+    if not code:
+        return jsonify({"error": "缺少 code 參數"}), 400
+    if not date_str or len(date_str) != 8:
+        return jsonify({"error": "缺少 date 參數（YYYYMMDD）"}), 400
+
+    result = _read_ohlcv_local(code, date_str)
+    if result:
+        return jsonify(result)
+    return jsonify({"error": f"找不到 {code} 嘅 OHLCV 數據"}), 404
+
+
+# ============================================================
 # 聚合視圖 API（Tab 4 — IO 指數 + SO 股票期權按 strike 聚合）
 # ============================================================
 IO_AGG_ROOT = Path("/root/GitHub/SData/HKEX/IO_AGG")
