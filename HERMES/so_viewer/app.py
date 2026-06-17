@@ -618,7 +618,14 @@ def _fetch_sp_from_yf(code: str, date_str: str) -> dict | None:
     if upper_code in _IO_YF_CODES:
         yf_code = _IO_YF_CODES[upper_code]
     else:
-        yf_code = f"{int(code):04d}.HK"
+        # SO 股票：'0700' 或 '0700_TCH' (帶 short name) → '0700.HK'
+        # 取前綴嘅數字部分即可
+        try:
+            stock_num = int(code.split('_')[0])
+            yf_code = f"{stock_num:04d}.HK"
+        except (ValueError, IndexError):
+            # 唔識嘅 code (e.g. 'HSI 2026') → 唔嘗試
+            return None
 
     # Yahoo Finance 查詢日期區間（用 period1/period2 取代 range=10d）
     # HKT 00:00 → UTC 前一日 16:00（因為 HKT = UTC+8）
@@ -652,6 +659,10 @@ def _fetch_sp_from_yf(code: str, date_str: str) -> dict | None:
             meta = result[0]["meta"]
             timestamps = result[0].get("timestamp", [])
             quote = result[0]["indicators"]["quote"][0]
+
+            # 1d interval 有時 YF 會返空 timestamps (e.g. 週末, 或者指數無近期 1d candle)
+            if not timestamps:
+                return None
 
             # 在 timestamp 列表中找到最接近指定日期的記錄
             target_ts = dt.timestamp()
@@ -952,17 +963,31 @@ def _read_ohlcv_local_fallback(code: str, date_str: str) -> dict | None:
     if not sp_dir.exists():
         return None
 
-    # 1. 試搵精確日期
+    # SP file naming 唔統一：HSI/HSI_*, HSTECH/HSTECH_*, HTI/HSTECH_*, HHI/HSCE_*, HSCE/HSCE_*
+    # 建立 fallback file name candidates
+    name_variants = [upper]
+    for n1, n2 in [("HTI", "HSTECH"), ("HHI", "HSCE")]:
+        if upper == n1:
+            name_variants.append(n2)
+        elif upper == n2:
+            name_variants.append(n1)
+
+    # 1. 試搵精確日期 (用任何 variant)
     ymd = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}" if len(date_str) == 8 else date_str
-    target = sp_dir / f"{upper}_{ymd}.csv"
+    target = None
+    for v in name_variants:
+        p = sp_dir / f"{v}_{ymd}.csv"
+        if p.exists():
+            target = p
+            break
     prev_date = None
-    if not target.exists():
+    if target is None:
         # 2. Fallback: 攞最近一個交易日（最大日期 <= 目標）
         candidates = []
-        for f in sp_dir.glob(f"{upper}_*.csv"):
-            stem = f.stem  # e.g. HSI_2026-05-06
+        for f in sp_dir.glob(f"*_*.csv"):  # any name pattern
+            stem = f.stem  # e.g. HSI_2026-05-06 or HSTECH_2026-05-06
             parts = stem.split('_', 1)
-            if len(parts) == 2 and parts[0] == upper:
+            if len(parts) == 2 and parts[0] in name_variants:
                 candidates.append((parts[1], f))
         if not candidates:
             return None
