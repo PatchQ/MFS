@@ -562,6 +562,15 @@ select option {
 }
 .data-table th.strike-col { background: var(--surface-3); color: var(--accent); }
 
+/* Accent columns (C淨數 / P淨數) — 同 strike 一樣 style 但唔做 sticky */
+.data-table td.accent-col {
+  background: var(--surface-2);
+  font-weight: 600;
+  color: var(--accent);
+  text-align: center;
+}
+.data-table th.accent-col { background: var(--surface-3); color: var(--accent); }
+
 /* Sticky first column (mobile horizontal scroll — keeps code/strike visible) */
 .data-table th:first-child,
 .data-table td:first-child {
@@ -1222,6 +1231,9 @@ const CHANGE_COLS = new Set([
 ]);
 const RATIO_COLS = new Set(['call_ratio', 'put_ratio', 'deals_ratio']);
 const STRIKE_COLS = new Set(['strike']);
+// C淨數 / P淨數 — 用同一 style (accent 底色, 粗體, 置中) 但唔做 sticky
+// (sticky 留俾 strike 一個就夠，否則多個 column 重疊喺 left:0)
+const ACCENT_COLS = new Set(['call_net', 'put_net']);
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 
@@ -1414,7 +1426,7 @@ class TableView {
     displayCols.forEach((col, i) => {
       const label = colCn[col] ?? col;
       const th = el('th', {
-        class: (i === this.sortKey ? 'sorted' : '') + (this.sortDir === 'asc' && i === this.sortKey ? ' asc' : '') + (STRIKE_COLS.has(col) ? ' strike-col' : ''),
+        class: (i === this.sortKey ? 'sorted' : '') + (this.sortDir === 'asc' && i === this.sortKey ? ' asc' : '') + (STRIKE_COLS.has(col) ? ' strike-col' : (ACCENT_COLS.has(col) ? ' accent-col' : '')),
         title: col,
       });
       // Label span — click to sort (only if filters enabled; otherwise th itself is clickable)
@@ -1470,6 +1482,7 @@ class TableView {
         const v = row[idx];
         const cls = [];
         if (STRIKE_COLS.has(col)) cls.push('strike-col');
+        else if (ACCENT_COLS.has(col)) cls.push('accent-col');
 
         // Numeric formatting
         const numVal = parseFloat(v);
