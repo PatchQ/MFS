@@ -571,10 +571,11 @@ select option {
 }
 .data-table th.accent-col { background: var(--surface-3); color: var(--accent); }
 
-/* Accent column + top-3 — 加 warn 字色 + 加重 weight, 保持 accent 底色 */
+/* Accent column + top-3 — 同其他 column top-cell 完全一致 (warn 底 + warn 字 + weight 500) */
 .data-table td.accent-col.top-cell {
+  background: oklch(from var(--warn) 25% 0.12 80);
   color: var(--warn);
-  font-weight: 700;
+  font-weight: 500;
 }
 
 /* Sticky first column (mobile horizontal scroll — keeps code/strike visible) */
