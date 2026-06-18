@@ -1181,14 +1181,15 @@ def api_agg_dates():
     if not agg_dir.exists():
         return jsonify({"error": f"找不到聚合視圖目錄：{agg_dir}"}), 404
 
-    # 搵最新嘅月度檔
+    # 搵所有月度檔（reverse sort 令最新排前）
     files = sorted(agg_dir.glob("*_AGG.csv"), reverse=True)
     if not files:
         return jsonify({"error": "冇聚合視圖檔案"}), 404
 
-    # 用最新月度檔抽日期
+    # 用所有月度檔抽日期（usecols 只讀 date 欄，concat 後 dedupe + sort）
     try:
-        df = pd.read_csv(files[0], usecols=["date"])
+        dfs = [pd.read_csv(f, usecols=["date"]) for f in files]
+        df = pd.concat(dfs, ignore_index=True)
         dates = sorted(df["date"].astype(str).str.zfill(8).unique(), reverse=True)
     except Exception as e:
         return jsonify({"error": f"讀取失敗：{e}"}), 500
@@ -1196,7 +1197,7 @@ def api_agg_dates():
     return jsonify({
         "series": subdir,
         "dates": dates,
-        "file": files[0].name,
+        "files": [f.name for f in files],  # 全部 file 列表
     })
 
 
