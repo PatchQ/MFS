@@ -153,7 +153,12 @@ def ProcessIO(sdate, edate):
                               cc.datetime.strptime(edate, "%Y%m%d"),
                               freq='D').strftime("%Y%m%d").tolist()
     with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
-        list(cc.tqdm(executor.map(io_download_file, dates, chunksize=1), total=len(dates)))
+        io_results = list(cc.tqdm(executor.map(io_download_file, dates, chunksize=1), total=len(dates)))
+    # 若所有日期都下載失敗 (e.g. URL 404, HKEX 仲未出) → 視為 transient error
+    # 觸發 cron retry (exit 2)
+    if dates and not any(io_results):
+        print(f"[IO] 全部 {len(dates)} 個日期下載失敗 (exit 2 → trigger cron retry)")
+        cc.sys.exit(2)
     with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
         list(cc.tqdm(executor.map(io_extract_data, dates, chunksize=1), total=len(dates)))
 
@@ -174,6 +179,7 @@ def so_download_file(odate):
         return True
     except Exception as e:
         print(f"[SO] 下載失敗 {local_filename}: {e}")
+        return False
 def so_extract_data(odate):
     raw_filename = f"{odate}_1_dtop_o_seoch_opt_dtl_all.raw"
     zip_filename = SOPATH / "DATA" / f"{odate}.zip"
@@ -287,7 +293,11 @@ def ProcessSO(sdate, edate):
                               cc.datetime.strptime(edate, "%Y%m%d"),
                               freq='D').strftime("%Y%m%d").tolist()
     with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
-        list(cc.tqdm(executor.map(so_download_file, dates, chunksize=1), total=len(dates)))
+        so_results = list(cc.tqdm(executor.map(so_download_file, dates, chunksize=1), total=len(dates)))
+    # 若所有日期都下載失敗 (e.g. URL 404) → exit 2 觸發 cron retry
+    if dates and not any(so_results):
+        print(f"[SO] 全部 {len(dates)} 個日期下載失敗 (exit 2 → trigger cron retry)")
+        cc.sys.exit(2)
     with cc.ExecutorType(max_workers=cc.DEFAULT_MAX_WORKERS) as executor:
         list(cc.tqdm(executor.map(so_extract_data, dates, chunksize=1), total=len(dates)))
 
